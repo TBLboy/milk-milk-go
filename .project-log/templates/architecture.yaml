@@ -1,0 +1,16 @@
+id: ARCH-001
+status: draft
+goal: 当前增量的架构目标
+related_business_logic: []
+decision_refs: []
+components: []
+interfaces: []
+data_flows: []
+state_and_concurrency: []
+failure_paths: []
+security_and_privacy: []
+observability: []
+deployment_and_compatibility: []
+open_questions: []
+created_at: null
+updated_at: null

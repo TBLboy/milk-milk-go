@@ -1,0 +1,18 @@
+id: REQ-001
+revision: 1
+status: draft
+goal: 当前增量要实现的业务结果
+actors: []
+in_scope: []
+out_of_scope: []
+business_logic_refs: []
+constraints: []
+quality_attributes: []
+assumptions: []
+unresolved_questions: []
+approval:
+  status: pending
+  evidence: []
+supersedes: []
+created_at: null
+updated_at: null

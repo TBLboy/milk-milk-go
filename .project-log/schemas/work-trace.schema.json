@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "version",
+    "entries"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "task_id",
+          "context",
+          "action",
+          "actual_result"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "task_id": {
+            "type": "string"
+          },
+          "context": {
+            "type": "string"
+          },
+          "hypothesis": {
+            "type": "string"
+          },
+          "decision_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "action": {
+            "type": "string"
+          },
+          "expected_result": {
+            "type": "string"
+          },
+          "observation": {
+            "type": "string"
+          },
+          "actual_result": {
+            "type": "string"
+          },
+          "delta": {
+            "type": "string"
+          },
+          "lesson": {
+            "type": "string"
+          },
+          "next_adjustment": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "array"
+          },
+          "knowledge_candidate": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

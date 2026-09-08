@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibe.local/schemas/loop-evidence-index.schema.json",
+  "type": "object",
+  "required": ["schema_version", "evidence"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "subject",
+          "status",
+          "covers",
+          "version_binding",
+          "recorded_at"
+        ],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "kind": {"type": "string", "minLength": 1},
+          "subject": {"type": "string", "minLength": 1},
+          "status": {"enum": ["candidate", "valid", "failed", "stale", "superseded", "invalid"]},
+          "command": {"type": ["string", "null"]},
+          "result_ref": {"type": ["string", "null"]},
+          "covers": {
+            "type": "object",
+            "required": ["files", "requirements", "tasks"],
+            "properties": {
+              "files": {"type": "array", "items": {"type": "string"}},
+              "requirements": {"type": "array", "items": {"type": "string"}},
+              "tasks": {"type": "array", "items": {"type": "string"}}
+            },
+            "additionalProperties": false
+          },
+          "version_binding": {
+            "type": "object",
+            "required": ["git_commit", "diff_hash", "file_hashes"],
+            "properties": {
+              "git_commit": {"type": ["string", "null"]},
+              "diff_hash": {"type": ["string", "null"]},
+              "file_hashes": {"type": "object", "additionalProperties": {"type": "string"}}
+            },
+            "additionalProperties": false
+          },
+          "recorded_at": {"type": "string"},
+          "invalidated_at": {"type": ["string", "null"]},
+          "invalidation_reason": {"type": ["string", "null"]}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

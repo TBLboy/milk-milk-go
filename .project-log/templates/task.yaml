@@ -1,0 +1,37 @@
+id: TASK-001
+title: 可独立验收的工程工作单元
+kind: task
+parent_id: null
+phase: implementation
+goal: 该任务完成后实现什么可观察结果
+status: pending
+priority: medium
+risk: low
+authority: A
+owner: agent
+tags: []
+related_business_logic: []
+acceptance_refs: []
+related_decisions: []
+depends_on: []
+blocked_by: []
+blocked_by_questions: []
+required_skills: []
+spec_ref: null
+inputs: []
+outputs: []
+plan: []
+done_when:
+  - 明确且可验证的完成条件
+verification:
+  status: not-run
+  commands: []
+  evidence: []
+  limitations: []
+result:
+  summary: null
+  changed_files: []
+  deviations: []
+  follow_ups: []
+created_at: null
+updated_at: null

@@ -1,0 +1,17 @@
+id: ALN-001
+title: 对齐问题标题
+type: traceability-gap
+severity: medium
+confidence: medium
+status: open
+authority: B
+business_logic_refs: []
+code_refs: []
+test_refs: []
+evidence: []
+recommended_action: ""
+resolution: null
+resolution_evidence: []
+related_tasks: []
+created_at: null
+updated_at: null

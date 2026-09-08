@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibe.local/schemas/open-questions.schema.json",
+  "title": "Open Business Questions",
+  "type": "object",
+  "required": [
+    "version",
+    "questions"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/question"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "question": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "status",
+        "authority",
+        "impact",
+        "context",
+        "recommendation"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^Q-[0-9]{3,}$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "open",
+            "answered",
+            "deferred",
+            "cancelled",
+            "superseded"
+          ]
+        },
+        "authority": {
+          "enum": [
+            "A",
+            "B",
+            "C"
+          ]
+        },
+        "impact": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "uncertainty": {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "rework_cost": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "related_business_logic": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "related_tasks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "context": {
+          "type": "string"
+        },
+        "recommendation": {
+          "type": "string"
+        },
+        "alternatives": {
+          "type": "array"
+        },
+        "answer": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "created_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "answered_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

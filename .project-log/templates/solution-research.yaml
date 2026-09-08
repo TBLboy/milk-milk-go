@@ -1,0 +1,16 @@
+id: RES-001
+status: draft
+problem: 精确定义的技术问题
+related_business_logic: []
+related_tasks: []
+constraints: []
+candidates: []
+strategy: spike-first
+recommendation: null
+conditions: []
+contrary_evidence: []
+confidence: null
+decision_ref: null
+sources: []
+retrieved_at: null
+updated_at: null

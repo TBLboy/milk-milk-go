@@ -1,0 +1,227 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibe.local/schemas/decision-log.schema.json",
+  "title": "Decision Action Result Log",
+  "type": "object",
+  "required": [
+    "version",
+    "decisions"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/decision"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "decision": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "category",
+        "status",
+        "authority",
+        "context",
+        "hypothesis",
+        "options",
+        "decision",
+        "reason_summary",
+        "action",
+        "expected_result"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^DEC-[0-9]{3,}$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "category": {
+          "enum": [
+            "business",
+            "technical",
+            "architecture",
+            "data",
+            "security",
+            "process",
+            "tooling"
+          ]
+        },
+        "status": {
+          "enum": [
+            "proposed",
+            "active",
+            "experimental",
+            "rejected",
+            "superseded",
+            "archived"
+          ]
+        },
+        "authority": {
+          "enum": [
+            "A",
+            "B",
+            "C"
+          ]
+        },
+        "user_approval": {
+          "enum": [
+            "not-required",
+            "pending",
+            "approved",
+            "rejected"
+          ]
+        },
+        "related_tasks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "related_business_logic": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "context": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hypothesis": {
+          "type": "string",
+          "minLength": 1
+        },
+        "options": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "benefits",
+              "costs",
+              "risks"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "benefits": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "costs": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "risks": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "decision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason_summary": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_result": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reversal_plan": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "observation": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "actual_result": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "outcome_status": {
+          "enum": [
+            "not-observed",
+            "successful",
+            "partial",
+            "failed",
+            "superseded"
+          ]
+        },
+        "lesson": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "supersedes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "created_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "updated_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "version",
+    "evidence"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "task_id",
+          "result",
+          "level"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "task_id": {
+            "type": "string"
+          },
+          "business_logic": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "acceptance_criteria": {
+            "type": "array"
+          },
+          "result": {
+            "enum": [
+              "passed",
+              "failed",
+              "partial",
+              "not-run",
+              "not-applicable"
+            ]
+          },
+          "level": {
+            "enum": [
+              1,
+              2,
+              3,
+              4
+            ]
+          },
+          "commands": {
+            "type": "array"
+          },
+          "limitations": {
+            "type": "array"
+          },
+          "artifacts": {
+            "type": "array"
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibe.local/schemas/architecture.schema.json",
+  "type": "object",
+  "required": [
+    "version",
+    "architectures"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "architectures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "goal",
+          "related_business_logic",
+          "decision_refs",
+          "components",
+          "interfaces",
+          "data_flows",
+          "failure_paths"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^ARCH-[0-9]{3,}$"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "active",
+              "superseded",
+              "archived"
+            ]
+          },
+          "goal": {
+            "type": "string",
+            "minLength": 1
+          },
+          "related_business_logic": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "decision_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "components": {
+            "type": "array"
+          },
+          "interfaces": {
+            "type": "array"
+          },
+          "data_flows": {
+            "type": "array"
+          },
+          "state_and_concurrency": {
+            "type": "array"
+          },
+          "failure_paths": {
+            "type": "array"
+          },
+          "security_and_privacy": {
+            "type": "array"
+          },
+          "observability": {
+            "type": "array"
+          },
+          "deployment_and_compatibility": {
+            "type": "array"
+          },
+          "open_questions": {
+            "type": "array"
+          },
+          "created_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updated_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

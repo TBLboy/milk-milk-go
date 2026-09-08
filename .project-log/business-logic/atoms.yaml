@@ -1,0 +1,201 @@
+version: "0.2"
+source_of_truth: true
+atoms:
+  - id: BL-WEIGH-001
+    title: 根据产品配方和目标生产重量生成辅料称量清单
+    kind: flow
+    domain: weighing
+    status: draft
+    priority: critical
+    risk: medium
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-08 业务澄清会话"
+    description: 系统根据所选产品的配方和目标生产重量，自动计算需要称取的辅料类型和重量。
+    actors:
+      - 生产计划人员
+    trigger: 用户选择生产产品名称并输入目标生产重量
+    preconditions:
+      - 产品配方和辅料主数据已维护
+    inputs:
+      - 产品名称
+      - 目标生产重量
+    rule:
+      statement: 系统按所选产品的配方和目标生产重量，计算每种辅料应称取的辅料类型和重量。
+    outputs:
+      - 应称辅料清单，包含辅料类型和应称重量
+    side_effects: []
+    exceptions:
+      - 产品不存在
+      - 配方不存在
+      - 目标生产重量缺失或非法
+    failure_handling:
+      - 阻止进入称重流程并给出可修正提示
+    invariants:
+      - 同一产品、同一配方和同一目标重量的本次计算结果应一致
+    acceptance:
+      - id: AC-WEIGH-001
+        given: 产品已有配方且目标生产重量已输入
+        when: 用户请求生成称量清单
+        then: 系统输出该产品所需辅料的类型和应称重量
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies: []
+    baseline_refs: []
+    decision_refs: []
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: null
+    created_at: "2026-09-08T07:02:18Z"
+    updated_at: "2026-09-08T07:02:18Z"
+    last_verified_at: null
+  - id: BL-WEIGH-002
+    title: 称重前确认辅料类型
+    kind: rule
+    domain: weighing
+    status: draft
+    priority: critical
+    risk: medium
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-08 业务澄清会话"
+    description: 系统在称量前确认当前辅料与任务要求的辅料类型一致。
+    actors:
+      - 生产/称重操作员
+    trigger: 进入某一辅料的称重步骤
+    preconditions:
+      - 当前称重任务已生成
+      - 辅料包装或二维码可读取
+    inputs:
+      - 二维码
+      - 辅料包装图片
+    rule:
+      statement: 系统确认当前辅料是任务要求的辅料类型后，才允许进入重量称量。
+    outputs:
+      - 辅料类型确认结果
+    side_effects: []
+    exceptions:
+      - 二维码缺失或无法识别
+      - 包装图片无法识别
+    failure_handling:
+      - 阻止继续称重并提示重新确认
+    invariants: []
+    acceptance:
+      - id: AC-WEIGH-002
+        given: 当前称重任务要求辅料 A，现场辅料为 A
+        when: 操作员扫码或拍摄包装图片
+        then: 系统确认类型正确并允许下一步称重
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-WEIGH-001
+    baseline_refs: []
+    decision_refs: []
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: null
+    created_at: "2026-09-08T07:02:18Z"
+    updated_at: "2026-09-08T07:02:18Z"
+    last_verified_at: null
+  - id: BL-WEIGH-003
+    title: 电子秤称量结果满足目标重量才允许完成
+    kind: rule
+    domain: weighing
+    status: draft
+    priority: critical
+    risk: medium
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-08 业务澄清会话"
+    description: 系统以电子秤读数作为重量正确性的判断依据。
+    actors:
+      - 生产/称重操作员
+    trigger: 辅料类型已确认后读取电子秤读数
+    preconditions:
+      - 电子秤在线且读数稳定
+    inputs:
+      - 电子秤读数
+    rule:
+      statement: 系统按电子秤读数判断是否达到该辅料应称重量；未达到时不得将本步骤标记完成。
+    outputs:
+      - 重量校验结果
+    side_effects: []
+    exceptions:
+      - 电子秤离线
+      - 读数不稳定或长时间不满足重量
+    failure_handling:
+      - 禁止记录为完成并提示操作员处理
+    invariants: []
+    acceptance:
+      - id: AC-WEIGH-003
+        given: 目标辅料重量为 500g
+        when: 电子秤读数达到目标重量
+        then: 系统允许该步骤完成
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-WEIGH-002
+    baseline_refs: []
+    decision_refs: []
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: null
+    created_at: "2026-09-08T07:02:18Z"
+    updated_at: "2026-09-08T07:02:18Z"
+    last_verified_at: null
+  - id: BL-WEIGH-004
+    title: 类型或重量不匹配时拦截错误结果
+    kind: constraint
+    domain: weighing
+    status: draft
+    priority: critical
+    risk: medium
+    authority: inferred
+    source:
+      type: user-statement
+      reference: "2026-09-08 业务澄清会话"
+    description: 系统必须防止把类型错误或重量不符的辅料称重步骤记录为成功。
+    actors:
+      - 生产/称重操作员
+    trigger: 用户尝试提交类型未确认或重量不达标的称重结果
+    preconditions: []
+    inputs: []
+    rule:
+      statement: 类型或重量不符合任务要求的称重步骤不得记录为成功。
+    outputs:
+      - 错误提示
+    side_effects: []
+    exceptions: []
+    failure_handling:
+      - 明确提示失败原因，并阻止进入下一辅料或完成整批任务
+    invariants:
+      - 没有类型确认记录且重量达标记录的步骤不能视为完成
+    acceptance:
+      - id: AC-WEIGH-004
+        given: 当前辅料类型错误或重量未达标
+        when: 操作员尝试继续或完成
+        then: 系统拒绝该结果并提示错误
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-WEIGH-002
+      - BL-WEIGH-003
+    baseline_refs: []
+    decision_refs: []
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: 具体拦截方式和错误处理仍需客户确认。
+    created_at: "2026-09-08T07:02:18Z"
+    updated_at: "2026-09-08T07:02:18Z"
+    last_verified_at: null

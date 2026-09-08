@@ -1,0 +1,73 @@
+version: "0.4"
+status: active
+functional_business_logic:
+  actors:
+    - "[inferred] 生产/称重操作员：执行扫码、拍照和称量"
+    - "[inferred] 生产计划人员：选择产品并输入目标生产重量"
+  scenarios:
+    - "[user-confirmed] 生产人员选择产品名称并输入目标生产重量，系统自动计算需要称取的辅料类型和重量。"
+    - "[user-confirmed] 称重人员扫描二维码或拍摄辅料包装图片，确认辅料类型正确后在电子秤上称量重量。"
+  rules:
+    - "[user-confirmed] 每个产品对应配方；按配方和实际生产重量计算需要称取的辅料类型及重量。"
+    - "[user-confirmed] 辅料通常有二维码，但可能存在无二维码辅料。"
+    - "[user-confirmed] 辅料称重防错的核心目标是确保辅料类型正确、重量正确。"
+  state_transitions:
+    - "[draft] 待称重 -> 类型已确认 -> 重量已确认 -> 完成"
+    - "[draft] 类型或重量不匹配 -> 阻止通过并要求处理"
+  exceptions:
+    - "[unknown] 二维码缺失、损坏或无法识别时如何处理"
+    - "[unknown] 电子秤离线、读数波动或超时如何处理"
+    - "[unknown] 称重允差如何定义"
+  boundaries:
+    - "[user-confirmed] 当前客户有电子秤，没有扫码枪"
+    - "[unknown] 金蝶系统是否作为产品、配方和辅料主数据来源"
+    - "[unknown] 是否要把称重结果回写金蝶"
+technical_business_logic:
+  current_implementation_facts:
+    - "[user-confirmed] 公司已有电子秤，但型号、接口和读数协议未确认"
+    - "[user-confirmed] 公司目前没有扫码枪"
+    - "[user-confirmed] 金蝶系统存在，且金蝶未与电子秤连接"
+    - "[user-confirmed] 金蝶目前没有辅料防错功能"
+  interface_contracts:
+    - "[unknown] 金蝶系统接口、权限和可扩展性未知"
+    - "[unknown] 电子秤是否能通过串口、USB 或网络输出重量数据未知"
+  data_and_state_rules:
+    - "[unknown] 产品、配方、辅料主数据在哪里维护、由谁维护"
+    - "[unknown] 称重记录是否需要保存、保存多久"
+  consistency_and_concurrency:
+    - "[unknown] 同一批次是否可能多人同时称重"
+  external_constraints:
+    - "[user-confirmed] 现场以电子秤为准；扫码枪需要采购"
+    - "[unknown] 现场网络、供电、部署主机等环境未确认"
+  compatibility_constraints:
+    - "[unknown] 是否必须兼容金蝶现有业务流程和账号体系"
+alignment:
+  confirmed_matches: []
+  conflicts: []
+  unknowns:
+    - id: ALIGN-001
+      type: unknown
+      summary: 金蝶系统与称重流程的集成边界未知
+      status: open
+      authority: C
+      evidence: []
+    - id: ALIGN-002
+      type: unknown
+      summary: 电子秤数据接口未知
+      status: open
+      authority: C
+      evidence: []
+    - id: ALIGN-003
+      type: unknown
+      summary: 无二维码辅料的现场确认方式未知
+      status: open
+      authority: C
+      evidence: []
+  decisions_required:
+    - Q-001
+gate:
+  status: open
+  blocking_unknowns:
+    - Q-001
+  notes: 已收集用户首轮业务描述，先确认本系统交付边界。
+updated_at: "2026-09-08T07:02:18Z"

@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibe.local/schemas/alignment.schema.json",
+  "title": "Business Code Test Alignment Findings",
+  "type": "object",
+  "required": [
+    "version",
+    "findings"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "type",
+        "severity",
+        "confidence",
+        "status",
+        "authority",
+        "business_logic_refs",
+        "code_refs",
+        "test_refs",
+        "evidence",
+        "recommended_action"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^ALN-[0-9]{3,}$"
+        },
+        "title": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "missing-implementation",
+            "missing-test",
+            "undocumented-behavior",
+            "stale-business-logic",
+            "implementation-drift",
+            "test-drift",
+            "traceability-gap",
+            "conflict"
+          ]
+        },
+        "severity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "confidence": {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "status": {
+          "enum": [
+            "open",
+            "accepted",
+            "in-progress",
+            "resolved",
+            "false-positive",
+            "deferred"
+          ]
+        },
+        "authority": {
+          "enum": [
+            "A",
+            "B",
+            "C"
+          ]
+        },
+        "business_logic_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "code_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "test_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "recommended_action": {
+          "type": "string"
+        },
+        "resolution": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "resolution_evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "related_tasks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "created_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "updated_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
