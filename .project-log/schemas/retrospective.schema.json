@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "version",
+    "retrospectives"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "retrospectives": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "scope",
+          "outcome"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "scope": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string"
+          },
+          "worked": {
+            "type": "array"
+          },
+          "failed": {
+            "type": "array"
+          },
+          "root_causes": {
+            "type": "array"
+          },
+          "improvements": {
+            "type": "array"
+          },
+          "evidence": {
+            "type": "array"
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

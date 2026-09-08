@@ -1,0 +1,138 @@
+version: "0.4"
+mode: standard
+current_phase: business-clarification
+active_goal: null
+phase_order:
+  - business-intent
+  - business-clarification
+  - requirement-baseline
+  - solution-research
+  - architecture-decision
+  - task-decomposition
+  - engineering-spec
+  - implementation
+  - verification
+  - alignment
+  - retrospective
+  - distillation
+phases:
+  business-intent:
+    status: completed
+    gate_status: passed
+    required_artifacts: []
+    exit_conditions:
+      - goal and target outcome are stated
+    evidence:
+      - .project-log/current-session.md
+  business-clarification:
+    status: active
+    gate_status: open
+    required_artifacts:
+      - .project-log/business-logic/atoms.yaml
+      - .project-log/business-logic/clarification.yaml
+    exit_conditions:
+      - functional business logic is clear enough to baseline
+      - relevant technical business logic has been investigated
+      - functional and technical conflicts are recorded
+      - no blocking C-level semantic question is hidden
+      - future solution choices are routed to solution research
+    evidence:
+      - .project-log/business-logic/clarification.yaml
+  requirement-baseline:
+    status: pending
+    gate_status: not-evaluated
+    required_artifacts:
+      - .project-log/requirements/baseline.yaml
+    exit_conditions:
+      - scope and exclusions are explicit
+      - active atoms have acceptance criteria
+    evidence: []
+  solution-research:
+    status: pending
+    gate_status: not-evaluated
+    required_artifacts:
+      - .project-log/research/solution-research.yaml
+    exit_conditions:
+      - material technical choices have evidence or are explicitly not required
+    evidence: []
+  architecture-decision:
+    status: pending
+    gate_status: not-evaluated
+    required_artifacts:
+      - .project-log/architecture/architecture.yaml
+    exit_conditions:
+      - ownership interfaces data and failure boundaries are sufficient for decomposition
+    evidence: []
+  task-decomposition:
+    status: pending
+    gate_status: not-evaluated
+    required_artifacts:
+      - .project-log/tasks/task-list.yaml
+    exit_conditions:
+      - next ready task can be selected mechanically
+      - in-scope atoms are covered or intentionally deferred
+    evidence: []
+  engineering-spec:
+    status: pending
+    gate_status: not-evaluated
+    required_artifacts:
+      - .project-log/specs
+    exit_conditions:
+      - non-trivial ready tasks have implementation-ready specs
+    evidence: []
+  implementation:
+    status: pending
+    gate_status: not-evaluated
+    required_artifacts: []
+    exit_conditions:
+      - planned outputs exist
+      - deviations are recorded
+    evidence: []
+  verification:
+    status: pending
+    gate_status: not-evaluated
+    required_artifacts:
+      - .project-log/verification/evidence.yaml
+    exit_conditions:
+      - completion conditions have evidence or exact limitations are recorded
+    evidence: []
+  alignment:
+    status: pending
+    gate_status: not-evaluated
+    required_artifacts:
+      - .project-log/alignment/findings.yaml
+    exit_conditions:
+      - material business-code-test differences are resolved assigned or accepted
+    evidence: []
+  retrospective:
+    status: pending
+    gate_status: not-evaluated
+    required_artifacts:
+      - .project-log/retrospective/retrospective.yaml
+    exit_conditions:
+      - concrete workflow improvements are recorded
+    evidence: []
+  distillation:
+    status: pending
+    gate_status: not-evaluated
+    required_artifacts:
+      - .project-log/distillation/candidates.yaml
+    exit_conditions:
+      - lessons are classified without silently becoming permanent rules
+    evidence: []
+open_gates:
+  - business-clarification
+return_edges:
+  - from: implementation
+    to: business-clarification
+    reason: implementation exposed product ambiguity
+  - from: verification
+    to: implementation
+    reason: acceptance evidence failed
+  - from: alignment
+    to: business-clarification
+    reason: authoritative behavior conflict
+  - from: alignment
+    to: implementation
+    reason: implementation or test drift
+last_updated: '2026-09-08T07:02:18Z'

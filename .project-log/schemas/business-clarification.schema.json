@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibe.local/schemas/business-clarification.schema.json",
+  "type": "object",
+  "required": [
+    "version",
+    "status",
+    "functional_business_logic",
+    "technical_business_logic",
+    "alignment",
+    "gate",
+    "updated_at"
+  ],
+  "properties": {
+    "version": {"type": "string"},
+    "status": {"enum": ["draft", "active", "passed", "blocked"]},
+    "functional_business_logic": {"$ref": "#/$defs/functional"},
+    "technical_business_logic": {"$ref": "#/$defs/technical"},
+    "alignment": {"$ref": "#/$defs/alignment"},
+    "gate": {
+      "type": "object",
+      "required": ["status", "blocking_unknowns", "notes"],
+      "properties": {
+        "status": {"enum": ["open", "passed", "blocked"]},
+        "blocking_unknowns": {"type": "array", "items": {"type": "string"}},
+        "notes": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "updated_at": {"type": ["string", "null"]}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "stringArray": {"type": "array", "items": {"type": "string"}},
+    "functional": {
+      "type": "object",
+      "required": ["actors", "scenarios", "rules", "state_transitions", "exceptions", "boundaries"],
+      "properties": {
+        "actors": {"$ref": "#/$defs/stringArray"},
+        "scenarios": {"$ref": "#/$defs/stringArray"},
+        "rules": {"$ref": "#/$defs/stringArray"},
+        "state_transitions": {"$ref": "#/$defs/stringArray"},
+        "exceptions": {"$ref": "#/$defs/stringArray"},
+        "boundaries": {"$ref": "#/$defs/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "technical": {
+      "type": "object",
+      "required": [
+        "current_implementation_facts",
+        "interface_contracts",
+        "data_and_state_rules",
+        "consistency_and_concurrency",
+        "external_constraints",
+        "compatibility_constraints"
+      ],
+      "properties": {
+        "current_implementation_facts": {"$ref": "#/$defs/stringArray"},
+        "interface_contracts": {"$ref": "#/$defs/stringArray"},
+        "data_and_state_rules": {"$ref": "#/$defs/stringArray"},
+        "consistency_and_concurrency": {"$ref": "#/$defs/stringArray"},
+        "external_constraints": {"$ref": "#/$defs/stringArray"},
+        "compatibility_constraints": {"$ref": "#/$defs/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "alignmentItem": {
+      "type": "object",
+      "required": ["id", "type", "summary", "status"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "type": {
+          "enum": [
+            "confirmed-match",
+            "missing-implementation",
+            "implementation-drift",
+            "missing-test",
+            "test-drift",
+            "constraint-conflict",
+            "unknown"
+          ]
+        },
+        "summary": {"type": "string", "minLength": 1},
+        "status": {"enum": ["open", "resolved", "accepted", "deferred"]},
+        "authority": {"enum": ["A", "B", "C"]},
+        "evidence": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "alignment": {
+      "type": "object",
+      "required": ["confirmed_matches", "conflicts", "unknowns", "decisions_required"],
+      "properties": {
+        "confirmed_matches": {"type": "array", "items": {"$ref": "#/$defs/alignmentItem"}},
+        "conflicts": {"type": "array", "items": {"$ref": "#/$defs/alignmentItem"}},
+        "unknowns": {"type": "array", "items": {"$ref": "#/$defs/alignmentItem"}},
+        "decisions_required": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    }
+  }
+}

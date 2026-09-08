@@ -1,0 +1,298 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibe.local/schemas/task-list.schema.json",
+  "title": "Workflow Task List",
+  "type": "object",
+  "required": [
+    "version",
+    "active_goal",
+    "tasks"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "active_goal": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/task"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "task": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "kind",
+        "phase",
+        "goal",
+        "status",
+        "authority",
+        "related_business_logic",
+        "depends_on",
+        "inputs",
+        "outputs",
+        "done_when",
+        "verification"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^TASK-[0-9]{3,}$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "goal",
+            "milestone",
+            "task",
+            "spike",
+            "repair",
+            "research"
+          ]
+        },
+        "parent_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "phase": {
+          "enum": [
+            "business-intent",
+            "business-clarification",
+            "requirement-baseline",
+            "solution-research",
+            "architecture-decision",
+            "task-decomposition",
+            "engineering-spec",
+            "implementation",
+            "verification",
+            "alignment",
+            "retrospective",
+            "distillation"
+          ]
+        },
+        "goal": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "ready",
+            "in-progress",
+            "blocked",
+            "implemented-unverified",
+            "done",
+            "cancelled",
+            "archived"
+          ]
+        },
+        "priority": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "risk": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "authority": {
+          "enum": [
+            "A",
+            "B",
+            "C"
+          ]
+        },
+        "owner": {
+          "enum": [
+            "agent",
+            "user",
+            "shared"
+          ]
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "related_business_logic": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "acceptance_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "related_decisions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "depends_on": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "blocked_by": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "required_skills": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "spec_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "plan": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "done_when": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "verification": {
+          "type": "object",
+          "required": [
+            "status",
+            "commands",
+            "evidence",
+            "limitations"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "not-run",
+                "partial",
+                "passed",
+                "failed",
+                "not-applicable"
+              ]
+            },
+            "commands": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "evidence": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "limitations": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "summary": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "changed_files": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "deviations": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "follow_ups": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "created_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "updated_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "blocked_by_questions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

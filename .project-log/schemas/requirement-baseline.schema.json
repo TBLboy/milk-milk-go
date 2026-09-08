@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibe.local/schemas/requirement-baseline.schema.json",
+  "type": "object",
+  "required": [
+    "version",
+    "baselines"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "baselines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "revision",
+          "status",
+          "goal",
+          "actors",
+          "in_scope",
+          "out_of_scope",
+          "business_logic_refs",
+          "constraints",
+          "quality_attributes",
+          "assumptions",
+          "unresolved_questions",
+          "approval"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^REQ-[0-9]{3,}$"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "active",
+              "superseded",
+              "archived"
+            ]
+          },
+          "goal": {
+            "type": "string",
+            "minLength": 1
+          },
+          "actors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "in_scope": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "out_of_scope": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "business_logic_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "constraints": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "quality_attributes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "assumptions": {
+            "type": "array"
+          },
+          "unresolved_questions": {
+            "type": "array"
+          },
+          "approval": {
+            "type": "object",
+            "required": [
+              "status",
+              "evidence"
+            ],
+            "properties": {
+              "status": {
+                "enum": [
+                  "pending",
+                  "approved",
+                  "rejected",
+                  "experimental"
+                ]
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "supersedes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "created_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updated_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

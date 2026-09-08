@@ -1,0 +1,30 @@
+id: DEC-001
+title: 决策标题
+category: technical
+status: active
+authority: B
+user_approval: not-required
+related_tasks: []
+related_business_logic: []
+context: 当前为什么需要做决定
+hypothesis: 预期哪种做法更合适
+options:
+  - name: 方案A
+    benefits: []
+    costs: []
+    risks: []
+decision: 最终选择
+reason_summary:
+  - 最重要的选择理由
+conditions: []
+action: 将采取什么行动
+expected_result: 预期结果
+reversal_plan: null
+observation: null
+actual_result: null
+outcome_status: not-observed
+lesson: null
+evidence: []
+supersedes: []
+created_at: null
+updated_at: null

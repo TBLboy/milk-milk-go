@@ -1,0 +1,41 @@
+id: BL-<DOMAIN>-001
+title: 一个可独立验证的业务行为
+kind: rule
+domain: example
+status: draft
+priority: medium
+risk: medium
+authority: inferred
+source:
+  type: user-statement
+  reference: null
+description: 用一句话说明这个业务原子为何存在。
+actors: []
+trigger: 触发该行为的事件
+preconditions: []
+inputs: []
+rule:
+  statement: 只描述一个核心行为或判断。
+outputs: []
+side_effects: []
+exceptions: []
+failure_handling: []
+invariants: []
+acceptance:
+  - id: AC-001
+    given: 前置场景
+    when: 发生动作
+    then: 可观察结果
+    method: null
+    evidence: null
+    status: not-verified
+dependencies: []
+baseline_refs: []
+decision_refs: []
+implementation_refs: []
+test_refs: []
+supersedes: []
+notes: null
+created_at: null
+updated_at: null
+last_verified_at: null

@@ -1,0 +1,24 @@
+version: "0.2.1"
+questions:
+  - id: Q-001
+    title: 本系统在客户现有 IT 环境中的交付边界
+    status: open
+    authority: C
+    impact: high
+    uncertainty: high
+    rework_cost: high
+    related_business_logic:
+      - BL-WEIGH-001
+      - BL-WEIGH-002
+      - BL-WEIGH-003
+    related_tasks: []
+    context: 客户有金蝶系统，但其作用、接口和辅料防错能力均未知；系统边界会直接决定配方数据来源、部署方式和结果回写方案。
+    recommendation: 本轮先按独立系统交付，产品、配方和辅料主数据通过金蝶接口或受控导入进入本系统；不修改金蝶核心，避免被其未知能力阻塞。
+    alternatives:
+      - 作为金蝶内部子系统开发，需要先完成金蝶平台能力调研。
+      - 嵌入现有金蝶流程，需要先确认开发方式和账号权限。
+    answer: null
+    source_refs:
+      - user-statement/2026-09-08
+    created_at: "2026-09-08T07:02:18Z"
+    answered_at: null

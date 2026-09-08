@@ -1,0 +1,16 @@
+id: Q-001
+title: 一个会影响业务语义的未决问题
+status: open
+authority: C
+impact: high
+uncertainty: high
+rework_cost: high
+related_business_logic: []
+related_tasks: []
+context: 为什么这个问题会阻塞当前链条
+recommendation: 推荐答案及理由
+alternatives: []
+answer: null
+source_refs: []
+created_at: null
+answered_at: null

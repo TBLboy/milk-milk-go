@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibe.local/schemas/solution-research.schema.json",
+  "type": "object",
+  "required": [
+    "version",
+    "studies"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "studies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "problem",
+          "related_business_logic",
+          "related_tasks",
+          "constraints",
+          "candidates",
+          "strategy"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^RES-[0-9]{3,}$"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "active",
+              "complete",
+              "superseded",
+              "archived"
+            ]
+          },
+          "problem": {
+            "type": "string",
+            "minLength": 1
+          },
+          "related_business_logic": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "related_tasks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "constraints": {
+            "type": "array"
+          },
+          "candidates": {
+            "type": "array"
+          },
+          "strategy": {
+            "enum": [
+              "direct-use",
+              "wrapper-adapter",
+              "reference-implementation",
+              "custom",
+              "spike-first"
+            ]
+          },
+          "recommendation": {},
+          "conditions": {
+            "type": "array"
+          },
+          "contrary_evidence": {
+            "type": "array"
+          },
+          "confidence": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
+          },
+          "decision_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sources": {
+            "type": "array"
+          },
+          "retrieved_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updated_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

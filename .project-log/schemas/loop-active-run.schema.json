@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibe.local/schemas/loop-active-run.schema.json",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "run_id",
+    "goal_id",
+    "phase",
+    "clarification_domain",
+    "task_id",
+    "status",
+    "next_action",
+    "counters",
+    "limits",
+    "native_goal",
+    "last_event_id",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "run_id": {"type": ["string", "null"]},
+    "goal_id": {"type": ["string", "null"]},
+    "phase": {
+      "enum": [
+        "business-intent",
+        "business-clarification",
+        "requirement-baseline",
+        "solution-research",
+        "architecture-decision",
+        "task-decomposition",
+        "engineering-spec",
+        "implementation",
+        "verification",
+        "alignment",
+        "retrospective",
+        "distillation"
+      ]
+    },
+    "clarification_domain": {
+      "type": ["string", "null"],
+      "enum": [null, "functional-business-logic", "technical-business-logic", "functional-technical-alignment"]
+    },
+    "task_id": {"type": ["string", "null"]},
+    "status": {"enum": ["active", "waiting-user", "blocked", "completing", "handed-off", "complete"]},
+    "next_action": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "required": ["kind", "subject", "statement"],
+          "properties": {
+            "kind": {"type": "string", "minLength": 1},
+            "subject": {"type": ["string", "null"]},
+            "statement": {"type": "string", "minLength": 1}
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "counters": {"$ref": "#/$defs/counters"},
+    "limits": {"$ref": "#/$defs/counters"},
+    "native_goal": {
+      "type": "object",
+      "required": ["binding_status", "thread_goal_id", "last_known_status", "last_synced_at"],
+      "properties": {
+        "binding_status": {"enum": ["unbound", "bound", "unavailable"]},
+        "thread_goal_id": {"type": ["string", "null"]},
+        "last_known_status": {
+          "type": ["string", "null"],
+          "enum": [null, "active", "paused", "blocked", "budget-limited", "usage-limited", "complete", "cleared", "replaced"]
+        },
+        "last_synced_at": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "last_event_id": {"type": ["string", "null"]},
+    "updated_at": {"type": ["string", "null"]}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "counters": {
+      "type": "object",
+      "required": ["task_attempts", "same_failure_count", "no_progress_count", "loop_decisions"],
+      "properties": {
+        "task_attempts": {"type": "integer", "minimum": 0},
+        "same_failure_count": {"type": "integer", "minimum": 0},
+        "no_progress_count": {"type": "integer", "minimum": 0},
+        "loop_decisions": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    }
+  }
+}

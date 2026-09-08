@@ -1,0 +1,250 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibe.local/schemas/workflow.schema.json",
+  "type": "object",
+  "required": [
+    "version",
+    "mode",
+    "current_phase",
+    "active_goal",
+    "phase_order",
+    "phases",
+    "open_gates",
+    "return_edges",
+    "last_updated"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "standard",
+        "prototype",
+        "hotfix",
+        "research"
+      ]
+    },
+    "current_phase": {
+      "enum": [
+        "business-intent",
+        "business-clarification",
+        "requirement-baseline",
+        "solution-research",
+        "architecture-decision",
+        "task-decomposition",
+        "engineering-spec",
+        "implementation",
+        "verification",
+        "alignment",
+        "retrospective",
+        "distillation"
+      ]
+    },
+    "active_goal": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "phase_order": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "business-intent",
+          "business-clarification",
+          "requirement-baseline",
+          "solution-research",
+          "architecture-decision",
+          "task-decomposition",
+          "engineering-spec",
+          "implementation",
+          "verification",
+          "alignment",
+          "retrospective",
+          "distillation"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "phases": {
+      "type": "object",
+      "required": [
+        "business-intent",
+        "business-clarification",
+        "requirement-baseline",
+        "solution-research",
+        "architecture-decision",
+        "task-decomposition",
+        "engineering-spec",
+        "implementation",
+        "verification",
+        "alignment",
+        "retrospective",
+        "distillation"
+      ],
+      "properties": {
+        "business-intent": {
+          "$ref": "#/$defs/phaseState"
+        },
+        "business-clarification": {
+          "$ref": "#/$defs/phaseState"
+        },
+        "requirement-baseline": {
+          "$ref": "#/$defs/phaseState"
+        },
+        "solution-research": {
+          "$ref": "#/$defs/phaseState"
+        },
+        "architecture-decision": {
+          "$ref": "#/$defs/phaseState"
+        },
+        "task-decomposition": {
+          "$ref": "#/$defs/phaseState"
+        },
+        "engineering-spec": {
+          "$ref": "#/$defs/phaseState"
+        },
+        "implementation": {
+          "$ref": "#/$defs/phaseState"
+        },
+        "verification": {
+          "$ref": "#/$defs/phaseState"
+        },
+        "alignment": {
+          "$ref": "#/$defs/phaseState"
+        },
+        "retrospective": {
+          "$ref": "#/$defs/phaseState"
+        },
+        "distillation": {
+          "$ref": "#/$defs/phaseState"
+        }
+      },
+      "additionalProperties": false
+    },
+    "open_gates": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "return_edges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/returnEdge"
+      }
+    },
+    "last_updated": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "phaseState": {
+      "type": "object",
+      "required": [
+        "status",
+        "gate_status",
+        "required_artifacts",
+        "exit_conditions",
+        "evidence"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "pending",
+            "active",
+            "blocked",
+            "completed",
+            "skipped",
+            "reopened"
+          ]
+        },
+        "gate_status": {
+          "enum": [
+            "not-evaluated",
+            "open",
+            "passed",
+            "failed",
+            "waived"
+          ]
+        },
+        "required_artifacts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "exit_conditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "returnEdge": {
+      "type": "object",
+      "required": [
+        "from",
+        "to",
+        "reason"
+      ],
+      "properties": {
+        "from": {
+          "enum": [
+            "business-intent",
+            "business-clarification",
+            "requirement-baseline",
+            "solution-research",
+            "architecture-decision",
+            "task-decomposition",
+            "engineering-spec",
+            "implementation",
+            "verification",
+            "alignment",
+            "retrospective",
+            "distillation"
+          ]
+        },
+        "to": {
+          "enum": [
+            "business-intent",
+            "business-clarification",
+            "requirement-baseline",
+            "solution-research",
+            "architecture-decision",
+            "task-decomposition",
+            "engineering-spec",
+            "implementation",
+            "verification",
+            "alignment",
+            "retrospective",
+            "distillation"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

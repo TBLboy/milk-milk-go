@@ -1,0 +1,15 @@
+id: TRACE-001
+task_id: TASK-001
+timestamp: null
+context: ""
+hypothesis: ""
+decision_ref: null
+action: ""
+expected_result: ""
+observation: ""
+actual_result: ""
+delta: ""
+lesson: ""
+next_adjustment: ""
+evidence: []
+knowledge_candidate: false
