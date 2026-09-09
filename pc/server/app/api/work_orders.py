@@ -1,0 +1,92 @@
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.orm import Session, selectinload
+
+from app.api.auth import current_user, require_admin
+from app.db.models import Product, Recipe, RecipeItem, User, WorkOrder, WorkOrderStep
+from app.db.session import get_db
+
+router = APIRouter(prefix="/work-orders", tags=["work-orders"])
+
+
+class WorkOrderInput(BaseModel):
+    product_id: int = Field(gt=0)
+    target_weight_kg: float = Field(gt=0, le=1_000_000)
+    operator_id: int | None = Field(default=None, gt=0)
+
+
+def order_view(order: WorkOrder) -> dict:
+    return {
+        "order_no": order.order_no,
+        "product_name": order.product_name_snapshot,
+        "target_weight_kg": order.target_weight_kg,
+        "status": order.status,
+        "operator_id": order.operator_id,
+        "steps": [{"step_no": step.step_no, "material_id": step.material_id_snapshot, "material_code": step.material_code_snapshot, "material_name": step.material_name_snapshot, "required_weight_kg": step.required_weight_kg, "tolerance_kg": step.tolerance_kg, "status": step.status} for step in order.steps],
+    }
+
+
+def _load_order(db: Session, order_no: str) -> WorkOrder | None:
+    return db.scalar(select(WorkOrder).options(selectinload(WorkOrder.steps)).where(WorkOrder.order_no == order_no))
+
+
+@router.post("", status_code=status.HTTP_201_CREATED)
+def create_work_order(body: WorkOrderInput, user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
+    product = db.scalar(select(Product).options(selectinload(Product.recipe).selectinload(Recipe.items).selectinload(RecipeItem.material)).where(Product.id == body.product_id, Product.enabled.is_(True)))
+    if product is None or product.recipe is None or not product.recipe.enabled:
+        raise HTTPException(status_code=422, detail={"code": "PRODUCT_RECIPE_UNAVAILABLE", "message": "产品或启用配方不存在"})
+    operator_id = body.operator_id if user.role == "admin" and body.operator_id else user.id
+    if operator_id != user.id and db.scalar(select(User).where(User.id == operator_id, User.role == "operator", User.is_active.is_(True))) is None:
+        raise HTTPException(status_code=422, detail={"code": "OPERATOR_NOT_FOUND", "message": "指定操作员不存在或不可用"})
+    now = datetime.now(timezone.utc)
+    order = WorkOrder(order_no=f"WO-{now.strftime('%Y%m%d%H%M%S')}-{now.microsecond // 1000:03d}", product_name_snapshot=product.name, target_weight_kg=body.target_weight_kg, status="approved" if user.role == "admin" else "pending_approval", operator_id=operator_id if user.role == "admin" else None, created_by=user.id)
+    tons = body.target_weight_kg / 1000
+    order.steps = [WorkOrderStep(step_no=index + 1, material_id_snapshot=item.material.material_id, material_code_snapshot=item.material.material_code, material_name_snapshot=item.material.name_zh, required_weight_kg=round(item.quantity_per_ton_kg * tons, 6), tolerance_kg=max(round(item.quantity_per_ton_kg * tons * 0.01, 6), 0.005)) for index, item in enumerate(product.recipe.items)]
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+    return order_view(order)
+
+
+@router.get("")
+def list_work_orders(user: User = Depends(current_user), db: Session = Depends(get_db)) -> list[dict]:
+    query = select(WorkOrder).options(selectinload(WorkOrder.steps)).order_by(WorkOrder.created_at.desc())
+    if user.role != "admin":
+        query = query.where((WorkOrder.operator_id == user.id) | (WorkOrder.created_by == user.id))
+    return [order_view(order) for order in db.scalars(query).all()]
+
+
+@router.get("/{order_no}")
+def get_work_order(order_no: str, user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
+    order = _load_order(db, order_no)
+    if order is None or (user.role != "admin" and order.operator_id != user.id and order.created_by != user.id):
+        raise HTTPException(status_code=404, detail={"code": "WORK_ORDER_NOT_FOUND", "message": "工单不存在"})
+    return order_view(order)
+
+
+@router.post("/{order_no}/approve")
+def approve_work_order(order_no: str, _: User = Depends(require_admin), db: Session = Depends(get_db)) -> dict:
+    order = _load_order(db, order_no)
+    if order is None:
+        raise HTTPException(status_code=404, detail={"code": "WORK_ORDER_NOT_FOUND", "message": "工单不存在"})
+    if order.status != "pending_approval":
+        raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STATE_CONFLICT", "message": "工单当前状态不可审批"})
+    order.status = "approved"
+    order.operator_id = order.operator_id or order.created_by
+    db.commit()
+    return order_view(order)
+
+
+@router.post("/{order_no}/start")
+def start_work_order(order_no: str, user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
+    order = _load_order(db, order_no)
+    if order is None or (user.role != "admin" and order.operator_id != user.id and order.created_by != user.id):
+        raise HTTPException(status_code=404, detail={"code": "WORK_ORDER_NOT_FOUND", "message": "工单不存在"})
+    if order.status != "approved":
+        raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STATE_CONFLICT", "message": "工单尚未获得执行许可"})
+    order.status = "in_progress"
+    db.commit()
+    return order_view(order)

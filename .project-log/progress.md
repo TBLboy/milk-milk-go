@@ -10,8 +10,8 @@
 ## 当前状态
 
 - 当前阶段：task-decomposition
-- 当前任务：PC 前端三个任务已实现，等待用户界面验收
-- 当前状态：PC 前端已实现并通过构建和浏览器冒烟验证，状态为 implemented-unverified，后端尚未开始
+- 当前任务：TASK-010 Windows 安装包、后台服务和自动备份
+- 当前状态：TASK-004 至 TASK-009 已完成并通过测试；审计和数据库备份接口已实现，Windows 部署待补
 - 最近验证：`validate_project.py` 通过；`loopctl validate` 通过
 - 下一步：
   - 已确认 FastAPI + SQLite + Android 原生 + 浏览器管理端
@@ -24,7 +24,11 @@
   - 已拆出 TASK-001、TASK-002、TASK-003
   - 已完成 TASK-001、TASK-002、TASK-003
   - PC 前端仍使用 mock adapter，真实 FastAPI 接口后置
-  - 下一步由用户验收界面，确认后进入后端接口实现
+  - 已完成 TASK-004：FastAPI、配置、SQLite 初始化和健康检查
+  - 后端开发服务已验证运行在 `http://127.0.0.1:8010/`
+  - 已完成认证、主数据、工单、二维码确认、拍照审批、称重证据、标签和 Excel 接口
+  - 已完成审计日志和数据库备份接口
+  - 下一步补充 Windows 安装包、后台服务和自动备份调度
 
 ## 2026-09-09 架构输入默认确认
 
