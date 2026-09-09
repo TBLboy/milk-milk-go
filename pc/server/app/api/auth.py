@@ -72,3 +72,9 @@ def me(user: User = Depends(current_user)) -> dict:
 @router.get("/admin-check")
 def admin_check(_user: User = Depends(require_admin)) -> dict[str, str]:
     return {"status": "ok"}
+
+
+@router.get("/users")
+def list_users(_user: User = Depends(require_admin), db: Session = Depends(get_db)) -> list[dict]:
+    users = db.scalars(select(User).order_by(User.created_at.desc())).all()
+    return [_public_user(user) for user in users]

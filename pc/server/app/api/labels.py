@@ -46,7 +46,9 @@ def create_print_batch(body: PrintRequest, user: User = Depends(require_admin), 
 
 @router.get("/print-batches")
 def list_print_batches(_: User = Depends(require_admin), db: Session = Depends(get_db)) -> list[dict]:
-    return [{"batch_id": item.batch_id, "material_id": item.material_id, "quantity": item.quantity, "status": item.status, "printed_at": item.printed_at.isoformat()} for item in db.scalars(select(PrintBatch).order_by(PrintBatch.printed_at.desc())).all()]
+    batches = db.scalars(select(PrintBatch).order_by(PrintBatch.printed_at.desc())).all()
+    materials = {item.material_id: item.name_zh for item in db.scalars(select(Material)).all()}
+    return [{"batch_id": item.batch_id, "material_id": item.material_id, "material_name": materials.get(item.material_id, "已删除辅料"), "quantity": item.quantity, "status": item.status, "printed_at": item.printed_at.isoformat()} for item in batches]
 
 
 @router.get("/excel-template")
@@ -82,3 +84,36 @@ async def validate_excel(file: UploadFile = File(...), _: User = Depends(require
         else:
             valid.append({"material_code": str(code), "name_zh": str(name_zh), "name_en": str(name_en) if name_en else None, "shelf_life_months": int(shelf)})
     return {"valid_count": len(valid), "error_count": len(errors), "errors": errors, "valid_rows": valid}
+
+
+@router.post("/excel-import")
+async def import_excel(file: UploadFile = File(...), _: User = Depends(require_admin), db: Session = Depends(get_db)) -> dict:
+    workbook = load_workbook(BytesIO(await file.read()), read_only=True, data_only=True)
+    sheet = workbook.active
+    rows = list(sheet.iter_rows(values_only=True))
+    if not rows or list(rows[0])[:4] != ["material_code", "name_zh", "name_en", "shelf_life_months"]:
+        raise HTTPException(status_code=422, detail={"code": "INVALID_TEMPLATE", "message": "Excel 模板表头不正确"})
+    existing = {value for value in db.scalars(select(Material.material_code)).all()}
+    created = []
+    errors = []
+    for row_no, row in enumerate(rows[1:], start=2):
+        code, name_zh, name_en, shelf = list(row)[:4] + [None] * max(0, 4 - len(row))
+        if not code or not name_zh or not isinstance(shelf, (int, float)) or shelf < 0:
+            errors.append({"row": row_no, "message": "代号、中文名称和非负保质期为必填且格式正确"})
+            continue
+        material_code = str(code)
+        if material_code in existing or any(item.material_code == material_code for item in created):
+            errors.append({"row": row_no, "message": "辅料代号已存在或在文件中重复"})
+            continue
+        material = Material(
+            material_id=f"MAT-{db.query(Material).count() + len(created) + 1:05d}",
+            material_code=material_code,
+            name_zh=str(name_zh),
+            name_en=str(name_en) if name_en else None,
+            shelf_life_months=int(shelf),
+        )
+        created.append(material)
+    if created:
+        db.add_all(created)
+        db.commit()
+    return {"imported_count": len(created), "error_count": len(errors), "errors": errors}

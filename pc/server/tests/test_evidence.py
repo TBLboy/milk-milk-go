@@ -33,3 +33,21 @@ def test_photo_approval_is_required_before_weight(client):
     weight = client.post(f"/api/v1/evidence/work-orders/{order_no}/steps/1/weight", headers=headers, json={"weight_kg": 10, "scale_photo_file_id": file_id})
     assert weight.status_code == 200
     assert weight.json()["status"] == "passed"
+
+def test_approvals_api_lists_and_rejects(client):
+    headers, order_no, _ = setup_order(client)
+    file_id = client.post("/api/v1/evidence/files", headers=headers, files={"file": ("material.jpg", b"fake-image", "image/jpeg")}).json()["file_id"]
+    request = client.post(f"/api/v1/evidence/work-orders/{order_no}/steps/1/photo-request", headers=headers, json={"reason": "模糊无法扫码", "file_id": file_id})
+    conf_id = request.json()["confirmation_id"]
+    
+    approvals = client.get("/api/v1/approvals", headers=headers).json()
+    assert len(approvals) >= 1
+    assert any(a["confirmation_id"] == conf_id for a in approvals)
+    
+    reject_res = client.post(f"/api/v1/approvals/{conf_id}/reject", headers=headers)
+    assert reject_res.status_code == 200
+    assert reject_res.json()["status"] == "rejected"
+    
+    # After rejection, it should no longer be in pending
+    approvals_after = client.get("/api/v1/approvals", headers=headers).json()
+    assert not any(a["confirmation_id"] == conf_id for a in approvals_after)
