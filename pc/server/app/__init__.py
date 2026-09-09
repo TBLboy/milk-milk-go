@@ -1,0 +1,1 @@
+"""Milk weigh backend application."""

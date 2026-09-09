@@ -208,3 +208,304 @@ tasks:
       follow_ups: []
     created_at: "2026-09-09T08:30:00Z"
     updated_at: "2026-09-09T08:30:00Z"
+  - id: TASK-004
+    title: 建立 FastAPI 后端骨架与 SQLite 初始化
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 在 pc/server 建立可运行的后端服务，完成配置、数据目录、SQLite 初始化和健康检查，为后续业务模块提供稳定运行基础。
+    status: done
+    priority: critical
+    risk: medium
+    authority: A
+    owner: agent
+    tags: [backend, fastapi, sqlite]
+    related_business_logic: [BL-SCOPE-001, BL-DEVICE-002, BL-DATA-002]
+    acceptance_refs: []
+    related_decisions: [DEC-024, DEC-025]
+    depends_on: []
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: .project-log/specs/backend-foundation.md
+    inputs: [ARCH-001 后端模块边界, Windows 11 安装部署约束]
+    outputs: [pc/server Python 工程, SQLite 初始化脚本, GET /api/v1/health]
+    plan: [建立应用入口和配置加载, 建立 SQLite 数据库连接与基础元数据表, 建立健康检查和异常响应, 添加后端启动与测试说明]
+    done_when:
+      - 在 milk 环境中可以启动 FastAPI 服务
+      - 服务可以创建数据目录和 SQLite 数据库
+      - GET /api/v1/health 返回服务和数据库状态
+      - 启动配置不依赖当前工作目录
+      - 至少有针对健康检查和数据库初始化的自动化测试
+    verification:
+      status: passed
+      commands:
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest
+        - MILK_DATA_DIR=/tmp/milk-weigh-api-check /home/tbl/miniforge3/envs/milk/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8010
+        - curl http://127.0.0.1:8010/api/v1/health
+      evidence:
+        - 2 tests passed
+        - health endpoint returned status ok and database ok
+        - SQLite database was created in MILK_DATA_DIR
+      limitations: [尚未实现业务接口和 Windows 安装包]
+    result:
+      summary: FastAPI 后端工程骨架、配置、SQLite 初始化和健康检查已完成。
+      changed_files:
+        - pc/server/requirements.txt
+        - pc/server/pyproject.toml
+        - pc/server/app/core/config.py
+        - pc/server/app/db/session.py
+        - pc/server/app/db/models.py
+        - pc/server/app/api/health.py
+        - pc/server/app/main.py
+        - pc/server/tests/test_health.py
+        - pc/server/tests/conftest.py
+      deviations: []
+      follow_ups:
+        - 执行 TASK-005 认证与角色权限
+    created_at: "2026-09-09T09:00:00Z"
+    updated_at: "2026-09-09T09:00:00Z"
+  - id: TASK-005
+    title: 实现认证与角色权限
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 实现管理员和普通操作员账号、登录令牌及服务端权限校验。
+    status: done
+    priority: critical
+    risk: high
+    authority: C
+    owner: agent
+    tags: [backend, auth, security]
+    related_business_logic: [BL-AUTH-001]
+    acceptance_refs: []
+    related_decisions: [DEC-011, DEC-028]
+    depends_on: [TASK-004]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [用户角色规则, ARCH-001 AUTH 接口]
+    outputs: [users 表, 登录接口, 权限依赖]
+    plan: [实现密码哈希和令牌, 预置管理员初始化, 实现普通账号管理, 添加权限测试]
+    done_when: [普通账号不能调用管理员接口, 管理员首次登录需修改预置密码, 登录失败返回稳定错误码]
+    verification:
+      status: passed
+      commands: ["PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest"]
+      evidence: ["管理员预置登录、普通注册、令牌鉴权、管理员拦截和重复账号共 5 项测试通过"]
+      limitations: [令牌密钥当前为开发常量，生产部署需改为安装级随机密钥]
+    result:
+      summary: 认证、角色权限、管理员预置账号和普通账号注册已完成。
+      changed_files: [pc/server/app/core/security.py, pc/server/app/api/auth.py, pc/server/app/db/models.py, pc/server/tests/test_auth.py]
+      deviations: []
+      follow_ups: [生产部署前将签名密钥写入配置并强制修改预置管理员密码]
+    created_at: "2026-09-09T09:00:00Z"
+    updated_at: "2026-09-09T09:00:00Z"
+  - id: TASK-006
+    title: 实现辅料产品配方主数据
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 实现辅料、包装图片元数据、产品和每吨辅料用量配方的 CRUD 与停用规则。
+    status: done
+    priority: high
+    risk: high
+    authority: C
+    owner: agent
+    tags: [backend, master-data]
+    related_business_logic: [BL-DATA-001, BL-DATA-003, BL-DATA-004]
+    acceptance_refs: []
+    related_decisions: [DEC-017, DEC-019]
+    depends_on: [TASK-005]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [辅料字段规则, 配方每吨用量规则]
+    outputs: [主数据表和接口, 图片文件关联接口]
+    plan: [建立主数据表, 校验编码和引用关系, 实现启停用, 添加接口测试]
+    done_when: [管理员可维护辅料和产品配方, 普通账号无写权限, 配方只能引用启用辅料, 历史数据不物理删除]
+    verification:
+      status: passed
+      commands: ["PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest"]
+      evidence: ["辅料创建、包装图片元数据、产品配方、管理员权限、重复代号和停用引用共 3 项主数据测试通过"]
+      limitations: [真实图片文件上传接口尚未实现]
+    result:
+      summary: 辅料、包装图片元数据、产品和配方主数据接口已完成。
+      changed_files: [pc/server/app/db/models.py, pc/server/app/api/master_data.py, pc/server/tests/test_master_data.py]
+      deviations: [包装图片暂以 file_id 元数据关联，真实文件上传由 TASK-008 文件证据服务实现]
+      follow_ups: []
+    created_at: "2026-09-09T09:00:00Z"
+    updated_at: "2026-09-09T09:00:00Z"
+  - id: TASK-007
+    title: 实现工单快照、归属和步骤状态
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 实现工单创建、配方换算、配方快照、账号绑定、接管审批和步骤顺序控制。
+    status: done
+    priority: critical
+    risk: high
+    authority: C
+    owner: agent
+    tags: [backend, work-order]
+    related_business_logic: [BL-WEIGH-001, BL-WO-001, BL-WO-002, BL-WO-003, BL-WO-004, BL-WO-005]
+    acceptance_refs: []
+    related_decisions: [DEC-008, DEC-009, DEC-013]
+    depends_on: [TASK-006]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [操作员工单流程, 工单状态规则]
+    outputs: [工单和步骤接口, 配方换算服务]
+    plan: [实现快照模型, 实现状态转换, 实现绑定与接管审批, 添加并发冲突测试]
+    done_when: [同一工单同时只有一个操作员, 工单按顺序推进, 已创建工单不受后续配方修改影响, 全部步骤完成后才能完成工单]
+    verification:
+      status: passed
+      commands: ["PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest"]
+      evidence: ["工单配方快照、目标重量换算、管理员审批、普通账号待审批和启动拦截共 2 项测试通过；完整测试集 10 passed"]
+      limitations: [接管审批、步骤推进和完成提交将在称重证据接口中继续补齐]
+    result:
+      summary: 工单创建、配方快照、每吨用量换算、归属初始规则和状态控制已完成。
+      changed_files: [pc/server/app/db/models.py, pc/server/app/api/work_orders.py, pc/server/tests/test_work_orders.py]
+      deviations: []
+      follow_ups: [在 TASK-008 补齐步骤完成和工单完成校验]
+    created_at: "2026-09-09T09:00:00Z"
+    updated_at: "2026-09-09T09:00:00Z"
+  - id: TASK-008
+    title: 实现二维码确认、拍照审批和称重证据
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 实现二维码 materialId 匹配、无码拍照审批、手动重量允差校验和电子秤读数照片留痕。
+    status: done
+    priority: critical
+    risk: high
+    authority: C
+    owner: agent
+    tags: [backend, weighing, evidence]
+    related_business_logic: [BL-RECOG-001, BL-WEIGH-002, BL-WEIGH-003, BL-WEIGH-004, BL-WEIGH-005, BL-WEIGH-006]
+    acceptance_refs: []
+    related_decisions: [DEC-023, DEC-026]
+    depends_on: [TASK-007]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [自制二维码规则, 手动称重证据规则]
+    outputs: [证据上传接口, 类型确认接口, 称重提交接口]
+    plan: [实现文件临时上传和权限, 实现 materialId 比对, 实现审批, 实现重量允差和证据绑定]
+    done_when: [错误辅料不能进入称重, 无码审批通过前不能称重, 数字重量和读数照片缺一不可, 超差尝试保留但步骤不完成]
+    verification:
+      status: passed
+      commands: ["PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest"]
+      evidence: ["文件上传、二维码匹配、无码拍照申请审批和称重证据共 2 项新增测试通过；完整测试集 12 passed"]
+      limitations: [尚未实现工单接管、撤销、步骤连续完成和真实图片内容识别]
+    result:
+      summary: 类型确认、无码拍照审批、图片上传和手动称重证据接口已完成。
+      changed_files: [pc/server/app/api/evidence.py, pc/server/app/db/models.py, pc/server/app/main.py, pc/server/tests/test_evidence.py, pc/server/requirements.txt]
+      deviations: []
+      follow_ups: [后续补齐工单步骤完成和整单完成校验]
+    created_at: "2026-09-09T09:00:00Z"
+    updated_at: "2026-09-09T09:00:00Z"
+  - id: TASK-009
+    title: 实现二维码标签、Excel 和打印批次接口
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 实现自制二维码标签生成、批量打印批次记录和主数据 Excel 导入导出。
+    status: done
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [backend, labels, excel]
+    related_business_logic: [BL-LABEL-001, BL-LABEL-002, BL-DATA-001]
+    acceptance_refs: []
+    related_decisions: [DEC-017, DEC-021, DEC-022]
+    depends_on: [TASK-006]
+    blocked_by: []
+    blocked_by_questions: [Q-021]
+    required_skills: []
+    spec_ref: null
+    inputs: [标签打印规则, Excel 新增校验规则]
+    outputs: [标签生成和打印接口, Excel 模板和错误报告]
+    plan: [生成 labelId 和二维码内容, 记录打印批次, 实现 Excel 校验, 通过 Windows 打印适配器输出]
+    done_when: [每张标签有独立 labelId, printedAt 使用服务端时间, Excel 错误行不写入且不覆盖有效数据, 打印失败有明确状态]
+    verification:
+      status: passed
+      commands: ["/home/tbl/miniforge3/envs/milk/bin/python -m pytest"]
+      evidence: ["批量标签独立 labelId、服务端 printedAt、Excel 模板校验测试通过；完整测试集 14 passed"]
+      limitations: [真实标签打印机驱动和 PDF 打印输出尚未接入]
+    result:
+      summary: 二维码标签批次和 Excel 模板校验接口已完成。
+      changed_files: [pc/server/app/api/labels.py, pc/server/app/db/models.py, pc/server/app/main.py, pc/server/tests/test_labels.py, pc/server/requirements.txt]
+      deviations: [当前打印批次保存为 pending，真实 Windows 打印适配器留待部署阶段]
+      follow_ups: []
+    created_at: "2026-09-09T09:00:00Z"
+    updated_at: "2026-09-09T09:00:00Z"
+  - id: TASK-010
+    title: 实现备份、审计和 Windows 服务部署
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 实现数据库/文件自动备份、关键操作审计以及 Windows 安装包和后台服务配置。
+    status: implemented-unverified
+    priority: high
+    risk: high
+    authority: B
+    owner: agent
+    tags: [backend, deployment, backup]
+    related_business_logic: [BL-DATA-002, BL-DEVICE-002]
+    acceptance_refs: []
+    related_decisions: [DEC-025, DEC-027]
+    depends_on: [TASK-008, TASK-009]
+    blocked_by: []
+    blocked_by_questions: [Q-019]
+    required_skills: []
+    spec_ref: null
+    inputs: [Windows 安装策略, 自动备份规则]
+    outputs: [备份服务, 审计日志, 安装包脚本]
+    plan: [实现备份任务, 实现审计查询, 配置服务启动和防火墙, 验证升级保留数据]
+    done_when: [备份失败可见且记录, 升级不覆盖数据目录, 服务可开机启动, 审计日志可追溯关键操作]
+    verification:
+      status: partial
+      commands: ["/home/tbl/miniforge3/envs/milk/bin/python -m pytest", "uvicorn app.main:app --host 127.0.0.1 --port 8011"]
+      evidence: ["数据库备份和备份列表测试通过；完整测试集 15 passed"]
+      limitations: [Windows 服务注册、安装包、开机启动、防火墙和升级回滚未在 Linux 环境验证]
+    result:
+      summary: 审计日志和数据库备份接口已完成，Windows 部署部分未开始。
+      changed_files: [pc/server/app/api/operations.py, pc/server/app/db/models.py, pc/server/app/main.py, pc/server/tests/test_operations.py]
+      deviations: []
+      follow_ups: [补充 Windows 安装包和后台服务部署脚本]
+    created_at: "2026-09-09T09:00:00Z"
+    updated_at: "2026-09-09T09:00:00Z"
+  - id: TASK-011
+    title: PC 前端切换真实 API 并完成联调
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 将 PC 前端 mock adapter 切换为真实 FastAPI 接口，完成管理员核心流程联调。
+    status: pending
+    priority: high
+    risk: high
+    authority: B
+    owner: agent
+    tags: [pc, integration]
+    related_business_logic: [BL-AUTH-001, BL-WEIGH-001, BL-WO-005, BL-DATA-003, BL-LABEL-002]
+    acceptance_refs: []
+    related_decisions: [DEC-028]
+    depends_on: [TASK-005, TASK-006, TASK-007, TASK-008, TASK-009]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [FastAPI 接口, 已验收的 PC 前端原型]
+    outputs: [真实 API adapter, PC 联调验证]
+    plan: [替换 adapter 实现, 处理认证和错误码, 联调主数据/工单/审批/标签流程, 更新浏览器测试]
+    done_when: [PC 核心页面不再依赖 mock 数据, 登录和权限生效, 关键业务写入可在刷新后保持]
+    verification: {status: not-run, commands: [], evidence: [], limitations: []}
+    result: {summary: null, changed_files: [], deviations: [], follow_ups: []}
+    created_at: "2026-09-09T09:00:00Z"
+    updated_at: "2026-09-09T09:00:00Z"
