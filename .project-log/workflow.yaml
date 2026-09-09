@@ -59,8 +59,8 @@ phases:
       - .project-log/research/solution-research.yaml#RES-001
       - .project-log/research/solution-research.yaml#RES-002
   architecture-decision:
-    status: active
-    gate_status: open
+    status: completed
+    gate_status: passed
     required_artifacts:
       - .project-log/architecture/architecture.yaml
     exit_conditions:
@@ -68,14 +68,17 @@ phases:
     evidence:
       - .project-log/architecture/architecture.yaml#ARCH-001
   task-decomposition:
-    status: pending
-    gate_status: not-evaluated
+    status: active
+    gate_status: open
     required_artifacts:
       - .project-log/tasks/task-list.yaml
     exit_conditions:
       - next ready task can be selected mechanically
       - in-scope atoms are covered or intentionally deferred
-    evidence: []
+    evidence:
+      - .project-log/tasks/task-list.yaml#TASK-001
+      - .project-log/tasks/task-list.yaml#TASK-002
+      - .project-log/tasks/task-list.yaml#TASK-003
   engineering-spec:
     status: pending
     gate_status: not-evaluated

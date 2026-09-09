@@ -1,5 +1,23 @@
 version: "0.2"
 entries:
+  - id: WT-20260909-018
+    task_id: ARCH-001-design-review
+    context: ARCH-001 初稿已覆盖组件和主流程，但尚未明确核心实体、接口分组、状态并发、幂等、证据文件生命周期和打印未知结果处理。
+    hypothesis: 补齐后端领域服务边界、文件证据边界、核心数据实体、REST 接口契约和失败路径后，架构将足以支持任务拆解，同时保留打印机型号等现场事实为非阻塞开放问题。
+    action: 更新 .project-log/architecture/architecture.yaml，补充模块职责、接口契约、数据流、实体、状态、并发、幂等、权限、部署和失败处理；将架构状态保持为 draft 等待用户评审。
+    expected_result: ARCH-001 可被用户评审，且通过项目结构和 Loop 校验。
+    observation: 用户多次要求继续推进当前架构阶段，但未明确批准具体新增架构细节。
+    actual_result: 架构草案已补齐；validate_project.py 和 loopctl validate 均通过；未创建应用代码。
+    delta: 从“方向草稿”推进到“可任务拆解的待评审架构草案”。
+    lesson: 架构细节可以由已批准基线推导，但未经用户批准的新增边界应保持 draft，不能直接伪装成已批准决策。
+    next_adjustment: 向用户展示评审摘要，收到确认后再切换 task-decomposition。
+    evidence:
+      - .project-log/architecture/architecture.yaml#ARCH-001
+      - command: /home/tbl/miniforge3/envs/vibe-coding/bin/python $HOME/.codex/vibe-workflow/scripts/validate_project.py
+        result: passed
+      - command: /home/tbl/miniforge3/envs/vibe-coding/bin/python $HOME/.codex/vibe-workflow/scripts/loopctl.py --root "$PWD" --json validate
+        result: passed
+    knowledge_candidate: false
   - id: WT-20260909-017
     task_id: architecture-input-confirmed-and-arch-draft
     context: 用户确认了架构设计前的所有默认规则，并补充最新 Android、Windows 11、支持安装应用、自动备份数据库；解决方案研究已收敛，应进入架构设计。

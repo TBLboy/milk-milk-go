@@ -1,0 +1,209 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: 牧
+      - generic [ref=e7]:
+        - strong [ref=e8]: 牧衡
+        - generic [ref=e9]: 辅料称重防错系统
+    - generic [ref=e10]: 生产一厂 · 主控端
+    - navigation [ref=e12]:
+      - button "工作台" [ref=e13] [cursor=pointer]
+      - button "工单管理" [ref=e20] [cursor=pointer]
+      - button "审批中心 3" [ref=e25] [cursor=pointer]:
+        - generic [ref=e29]: 审批中心
+        - emphasis [ref=e30]: "3"
+      - button "辅料管理" [ref=e31] [cursor=pointer]
+      - button "产品与配方" [ref=e37] [cursor=pointer]
+      - button "标签打印" [ref=e42] [cursor=pointer]
+    - navigation [ref=e48]:
+      - button "账号管理" [ref=e49] [cursor=pointer]
+      - button "系统设置" [ref=e56] [cursor=pointer]
+    - generic [ref=e61]:
+      - generic [ref=e62]: 管
+      - generic [ref=e63]:
+        - strong [ref=e64]: 系统管理员
+        - generic [ref=e65]: 管理员账号
+      - button [ref=e66] [cursor=pointer]
+  - main [ref=e70]:
+    - generic [ref=e71]:
+      - generic [ref=e72]:
+        - generic [ref=e73]: 生产管理
+        - generic [ref=e74]: /
+        - strong [ref=e75]: 工作台
+      - generic [ref=e76]:
+        - button "通知" [ref=e77] [cursor=pointer]
+        - generic [ref=e82]:
+          - generic [ref=e83]: 管
+          - generic [ref=e84]: 管理员
+    - generic [ref=e87]:
+      - generic [ref=e88]:
+        - generic [ref=e89]:
+          - paragraph [ref=e90]: WEDNESDAY · 09 SEP 2026
+          - heading "早上好，管理员" [level=1] [ref=e91]
+          - paragraph [ref=e92]: 这里是今天的生产称量概况，及时处理异常审批，确保每一份辅料都准确无误。
+        - button "查看操作日志" [ref=e93] [cursor=pointer]
+      - generic [ref=e97]:
+        - generic [ref=e105]:
+          - generic [ref=e106]: 今日工单
+          - strong [ref=e107]: "18"
+          - generic [ref=e108]: +3 较昨日
+        - generic [ref=e115]:
+          - generic [ref=e116]: 执行中
+          - strong [ref=e117]: "06"
+          - generic [ref=e118]: 4 个即将完成
+        - generic [ref=e124]:
+          - generic [ref=e125]: 待审批
+          - strong [ref=e126]: "03"
+          - generic [ref=e127]: 需要及时处理
+        - generic [ref=e132]:
+          - generic [ref=e133]: 今日完成率
+          - strong [ref=e134]: 92.4%
+          - generic [ref=e135]: +4.8% 较昨日
+      - generic [ref=e139]:
+        - generic [ref=e140]:
+          - generic [ref=e141]:
+            - generic [ref=e142]:
+              - heading "最新工单" [level=2] [ref=e143]
+              - paragraph [ref=e144]: 实时查看生产工单的执行状态
+            - button "查看全部" [ref=e145] [cursor=pointer]
+          - generic [ref=e148]:
+            - textbox "搜索工单号或产品名称" [ref=e153]
+            - button "全部状态" [ref=e154] [cursor=pointer]
+          - table [ref=e158]:
+            - rowgroup [ref=e159]:
+              - row [ref=e160]:
+                - columnheader "工单信息" [ref=e161]
+                - columnheader "目标产量" [ref=e162]
+                - columnheader "执行进度" [ref=e163]
+                - columnheader "操作员" [ref=e164]
+                - columnheader "状态" [ref=e165]
+                - columnheader "更新" [ref=e166]
+                - columnheader [ref=e167]
+            - rowgroup [ref=e168]:
+              - row [ref=e169]:
+                - cell "WO-20260909-018 高钙纯牛奶 1L 09-09 A班" [ref=e170]:
+                  - strong [ref=e171]: WO-20260909-018
+                  - generic [ref=e172]:
+                    - text: 高钙纯牛奶 1L
+                    - generic [ref=e173]: 09-09 A班
+                - cell "2,000 kg" [ref=e174]
+                - cell "7/9 当前称量：维生素 D3" [ref=e175]:
+                  - generic [ref=e176]: 7/9
+                  - generic [ref=e180]: 当前称量：维生素 D3
+                - cell "李 李师傅" [ref=e181]:
+                  - generic [ref=e182]:
+                    - generic [ref=e183]: 李
+                    - text: 李师傅
+                - cell "执行中" [ref=e184]
+                - cell "10:42" [ref=e187]
+                - cell [ref=e188]:
+                  - button [ref=e189] [cursor=pointer]
+              - row [ref=e194]:
+                - cell "WO-20260909-017 草莓风味酸牛奶 09-09 A班" [ref=e195]:
+                  - strong [ref=e196]: WO-20260909-017
+                  - generic [ref=e197]:
+                    - text: 草莓风味酸牛奶
+                    - generic [ref=e198]: 09-09 A班
+                - cell "1,000 kg" [ref=e199]
+                - cell "8/8" [ref=e200]
+                - cell "王 王师傅" [ref=e205]:
+                  - generic [ref=e206]:
+                    - generic [ref=e207]: 王
+                    - text: 王师傅
+                - cell "已完成" [ref=e208]
+                - cell "10:18" [ref=e211]
+                - cell [ref=e212]:
+                  - button [ref=e213] [cursor=pointer]
+              - row [ref=e218]:
+                - cell "WO-20260909-016 原味风味发酵乳 09-09 B班" [ref=e219]:
+                  - strong [ref=e220]: WO-20260909-016
+                  - generic [ref=e221]:
+                    - text: 原味风味发酵乳
+                    - generic [ref=e222]: 09-09 B班
+                - cell "1,500 kg" [ref=e223]
+                - cell "3/10" [ref=e224]
+                - cell "赵 赵师傅" [ref=e229]:
+                  - generic [ref=e230]:
+                    - generic [ref=e231]: 赵
+                    - text: 赵师傅
+                - cell "待审批" [ref=e232]
+                - cell "09:56" [ref=e235]
+                - cell [ref=e236]:
+                  - button [ref=e237] [cursor=pointer]
+              - row [ref=e242]:
+                - cell "WO-20260909-015 低脂高蛋白牛奶 09-09 B班" [ref=e243]:
+                  - strong [ref=e244]: WO-20260909-015
+                  - generic [ref=e245]:
+                    - text: 低脂高蛋白牛奶
+                    - generic [ref=e246]: 09-09 B班
+                - cell "3,000 kg" [ref=e247]
+                - cell "0/12" [ref=e248]
+                - cell "— —" [ref=e252]:
+                  - generic [ref=e253]:
+                    - generic [ref=e254]: —
+                    - text: —
+                - cell "待接管" [ref=e255]
+                - cell "09:31" [ref=e258]
+                - cell [ref=e259]:
+                  - button [ref=e260] [cursor=pointer]
+              - row [ref=e265]:
+                - cell "WO-20260909-014 高钙纯牛奶 250ml 09-09 A班" [ref=e266]:
+                  - strong [ref=e267]: WO-20260909-014
+                  - generic [ref=e268]:
+                    - text: 高钙纯牛奶 250ml
+                    - generic [ref=e269]: 09-09 A班
+                - cell "800 kg" [ref=e270]
+                - cell "12/12" [ref=e271]
+                - cell "李 李师傅" [ref=e276]:
+                  - generic [ref=e277]:
+                    - generic [ref=e278]: 李
+                    - text: 李师傅
+                - cell "已完成" [ref=e279]
+                - cell "09:12" [ref=e282]
+                - cell [ref=e283]:
+                  - button [ref=e284] [cursor=pointer]
+        - complementary [ref=e289]:
+          - generic [ref=e290]:
+            - generic [ref=e291]:
+              - heading "待处理审批" [level=2] [ref=e292]
+              - paragraph [ref=e293]: 需要管理员确认的事项
+            - generic [ref=e294]: "3"
+          - generic [ref=e295]:
+            - generic [ref=e296]:
+              - generic [ref=e301]:
+                - strong [ref=e302]: 无码辅料放行申请
+                - generic [ref=e303]: WO-20260909-018 · 维生素 D3
+                - generic [ref=e304]: 5分钟前
+              - button "批准 无码辅料放行申请" [ref=e305] [cursor=pointer]
+            - generic [ref=e308]:
+              - generic [ref=e314]:
+                - strong [ref=e315]: 工单接管申请
+                - generic [ref=e316]: WO-20260909-015 · 申请人：赵师傅
+                - generic [ref=e317]: 18分钟前
+              - button "批准 工单接管申请" [ref=e318] [cursor=pointer]
+            - generic [ref=e321]:
+              - generic [ref=e328]:
+                - strong [ref=e329]: 工单撤销申请
+                - generic [ref=e330]: WO-20260908-011 · 原味风味发酵乳
+                - generic [ref=e331]: 42分钟前
+              - button "批准 工单撤销申请" [ref=e332] [cursor=pointer]
+          - button "进入审批中心" [ref=e335] [cursor=pointer]
+      - generic [ref=e339]:
+        - generic [ref=e340]: 快捷入口
+        - generic [ref=e343]:
+          - button "标签复核 扫描标签，确认辅料身份" [ref=e344] [cursor=pointer]:
+            - generic [ref=e351]:
+              - strong [ref=e352]: 标签复核
+              - generic [ref=e353]: 扫描标签，确认辅料身份
+          - button "新建工单 开始一次新的生产称量" [ref=e357] [cursor=pointer]:
+            - generic [ref=e363]:
+              - strong [ref=e364]: 新建工单
+              - generic [ref=e365]: 开始一次新的生产称量
+          - button "辅料资料 维护辅料和包装图片" [ref=e369] [cursor=pointer]:
+            - generic [ref=e375]:
+              - strong [ref=e376]: 辅料资料
+              - generic [ref=e377]: 维护辅料和包装图片
+          - button "产品配方 编辑每吨辅料用量" [ref=e381] [cursor=pointer]:
+            - generic [ref=e388]:
+              - strong [ref=e389]: 产品配方
+              - generic [ref=e390]: 编辑每吨辅料用量

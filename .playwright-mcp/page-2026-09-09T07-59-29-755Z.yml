@@ -1,0 +1,171 @@
+- generic [ref=f1e3]:
+  - complementary [ref=f1e4]:
+    - generic [ref=f1e5]:
+      - generic [ref=f1e6]: 牧
+      - generic [ref=f1e7]:
+        - strong [ref=f1e8]: 牧衡
+        - generic [ref=f1e9]: 辅料称重防错系统
+    - generic [ref=f1e10]: 生产一厂 · 主控端
+    - navigation [ref=f1e12]:
+      - button "工作台" [ref=f1e13] [cursor=pointer]
+      - button "工单管理" [active] [ref=f1e20] [cursor=pointer]
+      - button "审批中心 3" [ref=f1e25] [cursor=pointer]:
+        - generic [ref=f1e29]: 审批中心
+        - emphasis [ref=f1e30]: "3"
+      - button "辅料管理" [ref=f1e31] [cursor=pointer]
+      - button "产品与配方" [ref=f1e37] [cursor=pointer]
+      - button "标签打印" [ref=f1e42] [cursor=pointer]
+    - navigation [ref=f1e48]:
+      - button "账号管理" [ref=f1e49] [cursor=pointer]
+      - button "系统设置" [ref=f1e56] [cursor=pointer]
+    - generic [ref=f1e61]:
+      - generic [ref=f1e62]: 管
+      - generic [ref=f1e63]:
+        - strong [ref=f1e64]: 系统管理员
+        - generic [ref=f1e65]: 管理员账号
+      - button [ref=f1e66] [cursor=pointer]
+  - main [ref=f1e70]:
+    - generic [ref=f1e71]:
+      - generic [ref=f1e72]:
+        - generic [ref=f1e73]: 生产管理
+        - generic [ref=f1e74]: /
+        - strong [ref=f1e75]: 工单管理
+      - generic [ref=f1e76]:
+        - button "通知" [ref=f1e77] [cursor=pointer]
+        - generic [ref=f1e82]:
+          - generic [ref=f1e83]: 管
+          - generic [ref=f1e84]: 管理员
+    - generic [ref=f1e394]:
+      - generic [ref=f1e395]:
+        - generic [ref=f1e396]:
+          - paragraph [ref=f1e397]: PRODUCTION ORDERS
+          - heading "工单管理" [level=1] [ref=f1e398]
+          - paragraph [ref=f1e399]: 集中查看生产工单、执行进度和辅料称量证据。
+        - button "新建工单" [ref=f1e400] [cursor=pointer]
+      - generic [ref=f1e402]:
+        - textbox "搜索工单号、产品或操作员" [ref=f1e407]
+        - button "全部状态" [ref=f1e408] [cursor=pointer]
+        - button "导出" [ref=f1e413] [cursor=pointer]
+      - table [ref=f1e419]:
+        - rowgroup [ref=f1e420]:
+          - row [ref=f1e421]:
+            - columnheader "工单信息" [ref=f1e422]
+            - columnheader "目标产量" [ref=f1e423]
+            - columnheader "进度" [ref=f1e424]
+            - columnheader "操作员" [ref=f1e425]
+            - columnheader "状态" [ref=f1e426]
+            - columnheader "更新时间" [ref=f1e427]
+            - columnheader [ref=f1e428]
+        - rowgroup [ref=f1e429]:
+          - row [ref=f1e430]:
+            - cell "WO-20260909-018 高钙纯牛奶 1L 09-09 A班" [ref=f1e431]:
+              - strong [ref=f1e432]: WO-20260909-018
+              - generic [ref=f1e433]:
+                - text: 高钙纯牛奶 1L
+                - generic [ref=f1e434]: 09-09 A班
+            - cell "2,000 kg" [ref=f1e435]
+            - cell "7/9" [ref=f1e436]
+            - cell "李 李师傅" [ref=f1e441]:
+              - generic [ref=f1e442]:
+                - generic [ref=f1e443]: 李
+                - text: 李师傅
+            - cell "执行中" [ref=f1e444]
+            - cell "今天 10:42" [ref=f1e447]
+            - cell [ref=f1e448]:
+              - button [ref=f1e449] [cursor=pointer]
+          - row [ref=f1e452]:
+            - cell "WO-20260909-017 草莓风味酸牛奶 09-09 A班" [ref=f1e453]:
+              - strong [ref=f1e454]: WO-20260909-017
+              - generic [ref=f1e455]:
+                - text: 草莓风味酸牛奶
+                - generic [ref=f1e456]: 09-09 A班
+            - cell "1,000 kg" [ref=f1e457]
+            - cell "8/8" [ref=f1e458]
+            - cell "王 王师傅" [ref=f1e463]:
+              - generic [ref=f1e464]:
+                - generic [ref=f1e465]: 王
+                - text: 王师傅
+            - cell "已完成" [ref=f1e466]
+            - cell "今天 10:18" [ref=f1e469]
+            - cell [ref=f1e470]:
+              - button [ref=f1e471] [cursor=pointer]
+          - row [ref=f1e474]:
+            - cell "WO-20260909-016 原味风味发酵乳 09-09 B班" [ref=f1e475]:
+              - strong [ref=f1e476]: WO-20260909-016
+              - generic [ref=f1e477]:
+                - text: 原味风味发酵乳
+                - generic [ref=f1e478]: 09-09 B班
+            - cell "1,500 kg" [ref=f1e479]
+            - cell "3/10" [ref=f1e480]
+            - cell "赵 赵师傅" [ref=f1e485]:
+              - generic [ref=f1e486]:
+                - generic [ref=f1e487]: 赵
+                - text: 赵师傅
+            - cell "待审批" [ref=f1e488]
+            - cell "今天 09:56" [ref=f1e491]
+            - cell [ref=f1e492]:
+              - button [ref=f1e493] [cursor=pointer]
+          - row [ref=f1e496]:
+            - cell "WO-20260909-015 低脂高蛋白牛奶 09-09 B班" [ref=f1e497]:
+              - strong [ref=f1e498]: WO-20260909-015
+              - generic [ref=f1e499]:
+                - text: 低脂高蛋白牛奶
+                - generic [ref=f1e500]: 09-09 B班
+            - cell "3,000 kg" [ref=f1e501]
+            - cell "0/12" [ref=f1e502]
+            - cell "— —" [ref=f1e506]:
+              - generic [ref=f1e507]:
+                - generic [ref=f1e508]: —
+                - text: —
+            - cell "待接管" [ref=f1e509]
+            - cell "今天 09:31" [ref=f1e512]
+            - cell [ref=f1e513]:
+              - button [ref=f1e514] [cursor=pointer]
+          - row [ref=f1e517]:
+            - cell "WO-20260909-014 高钙纯牛奶 250ml 09-09 A班" [ref=f1e518]:
+              - strong [ref=f1e519]: WO-20260909-014
+              - generic [ref=f1e520]:
+                - text: 高钙纯牛奶 250ml
+                - generic [ref=f1e521]: 09-09 A班
+            - cell "800 kg" [ref=f1e522]
+            - cell "12/12" [ref=f1e523]
+            - cell "李 李师傅" [ref=f1e528]:
+              - generic [ref=f1e529]:
+                - generic [ref=f1e530]: 李
+                - text: 李师傅
+            - cell "已完成" [ref=f1e531]
+            - cell "今天 09:12" [ref=f1e534]
+            - cell [ref=f1e535]:
+              - button [ref=f1e536] [cursor=pointer]
+          - row [ref=f1e539]:
+            - cell "WO-20260909-017 草莓风味酸牛奶 09-09 A班" [ref=f1e540]:
+              - strong [ref=f1e541]: WO-20260909-017
+              - generic [ref=f1e542]:
+                - text: 草莓风味酸牛奶
+                - generic [ref=f1e543]: 09-09 A班
+            - cell "1,000 kg" [ref=f1e544]
+            - cell "8/8" [ref=f1e545]
+            - cell "王 王师傅" [ref=f1e550]:
+              - generic [ref=f1e551]:
+                - generic [ref=f1e552]: 王
+                - text: 王师傅
+            - cell "已完成" [ref=f1e553]
+            - cell "今天 10:18" [ref=f1e556]
+            - cell [ref=f1e557]:
+              - button [ref=f1e558] [cursor=pointer]
+          - row [ref=f1e561]:
+            - cell "WO-20260909-016 原味风味发酵乳 09-09 B班" [ref=f1e562]:
+              - strong [ref=f1e563]: WO-20260909-016
+              - generic [ref=f1e564]:
+                - text: 原味风味发酵乳
+                - generic [ref=f1e565]: 09-09 B班
+            - cell "1,500 kg" [ref=f1e566]
+            - cell "3/10" [ref=f1e567]
+            - cell "赵 赵师傅" [ref=f1e572]:
+              - generic [ref=f1e573]:
+                - generic [ref=f1e574]: 赵
+                - text: 赵师傅
+            - cell "待审批" [ref=f1e575]
+            - cell "今天 09:56" [ref=f1e578]
+            - cell [ref=f1e579]:
+              - button [ref=f1e580] [cursor=pointer]
