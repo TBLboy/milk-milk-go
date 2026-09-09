@@ -18,13 +18,18 @@ class WorkOrderInput(BaseModel):
     operator_id: int | None = Field(default=None, gt=0)
 
 
-def order_view(order: WorkOrder) -> dict:
+def order_view(order: WorkOrder, users: dict[int, User] | None = None) -> dict:
+    users = users or {}
     return {
         "order_no": order.order_no,
         "product_name": order.product_name_snapshot,
         "target_weight_kg": order.target_weight_kg,
         "status": order.status,
         "operator_id": order.operator_id,
+        "operator_name": users.get(order.operator_id).display_name if order.operator_id and users.get(order.operator_id) else None,
+        "created_by": order.created_by,
+        "created_at": order.created_at.isoformat(),
+        "updated_at": order.updated_at.isoformat(),
         "steps": [{"step_no": step.step_no, "material_id": step.material_id_snapshot, "material_code": step.material_code_snapshot, "material_name": step.material_name_snapshot, "required_weight_kg": step.required_weight_kg, "tolerance_kg": step.tolerance_kg, "status": step.status} for step in order.steps],
     }
 
@@ -56,7 +61,14 @@ def list_work_orders(user: User = Depends(current_user), db: Session = Depends(g
     query = select(WorkOrder).options(selectinload(WorkOrder.steps)).order_by(WorkOrder.created_at.desc())
     if user.role != "admin":
         query = query.where((WorkOrder.operator_id == user.id) | (WorkOrder.created_by == user.id))
-    return [order_view(order) for order in db.scalars(query).all()]
+    orders = db.scalars(query).all()
+    user_ids: set[int] = set()
+    for order in orders:
+        user_ids.add(order.created_by)
+        if order.operator_id:
+            user_ids.add(order.operator_id)
+    users = {item.id: item for item in db.scalars(select(User).where(User.id.in_(user_ids))).all()}
+    return [order_view(order, users) for order in orders]
 
 
 @router.get("/{order_no}")
@@ -64,7 +76,11 @@ def get_work_order(order_no: str, user: User = Depends(current_user), db: Sessio
     order = _load_order(db, order_no)
     if order is None or (user.role != "admin" and order.operator_id != user.id and order.created_by != user.id):
         raise HTTPException(status_code=404, detail={"code": "WORK_ORDER_NOT_FOUND", "message": "工单不存在"})
-    return order_view(order)
+    user_ids = {order.created_by}
+    if order.operator_id:
+        user_ids.add(order.operator_id)
+    users = {item.id: item for item in db.scalars(select(User).where(User.id.in_(user_ids))).all()}
+    return order_view(order, users)
 
 
 @router.post("/{order_no}/approve")
@@ -77,7 +93,11 @@ def approve_work_order(order_no: str, _: User = Depends(require_admin), db: Sess
     order.status = "approved"
     order.operator_id = order.operator_id or order.created_by
     db.commit()
-    return order_view(order)
+    user_ids = {order.created_by}
+    if order.operator_id:
+        user_ids.add(order.operator_id)
+    users = {item.id: item for item in db.scalars(select(User).where(User.id.in_(user_ids))).all()}
+    return order_view(order, users)
 
 
 @router.post("/{order_no}/start")
@@ -89,4 +109,42 @@ def start_work_order(order_no: str, user: User = Depends(current_user), db: Sess
         raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STATE_CONFLICT", "message": "工单尚未获得执行许可"})
     order.status = "in_progress"
     db.commit()
-    return order_view(order)
+    user_ids = {order.created_by}
+    if order.operator_id:
+        user_ids.add(order.operator_id)
+    users = {item.id: item for item in db.scalars(select(User).where(User.id.in_(user_ids))).all()}
+    return order_view(order, users)
+
+
+@router.post("/{order_no}/cancel")
+def cancel_work_order(order_no: str, _: User = Depends(require_admin), db: Session = Depends(get_db)) -> dict:
+    order = _load_order(db, order_no)
+    if order is None:
+        raise HTTPException(status_code=404, detail={"code": "WORK_ORDER_NOT_FOUND", "message": "工单不存在"})
+    if order.status not in {"pending_approval", "approved", "in_progress"}:
+        raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STATE_CONFLICT", "message": "工单当前状态不可撤销"})
+    order.status = "cancelled"
+    db.commit()
+    user_ids = {order.created_by}
+    if order.operator_id:
+        user_ids.add(order.operator_id)
+    users = {item.id: item for item in db.scalars(select(User).where(User.id.in_(user_ids))).all()}
+    return order_view(order, users)
+
+
+@router.post("/{order_no}/complete")
+def complete_work_order(order_no: str, user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
+    order = _load_order(db, order_no)
+    if order is None or (user.role != "admin" and order.operator_id != user.id and order.created_by != user.id):
+        raise HTTPException(status_code=404, detail={"code": "WORK_ORDER_NOT_FOUND", "message": "工单不存在"})
+    if order.status != "in_progress":
+        raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STATE_CONFLICT", "message": "只有执行中的工单可以完成"})
+    if any(step.status != "completed" for step in order.steps):
+        raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STEPS_INCOMPLETE", "message": "所有辅料步骤完成前不能提交工单"})
+    order.status = "completed"
+    db.commit()
+    user_ids = {order.created_by}
+    if order.operator_id:
+        user_ids.add(order.operator_id)
+    users = {item.id: item for item in db.scalars(select(User).where(User.id.in_(user_ids))).all()}
+    return order_view(order, users)

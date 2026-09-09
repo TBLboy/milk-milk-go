@@ -203,6 +203,15 @@ class BackupRecord(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
 
 
+class SystemSetting(Base):
+    __tablename__ = "system_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    key: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
+    value: Mapped[str] = mapped_column(String(500), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
+
+
 def initialize_database() -> None:
     from app.core.security import hash_password
     from app.db.session import SessionLocal, engine
@@ -213,3 +222,13 @@ def initialize_database() -> None:
             db.add(SchemaMeta(version=1))
         if db.query(User).filter(User.role == "admin").count() == 0:
             db.add(User(username="admin", display_name="系统管理员", password_hash=hash_password("admin123"), role="admin", must_change_password=True))
+        defaults = {
+            "default_tolerance_percent": "1.0",
+            "min_absolute_tolerance_grams": "5",
+            "backup_enabled": "true",
+            "backup_time": "02:00",
+            "server_port": "8011",
+        }
+        for key, value in defaults.items():
+            if db.query(SystemSetting).filter(SystemSetting.key == key).count() == 0:
+                db.add(SystemSetting(key=key, value=value))

@@ -487,7 +487,7 @@ tasks:
     parent_id: null
     phase: implementation
     goal: 将 PC 前端 mock adapter 切换为真实 FastAPI 接口，完成管理员核心流程联调。
-    status: pending
+    status: implemented-unverified
     priority: high
     risk: high
     authority: B
@@ -505,7 +505,33 @@ tasks:
     outputs: [真实 API adapter, PC 联调验证]
     plan: [替换 adapter 实现, 处理认证和错误码, 联调主数据/工单/审批/标签流程, 更新浏览器测试]
     done_when: [PC 核心页面不再依赖 mock 数据, 登录和权限生效, 关键业务写入可在刷新后保持]
-    verification: {status: not-run, commands: [], evidence: [], limitations: []}
-    result: {summary: null, changed_files: [], deviations: [], follow_ups: []}
+    verification:
+      status: partial
+      commands:
+        - npm run build
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 PYTHONPATH=. /home/tbl/miniforge3/envs/milk/bin/python -m pytest tests/
+        - google-chrome --headless=new --dump-dom http://127.0.0.1:5173/
+      evidence:
+        - PC 前端生产构建通过
+        - 后端 20 项自动化测试通过
+        - 登录页在浏览器 Headless 渲染验证通过
+        - 用户列表、设置、Excel 导入、工单撤销/完成接口已补齐
+      limitations:
+        - 尚未由用户在真实 Windows 浏览器中完成全流程验收
+    result:
+      summary: PC 前端已切换真实 API，新增登录、工单详情/审批/开始/撤销/完成、辅料图片上传、Excel 导入导出、标签批次、账号列表和设置接口联调。
+      changed_files:
+        - pc/src/components/Login.tsx
+        - pc/src/components/Modals.tsx
+        - pc/src/services/api.ts
+        - pc/src/pages/ManagementPages.tsx
+        - pc/src/layouts/AppShell.tsx
+        - pc/server/app/api/settings.py
+        - pc/server/app/api/work_orders.py
+        - pc/server/app/api/labels.py
+        - pc/server/app/db/models.py
+      deviations: []
+      follow_ups:
+        - 等待用户在浏览器中完成 PC 端全流程验收
     created_at: "2026-09-09T09:00:00Z"
     updated_at: "2026-09-09T09:00:00Z"

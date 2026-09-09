@@ -29,3 +29,15 @@ def test_operator_order_requires_admin_approval(client):
     assert response.status_code == 201
     assert response.json()["status"] == "pending_approval"
     assert client.post(f"/api/v1/work-orders/{response.json()['order_no']}/start", headers={"Authorization": f"Bearer {token}"}).status_code == 409
+
+
+def test_admin_can_cancel_order_but_not_complete_incomplete_steps(client):
+    headers = admin_headers(client)
+    product_id = create_product(client, headers)
+    order = client.post("/api/v1/work-orders", headers=headers, json={"product_id": product_id, "target_weight_kg": 1000}).json()
+    assert client.post(f"/api/v1/work-orders/{order['order_no']}/complete", headers=headers).status_code == 409
+    client.post(f"/api/v1/work-orders/{order['order_no']}/start", headers=headers)
+    cancel = client.post(f"/api/v1/work-orders/{order['order_no']}/cancel", headers=headers)
+    assert cancel.status_code == 200
+    assert cancel.json()["status"] == "cancelled"
+    assert client.post(f"/api/v1/work-orders/{order['order_no']}/start", headers=headers).status_code == 409
