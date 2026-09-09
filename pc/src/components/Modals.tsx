@@ -357,11 +357,12 @@ export function CreateMaterialModal({ onClose, onSuccess }: { onClose: () => voi
 }
 
 // 3. 新增产品与配方弹窗
-export function CreateProductModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
-  const [name, setName] = useState('')
+export function CreateProductModal({ onClose, onSuccess, product }: { onClose: () => void; onSuccess: () => void; product?: any }) {
+  const isEdit = Boolean(product)
+  const [name, setName] = useState(product?.name || '')
   const [materials, setMaterials] = useState<any[]>([])
   const [items, setItems] = useState<{ material_id: string; quantity_per_ton_kg: number }[]>([])
-  const [imageFileId, setImageFileId] = useState<string | null>(null)
+  const [imageFileId, setImageFileId] = useState<string | null>(product?.image_file_id || null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -369,10 +370,15 @@ export function CreateProductModal({ onClose, onSuccess }: { onClose: () => void
   useEffect(() => {
     api.getMaterials().then((res) => {
       setMaterials(res)
-      if (res.length > 0) {
+      if (product?.items?.length) {
+        setItems(product.items.map((it: any) => ({ material_id: it.material_id, quantity_per_ton_kg: Number(it.quantity_per_ton_kg) })))
+      } else if (res.length > 0) {
         setItems([{ material_id: res[0].material_id, quantity_per_ton_kg: 5 }])
       }
     })
+    if (product?.image_file_id) {
+      api.getFileUrl(product.image_file_id).then(setImagePreview).catch(() => {})
+    }
   }, [])
 
   const addItem = () => {
@@ -413,25 +419,30 @@ export function CreateProductModal({ onClose, onSuccess }: { onClose: () => void
     setLoading(true)
     setError(null)
     try {
-      await api.createProduct({
+      const payload = {
         name: name.trim(),
         items: items.map((it) => ({
           material_id: it.material_id,
           quantity_per_ton_kg: Number(it.quantity_per_ton_kg),
         })),
         image_file_id: imageFileId || undefined,
-      })
+      }
+      if (isEdit) {
+        await api.updateProduct(product.id, payload)
+      } else {
+        await api.createProduct(payload)
+      }
       onSuccess()
       onClose()
     } catch (err: any) {
-      setError(err.message || '新增产品失败')
+      setError(err.message || (isEdit ? '编辑产品失败' : '新增产品失败'))
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <Modal title="新增产品及辅料配方" onClose={onClose}>
+    <Modal title={isEdit ? '编辑产品及辅料配方' : '新增产品及辅料配方'} onClose={onClose}>
       <form onSubmit={handleSubmit} className="modal-form">
         {error && <div className="modal-error">{error}</div>}
         <label>
@@ -471,7 +482,7 @@ export function CreateProductModal({ onClose, onSuccess }: { onClose: () => void
               </select>
               <input
                 type="number"
-                step="0.01"
+                step="any"
                 min="0.001"
                 placeholder="千克/吨"
                 value={item.quantity_per_ton_kg}

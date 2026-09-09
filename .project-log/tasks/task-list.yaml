@@ -572,6 +572,42 @@ tasks:
       summary: 产品配方已支持可选上传产品图片，上传后配方卡片 logo 显示产品图片，未上传保留默认图标。
       changed_files: [pc/server/app/api/evidence.py, pc/server/app/api/master_data.py, pc/server/app/db/models.py, pc/src/components/Modals.tsx, pc/src/pages/ManagementPages.tsx, pc/src/services/api.ts, pc/src/styles/app.css, pc/server/tests/test_evidence.py, pc/server/tests/test_master_data.py]
       deviations: []
+    follow_ups: []
+    created_at: "2026-09-09T09:00:00Z"
+    updated_at: "2026-09-09T09:00:00Z"
+  - id: TASK-013
+    title: 产品配方可编辑与用量输入修复
+    kind: task
+    parent_id: TASK-011
+    phase: implementation
+    goal: 已创建的产品配方可再次编辑名称、辅料清单、每吨用量和可选图片；创建/编辑配方时用量输入支持任意正数（如 5），不再触发无效值校验。
+    status: implemented-verified
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [pc, recipes]
+    related_business_logic: [BL-DATA-003]
+    acceptance_refs: []
+    related_decisions: [DEC-028]
+    depends_on: [TASK-011]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [用户反馈配方不能编辑、用量输入 5 提示无效]
+    outputs: [配方更新后端接口, 前端配方编辑弹窗, 用量输入 step=any]
+    plan: [新增产品配方 PUT 接口, 前端编辑模式复用创建弹窗, 修复用量输入校验]
+    done_when: [已创建配方可编辑并保存, 用量输入 5 可通过校验并持久化]
+    verification:
+      status: passed
+      commands: ["PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 PYTHONPATH=. /home/tbl/miniforge3/envs/milk/bin/python -m pytest tests/ -q", "npm run build"]
+      evidence: ["后端 24 项测试通过，含产品配方编辑用例", "PC 前端生产构建通过", "后端已重启，健康检查与前端返回 200"]
+      limitations: []
+    result:
+      summary: 产品配方支持编辑；用量输入改用 step=any 修复原生校验；更新接口先清空旧配方明细再写入，避免唯一约束冲突。
+      changed_files: [pc/server/app/api/master_data.py, pc/src/components/Modals.tsx, pc/src/pages/ManagementPages.tsx, pc/src/services/api.ts, pc/server/tests/test_master_data.py]
+      deviations: []
       follow_ups: []
     created_at: "2026-09-09T09:00:00Z"
     updated_at: "2026-09-09T09:00:00Z"

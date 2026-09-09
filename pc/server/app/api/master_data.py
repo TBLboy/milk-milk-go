@@ -98,12 +98,7 @@ def list_products(_: User = Depends(require_admin), db: Session = Depends(get_db
 def create_product(body: ProductInput, _: User = Depends(require_admin), db: Session = Depends(get_db)) -> dict:
     if db.scalar(select(Product).where(Product.name == body.name)):
         raise HTTPException(status_code=409, detail={"code": "PRODUCT_EXISTS", "message": "产品名称已存在"})
-    material_ids = [item.material_id for item in body.items]
-    if len(set(material_ids)) != len(material_ids):
-        raise HTTPException(status_code=422, detail={"code": "DUPLICATE_RECIPE_MATERIAL", "message": "配方中不能重复添加同一辅料"})
-    materials = {item.material_id: item for item in db.scalars(select(Material).where(Material.material_id.in_(material_ids))).all()}
-    if len(materials) != len(material_ids) or any(not materials[key].enabled for key in material_ids):
-        raise HTTPException(status_code=422, detail={"code": "MATERIAL_NOT_AVAILABLE", "message": "配方只能引用已存在且启用的辅料"})
+    materials = _resolve_recipe_materials(db, body)
     product = Product(name=body.name)
     product.recipe = Recipe(items=[RecipeItem(material=materials[item.material_id], quantity_per_ton_kg=item.quantity_per_ton_kg, sort_order=index) for index, item in enumerate(body.items)])
     if body.image_file_id:
@@ -112,3 +107,40 @@ def create_product(body: ProductInput, _: User = Depends(require_admin), db: Ses
     db.commit()
     db.refresh(product)
     return product_view(product)
+
+
+@router.put("/products/{product_id}", status_code=status.HTTP_200_OK)
+def update_product(product_id: int, body: ProductInput, _: User = Depends(require_admin), db: Session = Depends(get_db)) -> dict:
+    product = db.scalar(select(Product).options(selectinload(Product.recipe).selectinload(Recipe.items), selectinload(Product.images)).where(Product.id == product_id))
+    if product is None:
+        raise HTTPException(status_code=404, detail={"code": "PRODUCT_NOT_FOUND", "message": "产品不存在"})
+    if db.scalar(select(Product).where(Product.name == body.name, Product.id != product_id)):
+        raise HTTPException(status_code=409, detail={"code": "PRODUCT_EXISTS", "message": "产品名称已存在"})
+    materials = _resolve_recipe_materials(db, body)
+    product.name = body.name
+    recipe = product.recipe
+    if recipe is None:
+        recipe = Recipe(version=1)
+        product.recipe = recipe
+    else:
+        recipe.version = (recipe.version or 1) + 1
+    recipe.items.clear()
+    db.flush()
+    recipe.items = [RecipeItem(material=materials[item.material_id], quantity_per_ton_kg=item.quantity_per_ton_kg, sort_order=index) for index, item in enumerate(body.items)]
+    product.images.clear()
+    if body.image_file_id:
+        product.images = [ProductImage(file_id=body.image_file_id, sort_order=0)]
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+    return product_view(product)
+
+
+def _resolve_recipe_materials(db: Session, body: ProductInput) -> dict[str, Material]:
+    material_ids = [item.material_id for item in body.items]
+    if len(set(material_ids)) != len(material_ids):
+        raise HTTPException(status_code=422, detail={"code": "DUPLICATE_RECIPE_MATERIAL", "message": "配方中不能重复添加同一辅料"})
+    materials = {item.material_id: item for item in db.scalars(select(Material).where(Material.material_id.in_(material_ids))).all()}
+    if len(materials) != len(material_ids) or any(not materials[key].enabled for key in material_ids):
+        raise HTTPException(status_code=422, detail={"code": "MATERIAL_NOT_AVAILABLE", "message": "配方只能引用已存在且启用的辅料"})
+    return materials

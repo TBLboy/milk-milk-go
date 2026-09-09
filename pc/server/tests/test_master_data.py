@@ -41,3 +41,35 @@ def test_product_can_store_optional_image(client):
     listed = client.get("/api/v1/master-data/products", headers=headers).json()
     target = next(item for item in listed if item["name"] == "带图产品")
     assert target["image_file_id"] == "FILE-product-image"
+
+
+def test_product_recipe_can_be_edited(client):
+    headers = admin_headers(client)
+    material = client.post("/api/v1/master-data/materials", headers=headers, json={"material_code": "EDIT01", "name_zh": "可编辑辅料", "shelf_life_months": 12}).json()
+    other = client.post("/api/v1/master-data/materials", headers=headers, json={"material_code": "EDIT02", "name_zh": "另一辅料", "shelf_life_months": 12}).json()
+    created = client.post("/api/v1/master-data/products", headers=headers, json={
+        "name": "原始配方",
+        "items": [{"material_id": material["material_id"], "quantity_per_ton_kg": 5}],
+    })
+    assert created.status_code == 201
+    product_id = created.json()["id"]
+    updated = client.put(f"/api/v1/master-data/products/{product_id}", headers=headers, json={
+        "name": "编辑后配方",
+        "items": [
+            {"material_id": material["material_id"], "quantity_per_ton_kg": 7.5},
+            {"material_id": other["material_id"], "quantity_per_ton_kg": 3},
+        ],
+        "image_file_id": "FILE-edited-image",
+    })
+    assert updated.status_code == 200
+    body = updated.json()
+    assert body["name"] == "编辑后配方"
+    assert body["image_file_id"] == "FILE-edited-image"
+    assert body["recipe_version"] == 2
+    quantities = {item["material_id"]: item["quantity_per_ton_kg"] for item in body["items"]}
+    assert quantities[material["material_id"]] == 7.5
+    assert quantities[other["material_id"]] == 3
+    listed = client.get("/api/v1/master-data/products", headers=headers).json()
+    target = next(item for item in listed if item["id"] == product_id)
+    assert target["name"] == "编辑后配方"
+    assert len(target["items"]) == 2
