@@ -213,6 +213,13 @@ export const api = {
     })
   },
 
+  async updateProduct(productId: number, payload: { name: string; items: { material_id: string; quantity_per_ton_kg: number }[]; image_file_id?: string }): Promise<any> {
+    return request(`/master-data/products/${productId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    })
+  },
+
   // 文件与 Excel
   async uploadFile(file: File): Promise<any> {
     const form = new FormData()

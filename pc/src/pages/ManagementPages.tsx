@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronRight, CircleAlert, Download, FileSpreadsheet, Image, Plus, Printer, Search, Settings2, X } from 'lucide-react'
+import { Check, ChevronRight, CircleAlert, Download, Edit, FileSpreadsheet, Image, Plus, Printer, Search, Settings2, X } from 'lucide-react'
 import QRCode from 'qrcode'
 import { StatusBadge } from '../components/StatusBadge'
 import { api } from '../services/api'
@@ -233,6 +233,7 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
   const [products, setProducts] = useState<any[]>([])
   const [showModal, setShowModal] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<any>(null)
+  const [editingProduct, setEditingProduct] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [importMessage, setImportMessage] = useState<string | null>(null)
@@ -316,6 +317,7 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
               <div className="recipe-head">
                 <span className="recipe-icon">{p.image_file_id ? <ProductImage fileId={p.image_file_id} /> : <FileSpreadsheet size={18} />}</span>
                 <span className="enabled-dot" />
+                <button className="icon-btn" title="编辑配方" onClick={() => setEditingProduct(p)}><Edit size={16} /></button>
                 <button className="icon-btn" onClick={() => setSelectedProduct(p)}><ChevronRight size={17} /></button>
               </div>
               <h3>{p.name}</h3>
@@ -376,6 +378,7 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
           <CreateMaterialModal onClose={() => setShowModal(false)} onSuccess={() => loadData()} />
         )
       )}
+      {editingProduct && <CreateProductModal product={editingProduct} onClose={() => setEditingProduct(null)} onSuccess={() => { setEditingProduct(null); loadData() }} />}
       {selectedProduct && <RecipeDetailModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />}
     </div>
   )
