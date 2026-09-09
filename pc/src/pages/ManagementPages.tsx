@@ -412,7 +412,7 @@ export function LabelsPage() {
   useEffect(() => {
     if (!selectedMat) return
     setPrintedAtText(new Date().toLocaleString('zh-CN', { hour12: false }))
-    QRCode.toDataURL(JSON.stringify(buildQrPayload(selectedMat)), { width: 180, margin: 1, color: { dark: '#1f5742', light: '#ffffff' } })
+    buildQrDataUrl(selectedMat, 180)
       .then(setQrSrc)
       .catch(() => setQrSrc(null))
   }, [selectedMat])
@@ -420,7 +420,7 @@ export function LabelsPage() {
   const openPreview = () => {
     if (!selectedMat) return
     setPreviewOpen(true)
-    QRCode.toDataURL(JSON.stringify(buildQrPayload(selectedMat)), { width: 360, margin: 2, color: { dark: '#1f5742', light: '#ffffff' } })
+    buildQrDataUrl(selectedMat, 360)
       .then(setLargeQrSrc)
       .catch(() => setLargeQrSrc(null))
   }
@@ -563,6 +563,43 @@ function buildQrPayload(material: any) {
     name: material.name_zh,
     printedAt: new Date().toISOString(),
   }
+}
+
+function buildQrDataUrl(material: any, size: number): Promise<string> {
+  const canvas = document.createElement('canvas')
+  return QRCode.toCanvas(canvas, JSON.stringify(buildQrPayload(material)), {
+    width: size,
+    margin: 1,
+    errorCorrectionLevel: 'H',
+    color: { dark: '#1f5742', light: '#ffffff' },
+  })
+    .then(() => {
+      const context = canvas.getContext('2d')
+      if (!context) return canvas.toDataURL('image/png')
+      const logo = document.createElement('img')
+      logo.src = '/logo.png'
+      return new Promise<string>((resolve, reject) => {
+        logo.onload = () => {
+          const logoSize = Math.round(size * 0.22)
+          const pad = 5
+          const x = (size - logoSize) / 2
+          const y = (size - logoSize) / 2
+          context.fillStyle = '#ffffff'
+          context.beginPath()
+          if (typeof context.roundRect === 'function') {
+            context.roundRect(x - pad, y - pad, logoSize + pad * 2, logoSize + pad * 2, 8)
+          } else {
+            context.rect(x - pad, y - pad, logoSize + pad * 2, logoSize + pad * 2)
+          }
+          context.fill()
+          context.drawImage(logo, x, y, logoSize, logoSize)
+          resolve(canvas.toDataURL('image/png'))
+        }
+        logo.onerror = () => {
+          reject(new Error('Logo 加载失败'))
+        }
+      })
+    })
 }
 
 export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
