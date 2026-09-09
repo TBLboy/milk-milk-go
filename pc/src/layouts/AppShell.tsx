@@ -29,7 +29,7 @@ export function AppShell({ page, onPageChange, children, user, onLogout }: {
 
   return <div className="app-shell">
     <aside className={open ? 'sidebar sidebar-open' : 'sidebar'}>
-      <div className="brand"><div className="brand-mark">牧</div><div><strong>牧衡</strong><span>辅料称重防错系统</span></div><button className="icon-btn mobile-close" onClick={() => setOpen(false)} aria-label="关闭菜单"><X size={19} /></button></div>
+      <div className="brand"><div className="brand-mark brand-logo"><img src="/logo.png" alt="公司 Logo" /></div><div><strong>牧衡</strong><span>辅料称重防错系统</span></div><button className="icon-btn mobile-close" onClick={() => setOpen(false)} aria-label="关闭菜单"><X size={19} /></button></div>
       <div className="site-chip"><span className="online-dot" />生产一厂 · 主控端</div>
       <nav>{nav.map(({ label, icon: Icon, key }) => <button onClick={() => { onPageChange(key); setOpen(false) }} className={page === key ? 'nav-item active' : 'nav-item'} key={label}><Icon size={18} strokeWidth={1.8} /><span>{label}</span>{key === 'approvals' && pendingCount > 0 && <em>{pendingCount}</em>}</button>)}</nav>
       <div className="nav-divider" />
