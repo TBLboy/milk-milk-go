@@ -67,6 +67,17 @@ class Product(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
     recipe: Mapped["Recipe | None"] = relationship(back_populates="product", uselist=False)
+    images: Mapped[list["ProductImage"]] = relationship(back_populates="product", cascade="all, delete-orphan")
+
+
+class ProductImage(Base):
+    __tablename__ = "product_images"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), nullable=False, index=True)
+    file_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+    product: Mapped[Product] = relationship(back_populates="images")
 
 
 class Recipe(Base):

@@ -2,6 +2,7 @@ import secrets
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -58,6 +59,17 @@ async def upload_file(file: UploadFile = File(...), user: User = Depends(current
     db.add(EvidenceFile(file_id=file_id, original_name=Path(file.filename or "upload").name, stored_path=str(stored), content_type=file.content_type, size_bytes=len(content), uploaded_by=user.id))
     db.commit()
     return {"file_id": file_id, "content_type": file.content_type, "size_bytes": len(content)}
+
+
+@router.get("/files/{file_id}")
+def get_evidence_file(file_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)) -> FileResponse:
+    evidence = db.scalar(select(EvidenceFile).where(EvidenceFile.file_id == file_id))
+    if evidence is None:
+        raise HTTPException(status_code=404, detail={"code": "FILE_NOT_FOUND", "message": "文件不存在"})
+    path = Path(evidence.stored_path)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail={"code": "FILE_MISSING", "message": "文件已丢失"})
+    return FileResponse(path, media_type=evidence.content_type)
 
 
 @router.post("/work-orders/{order_no}/steps/{step_no}/qr")

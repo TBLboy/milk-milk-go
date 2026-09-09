@@ -361,6 +361,8 @@ export function CreateProductModal({ onClose, onSuccess }: { onClose: () => void
   const [name, setName] = useState('')
   const [materials, setMaterials] = useState<any[]>([])
   const [items, setItems] = useState<{ material_id: string; quantity_per_ton_kg: number }[]>([])
+  const [imageFileId, setImageFileId] = useState<string | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -389,6 +391,21 @@ export function CreateProductModal({ onClose, onSuccess }: { onClose: () => void
     setItems(updated)
   }
 
+  const handleImageUpload = async (file: File | undefined) => {
+    if (!file) return
+    setLoading(true)
+    setError(null)
+    try {
+      const uploaded = await api.uploadFile(file)
+      setImageFileId(uploaded.file_id)
+      setImagePreview(URL.createObjectURL(file))
+    } catch (e: any) {
+      setError(e.message || '产品图片上传失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return setError('请输入产品名称')
@@ -402,6 +419,7 @@ export function CreateProductModal({ onClose, onSuccess }: { onClose: () => void
           material_id: it.material_id,
           quantity_per_ton_kg: Number(it.quantity_per_ton_kg),
         })),
+        image_file_id: imageFileId || undefined,
       })
       onSuccess()
       onClose()
@@ -426,6 +444,14 @@ export function CreateProductModal({ onClose, onSuccess }: { onClose: () => void
             required
           />
         </label>
+        <div className="form-sub-header">
+          <span>产品图片（可选）</span>
+          <label className="text-button file-upload-button">
+            <ImagePlus size={15} />选择图片
+            <input type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => handleImageUpload(e.target.files?.[0])} />
+          </label>
+        </div>
+        {imagePreview && <div className="image-preview-row"><img src={imagePreview} alt="产品图片预览" /></div>}
         <div className="form-sub-header">
           <span>辅料用量 (每吨成品)</span>
           <button type="button" className="text-button" onClick={addItem}><Plus size={14} />添加辅料</button>

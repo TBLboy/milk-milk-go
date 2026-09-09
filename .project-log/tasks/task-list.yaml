@@ -539,3 +539,39 @@ tasks:
         - 真实标签打印机驱动尚未接入
     created_at: "2026-09-09T09:00:00Z"
     updated_at: "2026-09-09T09:00:00Z"
+  - id: TASK-012
+    title: 产品配方可选产品图片
+    kind: task
+    parent_id: TASK-011
+    phase: implementation
+    goal: 创建新配方时可选择上传可选产品图片，配方卡片据此显示产品图片，未上传时保留默认图标。
+    status: implemented-verified
+    priority: medium
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [pc, recipes, images]
+    related_business_logic: [BL-DATA-003]
+    acceptance_refs: []
+    related_decisions: [DEC-028]
+    depends_on: [TASK-011]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [用户确认的产品配方可选图片需求]
+    outputs: [ProductImage 表, 产品图片上传/读取接口, 创建配方图片字段, 配方卡片图片展示]
+    plan: [新增产品图片持久化模型, 增加图片文件读取接口, 创建产品时保存图片, 前端上传与卡片展示]
+    done_when: [创建配方可上传可选图片, 配方卡片显示产品图片, 无图片时显示默认图标]
+    verification:
+      status: passed
+      commands: ["/home/tbl/miniforge3/envs/milk/bin/python -m pytest tests/", "npm run build"]
+      evidence: ["后端 23 项测试通过，含产品可选图片与文件读取测试", "PC 前端生产构建通过", "真实 HTTP 上传/读取/创建配方/列表展示链路验证通过"]
+      limitations: []
+    result:
+      summary: 产品配方已支持可选上传产品图片，上传后配方卡片 logo 显示产品图片，未上传保留默认图标。
+      changed_files: [pc/server/app/api/evidence.py, pc/server/app/api/master_data.py, pc/server/app/db/models.py, pc/src/components/Modals.tsx, pc/src/pages/ManagementPages.tsx, pc/src/services/api.ts, pc/src/styles/app.css, pc/server/tests/test_evidence.py, pc/server/tests/test_master_data.py]
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-09T09:00:00Z"
+    updated_at: "2026-09-09T09:00:00Z"
