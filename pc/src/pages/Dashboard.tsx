@@ -3,7 +3,10 @@ import { ArrowUpRight, Camera, Check, ChevronRight, Clock3, Database, MoreHorizo
 import { api } from '../services/api'
 import { StatusBadge } from '../components/StatusBadge'
 import { CreateOrderModal, OrderDetailModal } from '../components/Modals'
+import { StatusFilter } from '../components/StatusFilter'
 import type { DashboardData } from '../types/domain'
+
+const filterOptions = ['全部状态', '待审批', '已批准', '执行中', '已完成', '已撤销']
 
 export function Dashboard({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const [data, setData] = useState<DashboardData | null>(null)
@@ -23,7 +26,6 @@ export function Dashboard({ onNavigate }: { onNavigate?: (page: string) => void 
 
   if (!data) return <div className="loading">正在加载工作台<span /></div>
 
-  const filterOptions = ['全部状态', '待审批', '已批准', '执行中', '已完成', '已撤销']
   const visibleOrders = data.workOrders.filter((order) => {
     const textMatch = `${order.id}${order.product}`.toLowerCase().includes(query.toLowerCase())
     const statusMatch = statusFilter === '全部状态' || order.status === statusFilter
@@ -75,7 +77,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (page: string) => void 
               <Search size={16} />
               <input placeholder="搜索工单号或产品名称" value={query} onChange={(e) => setQuery(e.target.value)} />
             </div>
-            <button className="filter-button" onClick={() => setStatusFilter((current) => filterOptions[(filterOptions.indexOf(current) + 1) % filterOptions.length])}>{statusFilter} <ChevronRight size={14} /></button>
+            <StatusFilter options={filterOptions} value={statusFilter} onChange={setStatusFilter} />
           </div>
           <div className="table-wrap">
             <table>

@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronRight, CircleAlert, Download, FileSpreadsheet, Filter, Image, Plus, Printer, Search, Settings2, X } from 'lucide-react'
+import { Check, ChevronRight, CircleAlert, Download, FileSpreadsheet, Image, Plus, Printer, Search, Settings2, X } from 'lucide-react'
 import QRCode from 'qrcode'
 import { StatusBadge } from '../components/StatusBadge'
 import { api } from '../services/api'
-import { CreateMaterialModal, CreateOrderModal, CreateProductModal, CreateUserModal, OrderDetailModal, RecipeDetailModal } from '../components/Modals'
+import { CreateMaterialModal, CreateOrderModal, CreateProductModal, CreateUserModal, Modal, OrderDetailModal, RecipeDetailModal } from '../components/Modals'
+import { StatusFilter } from '../components/StatusFilter'
+import { Pagination } from '../components/Pagination'
 
 export function WorkOrdersPage({ approvals = false }: { approvals?: boolean }) {
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -44,7 +46,7 @@ export function WorkOrdersPage({ approvals = false }: { approvals?: boolean }) {
         <div className="search-box">
           <Search size={16} /><input placeholder="搜索工单号、产品或操作员" value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
-        {!approvals && <button className="filter-button" onClick={() => setStatusFilter((current) => filterOptions[(filterOptions.indexOf(current) + 1) % filterOptions.length])}><Filter size={14} />{statusFilter} <ChevronRight size={14} /></button>}
+        {!approvals && <StatusFilter options={filterOptions} value={statusFilter} onChange={setStatusFilter} />}
         {!approvals && <button className="outline-button" onClick={handleExport}><Download size={15} />导出</button>}
       </div>
       {approvals ? <ApprovalTable /> : <OrdersTable key={refreshKey} onOpen={setSelectedOrderNo} query={query} statusFilter={statusFilter} />}
@@ -69,6 +71,8 @@ export function WorkOrdersPage({ approvals = false }: { approvals?: boolean }) {
 function OrdersTable({ onOpen, query, statusFilter }: { onOpen: (orderNo: string) => void; query?: string; statusFilter?: string }) {
   const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const pageSize = 10
 
   const load = () => {
     setLoading(true)
@@ -82,6 +86,10 @@ function OrdersTable({ onOpen, query, statusFilter }: { onOpen: (orderNo: string
     load()
   }, [])
 
+  useEffect(() => {
+    setPage(1)
+  }, [query, statusFilter])
+
   if (loading) return <div className="loading">正在加载工单列表...</div>
 
   const filteredOrders = (orders || []).filter((order) => {
@@ -90,6 +98,8 @@ function OrdersTable({ onOpen, query, statusFilter }: { onOpen: (orderNo: string
     const statusMatch = !statusFilter || statusFilter === '全部状态' || order.status === statusFilter
     return textMatch && statusMatch
   })
+  const start = (page - 1) * pageSize
+  const pagedOrders = filteredOrders.slice(start, start + pageSize)
 
   return (
     <div className="panel full-panel">
@@ -107,10 +117,10 @@ function OrdersTable({ onOpen, query, statusFilter }: { onOpen: (orderNo: string
             </tr>
           </thead>
           <tbody>
-            {filteredOrders.length === 0 ? (
+            {pagedOrders.length === 0 ? (
               <tr><td colSpan={7} className="muted" style={{ textAlign: 'center' }}>暂无工单，请先创建生产工单。</td></tr>
-            ) : filteredOrders.map((order, index) => (
-              <tr key={`${order.id}-${index}`}>
+            ) : pagedOrders.map((order, index) => (
+              <tr key={`${order.id}-${start + index}`}>
                 <td>
                   <strong className="order-id">{order.id}</strong>
                   <span className="order-product">{order.product}<small>{order.batch}</small></span>
@@ -136,6 +146,7 @@ function OrdersTable({ onOpen, query, statusFilter }: { onOpen: (orderNo: string
           </tbody>
         </table>
       </div>
+      <Pagination page={page} pageSize={pageSize} total={filteredOrders.length} onPageChange={setPage} />
     </div>
   )
 }
@@ -143,6 +154,8 @@ function OrdersTable({ onOpen, query, statusFilter }: { onOpen: (orderNo: string
 function ApprovalTable() {
   const [items, setItems] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const pageSize = 10
 
   const load = () => {
     setLoading(true)
@@ -176,14 +189,17 @@ function ApprovalTable() {
 
   if (loading) return <div className="loading">正在加载待审批项目...</div>
 
+  const start = (page - 1) * pageSize
+  const pagedItems = items.slice(start, start + pageSize)
   return (
-    <div className="approval-grid">
-      {items.length === 0 ? (
+    <>
+      <div className="approval-grid">
+        {pagedItems.length === 0 ? (
         <div className="empty-panel" style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
           目前暂无需要审批的放行申请
         </div>
       ) : (
-        items.map((item) => {
+        pagedItems.map((item) => {
           return (
             <div className="approval-card" key={item.id}>
               <div className={`approval-icon ${item.type}`}><CircleAlert size={18} /></div>
@@ -206,7 +222,9 @@ function ApprovalTable() {
           )
         })
       )}
-    </div>
+      </div>
+      {items.length > pageSize && <Pagination page={page} pageSize={pageSize} total={items.length} onPageChange={setPage} />}
+    </>
   )
 }
 
@@ -218,7 +236,9 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [importMessage, setImportMessage] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
   const excelInputRef = useRef<HTMLInputElement>(null)
+  const pageSize = recipesPage ? 12 : 10
 
   const loadData = () => {
     setLoading(true)
@@ -239,6 +259,10 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
     loadData()
   }, [recipesPage])
 
+  useEffect(() => {
+    setPage(1)
+  }, [query, recipesPage])
+
   const handleExcelImport = async (file: File | undefined) => {
     if (!file) return
     setImportMessage('正在导入 Excel ...')
@@ -256,6 +280,9 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
   const normalizedQuery = query.trim().toLowerCase()
   const filteredProducts = products.filter((p) => !normalizedQuery || p.name.toLowerCase().includes(normalizedQuery))
   const filteredMaterials = materials.filter((m) => !normalizedQuery || `${m.material_code} ${m.name_zh}`.toLowerCase().includes(normalizedQuery))
+  const start = (page - 1) * pageSize
+  const pagedProducts = filteredProducts.slice(start, start + pageSize)
+  const pagedMaterials = filteredMaterials.slice(start, start + pageSize)
 
   return (
     <div className="page-wrap">
@@ -280,10 +307,11 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
       {importMessage && !recipesPage && <div className="info-note" style={{ margin: '0 0 18px' }}>{importMessage}</div>}
 
       {recipesPage ? (
+        <>
         <div className="recipe-grid">
-          {filteredProducts.length === 0 ? (
+          {pagedProducts.length === 0 ? (
             <div className="empty-panel" style={{ padding: '3rem', textAlign: 'center', color: '#64748b', gridColumn: '1 / -1' }}>暂无产品配方，请先维护辅料后再新增产品。</div>
-          ) : filteredProducts.map((p) => (
+          ) : pagedProducts.map((p) => (
             <div className="recipe-card" key={p.id}>
               <div className="recipe-head">
                 <span className="recipe-icon"><FileSpreadsheet size={18} /></span>
@@ -300,6 +328,8 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
             </div>
           ))}
         </div>
+        {filteredProducts.length > pageSize && <Pagination page={page} pageSize={pageSize} total={filteredProducts.length} onPageChange={setPage} />}
+        </>
       ) : (
         <div className="panel full-panel">
           <div className="table-wrap">
@@ -315,9 +345,9 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
                 </tr>
               </thead>
               <tbody>
-                {filteredMaterials.length === 0 ? (
+                {pagedMaterials.length === 0 ? (
                   <tr><td colSpan={6} className="muted" style={{ textAlign: 'center' }}>暂无辅料，请新增辅料或通过 Excel 导入。</td></tr>
-                ) : filteredMaterials.map((m) => (
+                ) : pagedMaterials.map((m) => (
                   <tr key={m.material_id}>
                     <td>
                       <strong className="order-id">{m.material_id}</strong>
@@ -335,6 +365,7 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
               </tbody>
             </table>
           </div>
+          {filteredMaterials.length > pageSize && <Pagination page={page} pageSize={pageSize} total={filteredMaterials.length} onPageChange={setPage} />}
         </div>
       )}
 
@@ -358,6 +389,10 @@ export function LabelsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [successNotice, setSuccessNotice] = useState<string | null>(null)
   const [qrSrc, setQrSrc] = useState<string | null>(null)
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [largeQrSrc, setLargeQrSrc] = useState<string | null>(null)
+  const [batchPage, setBatchPage] = useState(1)
+  const batchPageSize = 10
 
   const loadBatches = () => {
     api.getPrintBatches().then(setBatches).catch(() => setBatches([]))
@@ -375,18 +410,18 @@ export function LabelsPage() {
 
   useEffect(() => {
     if (!selectedMat) return
-    const payload = {
-      v: 1,
-      labelId: 'PREVIEW',
-      materialId: selectedMat.material_id,
-      materialCode: selectedMat.material_code,
-      name: selectedMat.name_zh,
-      printedAt: new Date().toISOString(),
-    }
-    QRCode.toDataURL(JSON.stringify(payload), { width: 180, margin: 1, color: { dark: '#1f5742', light: '#ffffff' } })
+    QRCode.toDataURL(JSON.stringify(buildQrPayload(selectedMat)), { width: 180, margin: 1, color: { dark: '#1f5742', light: '#ffffff' } })
       .then(setQrSrc)
       .catch(() => setQrSrc(null))
   }, [selectedMat])
+
+  const openPreview = () => {
+    if (!selectedMat) return
+    setPreviewOpen(true)
+    QRCode.toDataURL(JSON.stringify(buildQrPayload(selectedMat)), { width: 360, margin: 2, color: { dark: '#1f5742', light: '#ffffff' } })
+      .then(setLargeQrSrc)
+      .catch(() => setLargeQrSrc(null))
+  }
 
   const handlePrint = async () => {
     if (!selectedMat) return
@@ -459,7 +494,7 @@ export function LabelsPage() {
               <h2>标签预览</h2>
               <p>打印前确认标签信息</p>
             </div>
-            <span className="preview-tag">预览</span>
+            <button className="preview-tag" onClick={openPreview}>预览</button>
           </div>
           <div className="label-preview">
             <div className="label-top">
@@ -492,9 +527,9 @@ export function LabelsPage() {
               </tr>
             </thead>
             <tbody>
-              {batches.length === 0 ? (
+              {batches.slice((batchPage - 1) * batchPageSize, batchPage * batchPageSize).length === 0 ? (
                 <tr><td colSpan={6} className="muted" style={{ textAlign: 'center' }}>暂无打印批次</td></tr>
-              ) : batches.map((batch) => (
+              ) : batches.slice((batchPage - 1) * batchPageSize, batchPage * batchPageSize).map((batch) => (
                 <tr key={batch.batch_id}>
                   <td className="order-id">{batch.batch_id}</td>
                   <td>{batch.material_name} · {batch.material_id}</td>
@@ -508,8 +543,34 @@ export function LabelsPage() {
           </table>
         </div>
       </div>
+      {batches.length > batchPageSize && <Pagination page={batchPage} pageSize={batchPageSize} total={batches.length} onPageChange={setBatchPage} />}
+      {previewOpen && (
+        <Modal title="标签放大预览" onClose={() => setPreviewOpen(false)}>
+          <div className="label-preview large-label-preview">
+            <div className="label-top">
+              <strong>牧衡 · 辅料标签</strong>
+              <span>ACTIVE</span>
+            </div>
+            {largeQrSrc ? <img className="qr-preview large-qr" src={largeQrSrc} alt="放大辅料二维码" /> : <div className="fake-qr">▦</div>}
+            <strong className="preview-material">{selectedMat ? selectedMat.name_zh : '等待选择辅料'}</strong>
+            <span className="preview-code">内部代号 {selectedMat ? selectedMat.material_code : '—'}　·　系统时间自动录入</span>
+            <small>扫描此二维码确认辅料身份</small>
+          </div>
+        </Modal>
+      )}
     </div>
   )
+}
+
+function buildQrPayload(material: any) {
+  return {
+    v: 1,
+    labelId: 'PREVIEW',
+    materialId: material.material_id,
+    materialCode: material.material_code,
+    name: material.name_zh,
+    printedAt: new Date().toISOString(),
+  }
 }
 
 export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
@@ -518,6 +579,9 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
   const [settings, setSettings] = useState<Record<string, string>>({})
   const [backupMessage, setBackupMessage] = useState<string | null>(null)
   const [backups, setBackups] = useState<any[]>([])
+  const [accountPage, setAccountPage] = useState(1)
+  const [backupPage, setBackupPage] = useState(1)
+  const pageSize = 10
 
   const loadUsers = () => {
     api.listUsers().then((res) => setUsers(res || [])).catch(() => setUsers([]))
@@ -531,6 +595,8 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
   useEffect(() => {
     if (accounts) loadUsers()
     else loadSettings()
+    setAccountPage(1)
+    setBackupPage(1)
   }, [accounts])
 
   const handleBackup = async () => {
@@ -580,6 +646,9 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
     }
   }
 
+  const pagedUsers = users.slice((accountPage - 1) * pageSize, accountPage * pageSize)
+  const pagedBackups = backups.slice((backupPage - 1) * pageSize, backupPage * pageSize)
+
   return (
     <div className="page-wrap">
       <PageTitle
@@ -607,7 +676,9 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
+                {pagedUsers.length === 0 ? (
+                  <tr><td colSpan={6} className="muted" style={{ textAlign: 'center' }}>暂无账号</td></tr>
+                ) : pagedUsers.map((user) => (
                   <tr key={user.id}>
                     <td className="order-id">{user.username}</td>
                     <td>
@@ -632,6 +703,7 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
               </tbody>
             </table>
           </div>
+          {users.length > pageSize && <Pagination page={accountPage} pageSize={pageSize} total={users.length} onPageChange={setAccountPage} />}
         </div>
       ) : (
         <>
@@ -652,9 +724,9 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
                   <tr><th>备份文件</th><th>大小</th><th>状态</th><th>时间</th></tr>
                 </thead>
                 <tbody>
-                  {backups.length === 0 ? (
+                  {pagedBackups.length === 0 ? (
                     <tr><td colSpan={4} className="muted" style={{ textAlign: 'center' }}>暂无备份记录</td></tr>
-                  ) : backups.map((backup) => (
+                  ) : pagedBackups.map((backup) => (
                     <tr key={backup.file_path}>
                       <td className="order-id">{backup.file_path.split('/').pop()}</td>
                       <td>{backup.size_bytes ? `${(backup.size_bytes / 1024).toFixed(1)} KB` : '—'}</td>
@@ -666,6 +738,7 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
               </table>
             </div>
           </div>
+          {backups.length > pageSize && <Pagination page={backupPage} pageSize={pageSize} total={backups.length} onPageChange={setBackupPage} />}
         </>
       )}
 

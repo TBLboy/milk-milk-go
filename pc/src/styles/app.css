@@ -7,6 +7,97 @@
   text-align: center;
 }
 
+/* Filter dropdown and pagination */
+.status-filter {
+  position: relative;
+}
+.status-filter-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+}
+.status-filter-button > button:first-child {
+  height: 100%;
+  padding: 8px 9px 8px 10px;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  font-size: 15px;
+}
+.filter-arrow {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 0 8px 0 2px;
+  color: #96a19a;
+  background: transparent;
+  border: 0;
+}
+.filter-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 60;
+  min-width: 140px;
+  padding: 5px;
+  background: #ffffff;
+  border: 1px solid #dfe7e3;
+  border-radius: 6px;
+  box-shadow: 0 12px 24px rgba(19, 45, 36, 0.12);
+}
+.filter-menu button {
+  display: flex;
+  width: 100%;
+  padding: 8px 10px;
+  color: #51625b;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  font-size: 14px;
+}
+.filter-menu button:hover,
+.filter-menu button.active {
+  color: #1f7a59;
+  background: #edf7f2;
+}
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 18px;
+  color: #83908a;
+  font-size: 14px;
+  border-top: 1px solid #edf1ef;
+}
+.pagination-actions {
+  display: flex;
+  gap: 8px;
+}
+.pagination-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 70px;
+  justify-content: center;
+  padding: 7px 10px;
+  color: #52635b;
+  background: #ffffff;
+  border: 1px solid #dbe4df;
+  border-radius: 5px;
+  font-size: 14px;
+}
+.pagination-actions button:hover:not(:disabled) {
+  color: #1f7a59;
+  border-color: #a9d7c5;
+}
+.pagination-actions button:disabled {
+  color: #b5bdb8;
+  cursor: not-allowed;
+  background: #f7f9f8;
+}
+
 /* Modal Dialog Styles */
 .modal-backdrop {
   position: fixed;
@@ -153,6 +244,20 @@
 }
 
 /* Login */
+.brand-logo,
+.login-logo {
+  padding: 0;
+  overflow: hidden;
+  background: #ffffff;
+  border-radius: 10px;
+}
+.brand-logo img,
+.login-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
 .login-page {
   display: grid;
   min-height: 100vh;
@@ -393,6 +498,26 @@
   margin: 14px auto 12px;
   border: 5px solid #ffffff;
   outline: 1px solid #dcebe4;
+}
+button.preview-tag {
+  padding: 4px 7px;
+  color: #6e8791;
+  background: #edf3f4;
+  border: 1px solid #dfe9e9;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 14px;
+}
+button.preview-tag:hover {
+  color: #2d7a5d;
+  border-color: #a9d7c5;
+}
+.large-label-preview {
+  width: 320px;
+}
+.large-label-preview .large-qr {
+  width: 250px;
+  height: 250px;
 }
 
 @media (max-width: 760px) {

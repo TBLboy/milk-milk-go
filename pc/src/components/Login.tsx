@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Lock, ShieldCheck, Store, UserRound } from 'lucide-react'
+import { Lock, ShieldCheck, UserRound } from 'lucide-react'
 import { api } from '../services/api'
 
 export function Login({ onLogin }: { onLogin: (user: any) => void }) {
@@ -25,7 +25,7 @@ export function Login({ onLogin }: { onLogin: (user: any) => void }) {
   return (
     <div className="login-page">
       <div className="login-brand">
-        <div className="login-brand-mark"><Store size={26} /></div>
+        <div className="login-brand-mark login-logo"><img src="/logo.png" alt="公司 Logo" /></div>
         <div>
           <strong>牧衡辅料称重防错系统</strong>
           <span>PC 管理端</span>
