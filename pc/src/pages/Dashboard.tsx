@@ -2,13 +2,16 @@ import { useEffect, useState } from 'react'
 import { ArrowUpRight, Camera, Check, ChevronRight, Clock3, Database, MoreHorizontal, PackageCheck, ScanLine, Search, Scale, UserRoundCheck } from 'lucide-react'
 import { api } from '../services/api'
 import { StatusBadge } from '../components/StatusBadge'
-import { CreateOrderModal } from '../components/Modals'
+import { CreateOrderModal, OrderDetailModal } from '../components/Modals'
 import type { DashboardData } from '../types/domain'
 
 export function Dashboard({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const [data, setData] = useState<DashboardData | null>(null)
   const [approved, setApproved] = useState<string[]>([])
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [selectedOrderNo, setSelectedOrderNo] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('全部状态')
 
   const loadData = () => {
     api.getDashboard().then(setData)
@@ -19,6 +22,13 @@ export function Dashboard({ onNavigate }: { onNavigate?: (page: string) => void 
   }, [])
 
   if (!data) return <div className="loading">正在加载工作台<span /></div>
+
+  const filterOptions = ['全部状态', '待审批', '已批准', '执行中', '已完成', '已撤销']
+  const visibleOrders = data.workOrders.filter((order) => {
+    const textMatch = `${order.id}${order.product}`.toLowerCase().includes(query.toLowerCase())
+    const statusMatch = statusFilter === '全部状态' || order.status === statusFilter
+    return textMatch && statusMatch
+  })
 
   return (
     <div className="page-wrap">
@@ -63,9 +73,9 @@ export function Dashboard({ onNavigate }: { onNavigate?: (page: string) => void 
           <div className="toolbar">
             <div className="search-box">
               <Search size={16} />
-              <input placeholder="搜索工单号或产品名称" />
+              <input placeholder="搜索工单号或产品名称" value={query} onChange={(e) => setQuery(e.target.value)} />
             </div>
-            <button className="filter-button">全部状态 <ChevronRight size={14} /></button>
+            <button className="filter-button" onClick={() => setStatusFilter((current) => filterOptions[(filterOptions.indexOf(current) + 1) % filterOptions.length])}>{statusFilter} <ChevronRight size={14} /></button>
           </div>
           <div className="table-wrap">
             <table>
@@ -81,7 +91,9 @@ export function Dashboard({ onNavigate }: { onNavigate?: (page: string) => void 
                 </tr>
               </thead>
               <tbody>
-                {data.workOrders.map((order) => (
+                {visibleOrders.length === 0 ? (
+                  <tr><td colSpan={7} className="muted" style={{ textAlign: 'center' }}>没有符合条件的工单。</td></tr>
+                ) : visibleOrders.map((order) => (
                   <tr key={order.id}>
                     <td>
                       <strong className="order-id">{order.id}</strong>
@@ -103,7 +115,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (page: string) => void 
                     </td>
                     <td><StatusBadge status={order.status} /></td>
                     <td className="muted">{order.updatedAt}</td>
-                    <td><button className="icon-btn"><MoreHorizontal size={17} /></button></td>
+                    <td><button className="icon-btn" onClick={() => setSelectedOrderNo(order.id)}><MoreHorizontal size={17} /></button></td>
                   </tr>
                 ))}
               </tbody>
@@ -120,7 +132,9 @@ export function Dashboard({ onNavigate }: { onNavigate?: (page: string) => void 
             <span className="approval-count">{data.pendingApprovals.length}</span>
           </div>
           <div className="approval-list">
-            {data.pendingApprovals.map((item) => (
+            {data.pendingApprovals.length === 0 ? (
+              <div className="approval-empty">暂无待处理审批</div>
+            ) : data.pendingApprovals.map((item) => (
               <div className={approved.includes(item.id) ? 'approval-item approved' : 'approval-item'} key={item.id}>
                 <div className={`approval-icon ${item.type}`}>
                   {item.type === 'photo' ? <Camera size={17} /> : item.type === 'takeover' ? <UserRoundCheck size={17} /> : <PackageCheck size={17} />}
@@ -160,6 +174,13 @@ export function Dashboard({ onNavigate }: { onNavigate?: (page: string) => void 
         <CreateOrderModal
           onClose={() => setShowCreateModal(false)}
           onSuccess={() => loadData()}
+        />
+      )}
+      {selectedOrderNo && (
+        <OrderDetailModal
+          orderNo={selectedOrderNo}
+          onClose={() => setSelectedOrderNo(null)}
+          onSuccess={loadData}
         />
       )}
     </div>

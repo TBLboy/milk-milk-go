@@ -211,6 +211,36 @@ export function OrderDetailModal({ orderNo, onClose, onSuccess }: { orderNo: str
   )
 }
 
+export function RecipeDetailModal({ product, onClose }: { product: any; onClose: () => void }) {
+  return (
+    <Modal title={`产品配方 · ${product.name}`} onClose={onClose}>
+      <div className="order-detail">
+        <div className="detail-summary">
+          <div><span>产品名称</span><strong>{product.name}</strong></div>
+          <div><span>配方版本</span><strong>{product.recipe_version || 1}</strong></div>
+          <div><span>辅料种类</span><strong>{(product.items || []).length} 种</strong></div>
+          <div><span>配方状态</span><strong><span className="status status-running"><i />启用</span></strong></div>
+        </div>
+        <div className="step-list">
+          {(product.items || []).map((item: any) => (
+            <div className="step-row" key={`${item.material_id}-${item.sort_order}`}>
+              <div className="step-state done"><PackageCheck size={18} /></div>
+              <div className="step-copy">
+                <strong>{item.name_zh} · {item.material_code}</strong>
+                <span>辅料 ID：{item.material_id}</span>
+              </div>
+              <span className="step-status">{item.quantity_per_ton_kg} kg/吨</span>
+            </div>
+          ))}
+        </div>
+        <div className="modal-footer">
+          <button type="button" className="outline-button" onClick={onClose}>关闭</button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 // 2. 新增辅料弹窗
 export function CreateMaterialModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [code, setCode] = useState('')
