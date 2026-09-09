@@ -1,2 +1,1499 @@
 version: "0.2"
-decisions: []
+decisions:
+  - id: DEC-023
+    title: 第一版不连接电子秤，称重结果以手动输入为主
+    category: business
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-WEIGH-003
+      - BL-WEIGH-006
+    context: 用户目前不在公司现场，无法确认和验证电子秤数据接口；若第一版强依赖电子秤，会因硬件无法验证而阻塞交付。
+    hypothesis: 将重量输入做成“手动输入并标记来源”的方式，可以快速形成可运行测试版；后续接入电子秤时不需要推翻称重记录模型。
+    options:
+      - name: 第一版不接电子秤，手动输入
+        benefits:
+          - 不依赖现场硬件确认
+          - 可先开发测试版
+          - 主流程不会被硬件阻塞
+        costs:
+          - 重量准确度依赖操作员输入
+        risks:
+          - 手动输入可能造成误差，需要记录操作员、时间并标记手动来源
+      - name: 第一版直接接电子秤
+        benefits:
+          - 重量自动读取更准确
+        costs:
+          - 需要现场设备、串口和协议验证
+        risks:
+          - 当前不在现场，硬件不确定性会阻塞交付
+      - name: 只开发串口代码但不验证
+        benefits:
+          - 保留自动取重代码框架
+        costs:
+          - 没有真实协议验证，测试版无法证明可用
+        risks:
+          - 假实现可能被误认为已完成硬件能力
+    decision: 第一版不集成电子秤，称重结果由操作员在平板手动输入并标记为 manual；保留后续电子秤适配的扩展空间，但不纳入第一版实现范围。
+    reason_summary:
+      - 用户明确第一版暂时不考虑连接电子秤
+      - 用户不在现场，无法完成硬件验证
+      - 手动输入可保证测试版闭环，后续接入不需要改变记录模型
+    conditions:
+      - 第一版称重记录必须标记数据来源为 manual
+      - 后续版本再研究电子秤接口、协议和是否需要更换新秤
+    action: 更新 Q-004、REQ-001、BL-WEIGH-003、BL-WEIGH-006 和 RES-001/RES-002
+    expected_result: 第一版基线明确不接电子秤，重量输入以手动为主
+    reversal_plan: 后续现场确认电子秤可连接后，新增自动读秤通道，不影响已保存记录
+    observation: 用户答复第一版本暂时不考虑连接电子秤
+    actual_result: 第一版范围已改为不接电子秤，称重用手动输入标记 manual
+    outcome_status: successful
+    lesson: 硬件能力应依据可验证性决定范围，不应把未验证的最终目标直接放进第一版基线。
+    evidence:
+      - user-statement/2026-09-09 第一版不连接电子秤
+      - .project-log/business-logic/open-questions.yaml#Q-004
+    supersedes: []
+    created_at: "2026-09-09T06:00:00Z"
+    updated_at: "2026-09-09T06:00:00Z"
+  - id: DEC-025
+    title: 第一版部署方式优先采用 Windows 安装包和后台服务
+    category: technical
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-DEVICE-002
+      - BL-DATA-002
+    context: 用户询问电脑端软件更适合 Docker 容器还是开发成安装包直接安装在电脑上，并关注后期更新维护。
+    hypothesis: 第一版是单机局域网系统，用户现场可能没有 Docker 环境，且未来打印/电子秤需要访问 Windows 本机设备；安装包加后台服务比 Docker 更适合现场启动、关机和升级。
+    options:
+      - name: Windows 安装包 + 后台服务
+        benefits:
+          - 安装和卸载直观
+          - 开机自启动容易
+          - 数据和配置留在本机
+          - 更新包可直接拷贝安装
+          - 打印机/串口设备访问简单
+        costs:
+          - 打包安装器和服务注册需要投入一点开发工作
+        risks:
+          - 不同 Windows 版本需要测试
+      - name: Docker 容器
+        benefits:
+          - 运行环境高度一致
+          - 多机或云端迁移更统一
+        costs:
+          - 现场需要安装 Docker Desktop/WSL
+          - 离线镜像搬运和更新更复杂
+        risks:
+          - 后续打印机、串口等 Windows 本机设备访问更复杂
+          - 非技术现场人员维护门槛高
+      - name: 绿色解压包 + 启动脚本
+        benefits:
+          - 最简单
+        costs:
+          - 服务自启动、更新覆盖和异常恢复不完整
+        risks:
+          - 现场出错时维护体验较差
+    decision: 第一版建议采用 Windows 安装包，把后端、浏览器管理端静态文件、SQLite 数据库目录和 Windows 后台服务一起安装到电脑；更新时运行新版安装包或后续版本的覆盖更新包，保留数据目录。
+    reason_summary:
+      - 单机局域网部署适合原生 Windows 服务
+      - 现场大概率没有 Docker 基础和稳定镜像拉取条件
+      - 后续打印机和电子秤需要本机设备访问
+      - 安装包更符合“简单好上手、方便后期更新维护”
+    conditions:
+      - 后端电脑为 Windows 10/11
+      - 安装包可保留独立数据目录，升级时不覆盖业务数据
+      - 第一版不依赖 Docker
+    action: 待用户确认后，将 DEC-025 标记为 active/approved，并纳入架构设计和部署方案
+    expected_result: 第一版确定采用 Windows 安装包和后台服务，便于现场安装和升级
+    reversal_plan: 后续出现多机部署、统一环境或云端化需求时，再评估 Docker/容器化
+    observation: 用户答复“我也同意安装包策略”
+    actual_result: 第一版部署方式已确定为 Windows 安装包 + 后台服务
+    outcome_status: successful
+    lesson: null
+    evidence:
+      - user-statement/2026-09-09 询问电脑端部署形式
+    supersedes: []
+    created_at: "2026-09-09T06:30:00Z"
+    updated_at: "2026-09-09T06:50:00Z"
+  - id: DEC-024
+    title: 第一版技术栈：FastAPI + SQLite + Android 原生 + 浏览器管理端
+    category: technical
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-DEVICE-001
+      - BL-DEVICE-002
+      - BL-SCOPE-001
+      - BL-DATA-001
+      - BL-WEIGH-003
+    context: 用户确认后端运行在 Windows 10/11，平板为 Android，电脑端使用浏览器管理端；此前认可 Python FastAPI、SQLite 和 Android APK 的组合。
+    hypothesis: Python FastAPI 提供 API 和静态浏览器前端、SQLite 管理单机数据、Android 原生打包 APK，是当前现场约束下运维最轻、交付最快的组合。
+    options:
+      - name: FastAPI + SQLite + Android 原生 + 浏览器 SPA
+        benefits:
+          - 部署简单
+          - 后端、管理端同一服务
+          - 平板 APK 可直接安装
+          - 后续串口、打印和 Excel 库生态成熟
+        costs:
+          - 需要开发前端和 Android 两端
+        risks:
+          - SQLite 多客户端并发需测试，但第一版规模风险低
+      - name: Spring Boot + PostgreSQL + Flutter
+        benefits:
+          - 企业级能力更强
+        costs:
+          - 部署和开发复杂度更高
+        risks:
+          - 第一版交付和维护成本上升
+      - name: Node.js + PostgreSQL + PWA
+        benefits:
+          - 前后端同一语言
+        costs:
+          - 串口、打印等本地上位机能力较弱
+          - 不满足用户明确的 APK 安装方向
+        risks:
+          - 现场原生硬件能力依赖更复杂
+    decision: 第一版采用 Python FastAPI + SQLite + Android 原生 Kotlin APK + 浏览器管理端；浏览器管理端使用 React + Vite 构建为静态文件，由 FastAPI 同端口提供。
+    reason_summary:
+      - 用户确认后端运行 Windows 10/11
+      - 用户确认平板为 Android，需要 APK
+      - 用户需要电脑端浏览器前端
+      - 单机局域网部署下 SQLite 和 FastAPI 运维最轻
+    conditions:
+      - 后端电脑为 Windows 10/11
+      - 平板为 Android 并支持安装 APK
+      - 浏览器管理端与 API 只在内网访问
+      - 第一版不连接电子秤，重量输入为 manual
+    action: 更新 RES-002 为第一版技术栈方向，后续架构设计和任务拆解按其展开
+    expected_result: 技术方案研究从候选讨论收敛到第一版确定的技术栈
+    reversal_plan: 若后续并发或数据规模超出 SQLite，可迁移 PostgreSQL；前端框架如改 Vue 属于低风险调整
+    observation: 用户答复技术栈按推荐执行，电脑端使用浏览器版本
+    actual_result: RES-002 已按该方向更新，进入技术方案细化
+    outcome_status: successful
+    lesson: 技术选型应先围绕现场可运维性，而不是先追求企业级框架；浏览器管理端和 API 同端口部署可减少现场配置。
+    evidence:
+      - user-statement/2026-09-09 系统按 Windows 10/11 编写
+      - user-statement/2026-09-09 平板是 Android
+      - user-statement/2026-09-09 电脑端使用浏览器版本
+    supersedes: []
+    created_at: "2026-09-09T06:10:00Z"
+    updated_at: "2026-09-09T06:10:00Z"
+  - id: DEC-027
+    title: 第一版架构输入默认规则已确认
+    category: business
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-WEIGH-003
+      - BL-WEIGH-006
+      - BL-WO-001
+      - BL-DATA-001
+      - BL-DEVICE-002
+    context: 进入架构设计前，需要把称重口径、主数据/工单规则、账号审批、平板/网络、Windows 部署、标签打印等默认值固化。
+    hypothesis: 用户按既定建议确认默认值后，架构设计可以停止重复询问业务口径，直接进入模块、接口和数据流定义。
+    options:
+      - name: 全部按建议默认确认
+        benefits:
+          - 减少架构设计往返
+          - 业务规则一致
+        costs:
+          - 部分现场细节仍需在交付前验证
+        risks:
+          - 现场实际习惯与默认值不同，需要在测试阶段调整
+      - name: 逐项再给客户确认
+        benefits:
+          - 更谨慎
+        costs:
+          - 流程变慢
+        risks:
+          - 重复确认已给出建议的默认项
+    decision: 第一版按推荐的默认规则执行：净重 kg 输入、读数照片包含材料和读数、默认允差 5g 或 1% 较大值、工单保存配方快照、Excel 新增不覆盖、工单可暂停续作、管理员审批、无离线队列、Windows 11、最新 Android、支持 APK 和 Windows 安装包、安装包内置自动备份。
+    reason_summary:
+      - 用户答复“其他的我都同意你说的，没问题”
+      - 用户补充默认 Windows 11、最新 Android 平板、支持安装应用、自动备份数据库
+      - 架构设计具备明确输入
+    conditions:
+      - 第一版后端按 Windows 11 部署
+      - 平板按最新 Android 系统适配并支持安装 APK
+      - 安装包内置自动备份数据库
+    action: 更新 REQ-001 为 v4，并作为架构设计输入
+    expected_result: 架构设计不再需要重新猜测业务默认规则
+    reversal_plan: 现场测试发现默认规则不符合实际情况时，通过变更流程调整设置或基线
+    observation: 用户确认平板用最新安卓系统、其他按建议默认、Windows 按 Windows 11、平板和 Windows 都支持安装应用、自动备份数据库
+    actual_result: 架构设计输入已固化
+    outcome_status: successful
+    lesson: 默认规则一旦确认，应合并成单一决策记录，避免架构阶段被多份散落问题反复打断。
+    evidence:
+      - user-statement/2026-09-09 架构设计默认规则确认
+      - .project-log/docs/solution-research-input-questions.md
+    supersedes: []
+    created_at: "2026-09-09T07:00:00Z"
+    updated_at: "2026-09-09T07:00:00Z"
+  - id: DEC-026
+    title: 第一版手动称重必须同时保存电子秤读数照片
+    category: business
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-WEIGH-003
+      - BL-WEIGH-006
+    context: 第一版不连接电子秤，重量由操作员手动输入；用户认为仅记录数字不保险，要求同时拍摄电子秤读数图片作为称重证据。
+    hypothesis: 将“数字重量 + 电子秤读数照片”设为手动称重的强制证据，可以在不接入电子秤的第一版提高重量追溯和防错能力。
+    options:
+      - name: 数字重量 + 电子秤读数照片一起留痕
+        benefits:
+          - 操作员不能只凭记忆或任意数字提交
+          - 后台可核对读数照片和输入重量
+          - 后续追溯更完整
+        costs:
+          - 操作员每次称重需要多一个拍照动作
+        risks:
+          - 照片可能拍不清或拍错，需要现场操作规范
+      - name: 只记录手动输入数字
+        benefits:
+          - 操作最快
+        costs:
+          - 无法核实读数是否真实
+        risks:
+          - 重量错误难以追溯，防错强度不足
+      - name: 电子秤自动读取
+        benefits:
+          - 自动读数最可靠
+        costs:
+          - 需要现场硬件、协议和验证
+        risks:
+          - 当前不在现场，无法作为第一版范围
+    decision: 第一版手动称重必须在平板同时提交数字重量和电子秤读数照片；系统将两者一起保存，缺少任一证据则不能完成该辅料步骤。
+    reason_summary:
+      - 用户明确要求重量确认增加拍照留痕
+      - 手动输入数字不能独立证明重量真实
+      - 拍照证据可提高第一版防错和追溯能力
+    conditions:
+      - 操作员每次确认重量时必须拍摄电子秤读数照片
+      - 照片和数字重量必须同时落库
+      - 照片缺失或无法辨认时禁止完成重量步骤
+    action: 更新 BL-WEIGH-003、BL-WEIGH-006、REQ-001 v3 和操作员工作流文档
+    expected_result: 重量记录同时包含手动数字、读数照片、操作员和时间
+    reversal_plan: 后续接入自动读秤后，自动读数可替代手动拍照或按新方案调整
+    observation: 用户答复“重量确认这里，希望增加一个拍照的要求，两个信息一起记录下来”
+    actual_result: 需求基线 v3 已加入电子秤读数照片强制证据要求
+    outcome_status: successful
+    lesson: 手动输入类业务应优先增加图片/视频等旁证，避免数字记录成为不可验证的单一事实。
+    evidence:
+      - user-statement/2026-09-09 手动称重必须拍照电子秤读数
+      - .project-log/business-logic/atoms.yaml#BL-WEIGH-006
+    supersedes: []
+    created_at: "2026-09-09T06:40:00Z"
+    updated_at: "2026-09-09T06:40:00Z"
+  - id: DEC-001
+    title: 辅料称重防错系统不连接金蝶，独立交付
+    category: business
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-SCOPE-001
+    context: 客户原环境存在金蝶系统，但接口、功能和权限未知，需要确定系统交付边界。
+    hypothesis: 独立系统可以更快交付核心防错能力，并且不被金蝶改造复杂度阻塞。
+    options:
+      - name: 独立系统
+        benefits:
+          - 不依赖金蝶能力
+          - MVP 边界清晰、交付更快
+          - 便于现场简单上手
+        costs:
+          - 产品、配方和辅料主数据需要在本系统维护或导入
+        risks:
+          - 未来若需与金蝶联动，需要另做接口
+      - name: 金蝶子系统或嵌入金蝶
+        benefits:
+          - 可能复用现有主数据和账号体系
+        costs:
+          - 需要先研究金蝶开发方式和权限
+          - 交付周期和复杂度显著增加
+        risks:
+          - 可能被金蝶平台能力阻塞
+    decision: 独立系统，不连接金蝶
+    reason_summary:
+      - 客户明确反馈独立且不连接金蝶
+      - 范围聚焦辅料类型确认和重量校验
+      - 简单、好上手是当前优先目标
+    conditions:
+      - 产品、配方和辅料主数据由本系统维护或导入
+    action: 将 Q-001 标记为 answered，并更新业务边界为独立系统
+    expected_result: 后续澄清和实现不再依赖金蝶接口
+    reversal_plan: 未来如需要对接金蝶，再作为独立增量做接口方案
+    observation: Q-001 已由用户回答为独立系统，且不连接金蝶
+    actual_result: 业务澄清以独立系统为边界推进
+    outcome_status: successful
+    lesson: null
+    evidence:
+      - .project-log/business-logic/open-questions.yaml
+    supersedes: []
+    created_at: "2026-09-08T07:59:53Z"
+    updated_at: "2026-09-08T07:59:53Z"
+  - id: DEC-002
+    title: 产品、配方和辅料主数据由用户在本系统内自主维护
+    category: business
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-DATA-001
+    context: 系统已确认不连接金蝶，因此需要确定产品、配方和辅料信息如何进入独立系统。
+    hypothesis: 由系统提供基础数据管理功能，用户可以自行录入和维护，最符合独立、简单、好上手的交付目标。
+    options:
+      - name: 本系统内维护，支持手工录入和 Excel 导入
+        benefits:
+          - 不依赖外部系统
+          - 数据量少或大时都可使用
+          - 用户日常可直接管理生产基础数据
+        costs:
+          - 需要实现基础数据管理界面和数据校验
+        risks:
+          - 数据重复或录入错误需要靠界面校验和后续治理
+      - name: 仅手工录入
+        benefits:
+          - 实现最简单
+        costs:
+          - 初始化和批量修改成本高
+        risks:
+          - 数据量大时难以维护
+      - name: 继续依赖金蝶等外部系统
+        benefits:
+          - 可能复用现有主数据
+        costs:
+          - 与独立系统决策冲突
+        risks:
+          - 交付复杂度和阻塞风险高
+    decision: 由用户在本系统内自行创建和维护产品、产品配料和辅料信息，并保留 Excel 模板导入能力。
+    reason_summary:
+      - 客户明确要求系统提供这些管理功能
+      - 独立系统需要自己的主数据来源
+      - 手工录入加 Excel 导入覆盖简单和批量两种场景
+    conditions: []
+    action: 将 Q-002 标记为 answered，并新增 BL-DATA-001 业务原子
+    expected_result: 系统具备产品、配方和辅料主数据管理能力
+    reversal_plan: 如后续发现批量数据需求，可只保留 Excel 导入作为增强功能
+    observation: Q-002 已由用户确认
+    actual_result: 主数据管理被纳入独立系统业务范围
+    outcome_status: successful
+    lesson: null
+    evidence:
+      - .project-log/business-logic/open-questions.yaml
+    supersedes: []
+    created_at: "2026-09-08T08:05:12Z"
+    updated_at: "2026-09-08T08:05:12Z"
+  - id: DEC-003
+    title: 现场操作首选平板，扫码枪作为次选
+    category: business
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-DEVICE-001
+    context: 客户现场没有扫码枪，需要确定系统运行的硬件设备形态。
+    hypothesis: 以平板摄像头完成扫码和拍照识别，可以满足简单、好上手且不需要额外采购扫码枪的目标。
+    options:
+      - name: 平板优先
+        benefits:
+          - 摄像头可直接扫码/拍照
+          - 不依赖扫码枪采购
+          - 界面和操作适合现场
+        costs:
+          - 需要按平板界面适配
+        risks:
+          - 部分辅料二维码或拍摄环境可能影响识别
+      - name: 扫码枪优先
+        benefits:
+          - 扫码体验稳定
+        costs:
+          - 需要采购硬件并部署
+        risks:
+          - 交付前多一个硬件依赖
+      - name: 平板加扫码枪
+        benefits:
+          - 两种识别方式都有
+        costs:
+          - 增加硬件采购和配置
+        risks:
+          - 当前阶段复杂度提升
+    decision: 首选平板，扫码枪作为次选扩展；MVP 先按平板实现。
+    reason_summary:
+      - 用户明确确定两个设备并首选平板
+      - 平板自带摄像头可覆盖扫码和拍照
+      - 扫码枪保留为后续扩展，不阻塞当前开发
+    conditions: []
+    action: 将 Q-003 标记为 answered，并新增 BL-DEVICE-001 业务原子
+    expected_result: 系统以平板为主要操作和识别设备
+    reversal_plan: 如果需要，可在后续迭代增加扫码枪识别通道
+    observation: Q-003 已由用户确认
+    actual_result: 设备方向确定为平板优先
+    outcome_status: successful
+    lesson: null
+    evidence:
+      - .project-log/business-logic/open-questions.yaml
+    supersedes: []
+    created_at: "2026-09-08T08:10:16Z"
+    updated_at: "2026-09-08T08:10:16Z"
+  - id: DEC-004
+    title: 第一版无码辅料测试版采用先审批后称重
+    category: business
+    status: experimental
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-WEIGH-005
+    context: 第一版没有模型自动识别，无码辅料只能靠拍照和人工确认；需要明确申请、放行与称重的先后顺序。
+    hypothesis: 测试版通过平板端申请、电脑端审批、审批通过后称重，可以完整验证类型确认和证据留痕闭环，即使效率较低也可接受。
+    options:
+      - name: 先审批后称重
+        benefits:
+          - 防错强度高
+          - 申请、审批、称重全部留痕
+          - 符合客户“申请放行”的业务意图
+        costs:
+          - 现场需要第二个审批人
+          - 效率低于无审批流程
+        risks:
+          - 审批不及时会阻塞生产
+      - name: 先称重后补审批
+        benefits:
+          - 生产不中断
+        costs:
+          - 类型错误可能在审批前已进入称重
+        risks:
+          - 防错和追责能力下降
+      - name: 无审批仅拍照确认
+        benefits:
+          - MVP 最简单
+        costs:
+          - 拍照不能证明类型正确
+        risks:
+          - 与“申请放行”的业务意图不一致
+    decision: 第一版测试版采用先审批后称重；平板端拍照申请，电脑端审批通过后才允许称重。
+    reason_summary:
+      - 客户明确确认测试版使用先审批后称重
+      - 测试版目的之一是验证防错和留痕闭环
+      - 两人协作可满足现场审批效率
+    conditions:
+      - 第一版需有电脑端审批账号或审批入口
+      - 平板申请后电脑端可立即查看并审批
+    action: 将 Q-005 标记为 answered，并新增 BL-WEIGH-005 业务原子
+    expected_result: 无码辅料必须经过申请和审批通过后才能称重
+    reversal_plan: 真实生产版本确定后，可改为更高效的放行策略并更新业务原子
+    observation: 用户确认第一版测试版为“平板申请、电脑审批、通过后称重”
+    actual_result: 无码辅料放行时序已纳入第一版基线
+    outcome_status: successful
+    lesson: null
+    evidence:
+      - .project-log/business-logic/open-questions.yaml#Q-005
+    supersedes: []
+    created_at: "2026-09-08T09:17:09Z"
+    updated_at: "2026-09-08T09:17:09Z"
+  - id: DEC-005
+    title: 称重允差按辅料或配方配置并由用户在设置界面维护
+    category: business
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-WEIGH-003
+      - BL-SETTINGS-001
+    context: 重量正确是第一版防错核心，需要确定允差是全局统一、按辅料/配方配置，还是完全不允许偏差。
+    hypothesis: 按辅料或配方配置允差，并把参数放到设置界面，可以在现场不同重量辅料之间保持可操作性，同时避免为每次调整改代码。
+    options:
+      - name: 按辅料/配方配置允差
+        benefits:
+          - 大重量和小重量辅料可分别配置
+          - 参数可调整，减少现场阻塞
+        costs:
+          - 主数据和设置界面需要多一点配置能力
+        risks:
+          - 配置错误会影响称重判定，需要校验
+      - name: 全系统统一允差
+        benefits:
+          - 实现最简单
+        costs:
+          - 不同重量范围难以兼顾
+        risks:
+          - 可能过严或过松
+      - name: 不允许任何偏差
+        benefits:
+          - 防错最严
+        costs:
+          - 现场操作难度高
+        risks:
+          - 频繁阻塞生产
+    decision: 每条辅料或配方可配置允差；测试版先使用统一默认值；允差、稳定条件等参数放在设置界面，允许用户自行调整。
+    reason_summary:
+      - 用户明确选择按辅料/配方配置允差
+      - 用户要求参数调整放在设置界面，允许自行修改
+      - 测试版先使用统一默认值，后续按现场反馈调整
+    conditions:
+      - 设置界面需对非法参数做校验
+    action: 将 Q-006 标记为 answered，并新增 BL-SETTINGS-001 业务原子
+    expected_result: 称重完成时按当前辅料/配方配置的允差判断重量正确
+    reversal_plan: 正式版可调整默认值和配置粒度，不需要推翻整体允差机制
+    observation: 用户确认按第一种方案，并明确参数放在设置界面
+    actual_result: 允差配置已纳入第一版业务逻辑
+    outcome_status: successful
+    lesson: null
+    evidence:
+      - .project-log/business-logic/open-questions.yaml#Q-006
+    supersedes: []
+    created_at: "2026-09-08T09:23:17Z"
+    updated_at: "2026-09-08T09:23:17Z"
+  - id: DEC-006
+    title: 测试版默认允差取目标重量 5g 与 1% 中的较大绝对偏差
+    category: business
+    status: active
+    authority: B
+    user_approval: not-required
+    related_tasks: []
+    related_business_logic:
+      - BL-WEIGH-003
+      - BL-SETTINGS-001
+    context: Q-006 确认测试版先使用统一默认值，但用户未指定具体默认数值；该值可以后续在设置界面修改。
+    hypothesis: 取目标重量的 5g 与 1% 中较大的绝对偏差，可以在小重量和大重量辅料之间保持合理的可操作性。
+    options:
+      - name: 取 5g 与 1% 中较大值
+        benefits:
+          - 小重量偏重量化，大重量带比例容差
+        costs:
+          - 规则比单一固定值稍复杂
+        risks:
+          - 可能比客户预期宽松或严格
+      - name: 固定 ±5g
+        benefits:
+          - 规则简单
+        costs:
+          - 大重量辅料可能过严
+        risks:
+          - 现场频繁需要手动调整
+      - name: 固定 ±1%
+        benefits:
+          - 大重量辅料较友好
+        costs:
+          - 小重量辅料可能过松
+        risks:
+          - 防错精度不足
+    decision: 测试版默认允差取目标重量 5g 与 1% 中的较大绝对偏差，并允许用户在设置界面调整。
+    reason_summary:
+      - 客户未指定默认数值，但已确认参数可配置
+      - 统一默认值需要同时覆盖小重量和大重量场景
+    conditions:
+      - 用户在设置界面仍可覆盖此默认值
+    action: 将默认允差规则记录到 BL-SETTINGS-001
+    expected_result: 新辅料未单独配置允差时使用可调整的合理测试默认值
+    reversal_plan: 现场测试后可修改默认值，不影响已完成的称重记录
+    observation: 用户在 Q-006 选择按辅料/配方配置，并允许设置界面调整
+    actual_result: 默认允差已作为可调整测试参数记录
+    outcome_status: not-observed
+    lesson: null
+    evidence:
+      - .project-log/business-logic/atoms.yaml#BL-SETTINGS-001
+    supersedes: []
+    created_at: "2026-09-08T09:23:17Z"
+    updated_at: "2026-09-08T09:23:17Z"
+  - id: DEC-007
+    title: 电子秤异常时手动输入直接允许并留痕，测试版不做电脑端审批
+    category: business
+    status: experimental
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-WEIGH-006
+    context: 已确认电子秤连接失败时支持手动输入当前秤面读数，但需要明确手动输入是否可以直接完成称重，是否需要审批。
+    hypothesis: 第一版测试以流程可走通为主，手动输入直接允许但强制标记来源和留痕，可以保持测试效率，正式版再考虑更严格的确认规则。
+    options:
+      - name: 手动输入直接允许并留痕
+        benefits:
+          - 电子秤异常时流程不中断
+          - 记录来源、操作员和时间，便于追溯
+        costs:
+          - 无法完全证明输入重量来自电子秤
+        risks:
+          - 存在人工误输或虚报风险
+      - name: 手动输入需电脑端审批
+        benefits:
+          - 防错更强
+        costs:
+          - 电子秤断线时操作更慢
+        risks:
+          - 测试流程可能被频繁阻塞
+      - name: 电子秤离线时禁止称重
+        benefits:
+          - 防错最强
+        costs:
+          - 失去手动兜底能力
+        risks:
+          - 依赖硬件稳定性
+    decision: 第一版测试允许手动输入，系统必须标记为“手动读数”，记录操作员、时间和读数；测试版不做电脑端审批。
+    reason_summary:
+      - 用户明确按第一版测试建议执行
+      - 手动输入留痕能满足测试版追溯需求
+      - 正式生产确认规则留待后续
+    conditions:
+      - 手动读数与自动读数在记录中可区分
+    action: 将 Q-007 标记为 answered，并新增 BL-WEIGH-006 业务原子
+    expected_result: 电子秤异常时操作员可手动输入，系统保留可追溯的手动读数记录
+    reversal_plan: 正式版可增加审批、二次确认或电子秤强制在线规则
+    observation: 用户确认按第一版测试方案执行
+    actual_result: 手动输入兜底规则已纳入第一版业务逻辑
+    outcome_status: successful
+    lesson: null
+    evidence:
+      - .project-log/business-logic/open-questions.yaml#Q-007
+    supersedes: []
+    created_at: "2026-09-08T09:27:42Z"
+    updated_at: "2026-09-08T09:27:42Z"
+  - id: DEC-008
+    title: 工单与操作员账号绑定，由电脑后台审批创建和接管
+    category: business
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-WO-001
+      - BL-WO-002
+      - BL-WO-003
+      - BL-WO-004
+    context: 系统支持多平板工作，但需要确定工单由谁负责、如何创建、如何变更负责人，避免同一工单多人操作和状态混乱。
+    hypothesis: 平板为主业务端、电脑后台为审批和数据管理端，并通过工单绑定账号来明确责任和操作权限，符合现场实际组织方式。
+    options:
+      - name: 平板创建/后台审批/账号绑定
+        benefits:
+          - 现场操作习惯自然
+          - 工单责任清晰
+          - 后台可审批创建和接管
+        costs:
+          - 需要实现工单审批和绑定状态流
+        risks:
+          - 审批不及时会阻塞工单开始
+      - name: 后台集中创建和分配
+        benefits:
+          - 后台控制力强
+        costs:
+          - 平板端不是主要业务入口
+          - 后台工作量较大
+        risks:
+          - 与用户平板为主的流程不符合
+      - name: 工单不绑定账号
+        benefits:
+          - 实现简单
+        costs:
+          - 责任和操作边界不清
+        risks:
+          - 多人误操作或重复称重
+    decision: 平板端创建工单后由后台审批并绑定创建账号；只有绑定账号可操作；其他账号可申请接管并由后台审批；后台也可创建工单并指定绑定账号。
+    reason_summary:
+      - 用户明确平板端是主要业务操作端
+      - 用户要求工单绑定账号并后台审批
+      - 用户要求支持接管审批和后台创建分配
+    conditions:
+      - 统一登录账号体系
+      - 工单绑定关系变更需留痕
+    action: 将 Q-008 标记为 answered，并新增 BL-WO-001 到 BL-WO-004
+    expected_result: 工单有明确绑定账号，只有绑定账号可操作；创建和接管都经过后台审批
+    reversal_plan: 正式版若允许同工单多人合作，再扩展为多操作员协作模型
+    observation: 用户完整描述了平板创建、后台审批、账号绑定、接管和后台创建分配流程
+    actual_result: 工单绑定和审批流程已纳入业务基线
+    outcome_status: successful
+    lesson: null
+    evidence:
+      - .project-log/business-logic/open-questions.yaml#Q-008
+    supersedes: []
+    created_at: "2026-09-08T09:44:18Z"
+    updated_at: "2026-09-08T09:44:18Z"
+  - id: DEC-009
+    title: 工单按顺序完成全部辅料步骤并保留证据后方可完成；撤销/删除需后台审批
+    category: business
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-WO-005
+      - BL-WO-006
+    context: 工单绑定账号流程已确认，还需要定义工单何时能完成，以及创建错误、无法继续或重复创建时如何撤销/删除。
+    hypothesis: 只有所有辅料步骤按顺序完成且每个步骤都有类型证据和重量记录，工单完成才可信；撤销/删除通过后台审批可以避免误删和状态失控。
+    options:
+      - name: 全部步骤完成后才完成
+        benefits:
+          - 防错完整
+          - 每一步都可追溯
+        costs:
+          - 必须完整执行所有步骤
+        risks:
+          - 故障步骤会阻塞完成，需要撤销/作废机制
+      - name: 允许部分步骤完成
+        benefits:
+          - 流程灵活
+        costs:
+          - 证据不完整，防错目标被削弱
+        risks:
+          - 辅料可能漏称或错称
+      - name: 操作员可自行撤销/删除
+        benefits:
+          - 操作灵活
+        costs:
+          - 责任边界不清
+        risks:
+          - 错误操作可能被掩盖或误删
+    decision: 工单按顺序完成全部辅料步骤，且每个辅料都有二维码/图片证据和实际重量记录后才可提交完成；平板端可申请撤销/删除，需后台审批；后台也可撤销/删除。
+    reason_summary:
+      - 用户明确要求全部步骤完成后才可提交完成
+      - 用户明确要求保留每个辅料的扫码/图片和重量记录
+      - 用户明确要求撤销/删除需后台审批，后台也可直接操作
+    conditions:
+      - 撤销/删除是否物理删除由 Q-010 进一步确认
+    action: 将 Q-009 标记为 answered，并新增 BL-WO-005、BL-WO-006
+    expected_result: 未完成全部辅料步骤的工单不能提交完成；撤销/删除需要后台审批或后台执行
+    reversal_plan: 若正式版允许同工单多人协作，再调整“按顺序完成”的范围和并发规则
+    observation: 用户确认了完成条件和撤销/删除规则
+    actual_result: 工单完成和撤销/删除规则已纳入业务基线
+    outcome_status: successful
+    lesson: null
+    evidence:
+      - .project-log/business-logic/open-questions.yaml#Q-009
+    supersedes: []
+    created_at: "2026-09-08T09:52:19Z"
+    updated_at: "2026-09-08T09:52:19Z"
+  - id: DEC-010
+    title: 删除工单也保留历史记录，采用撤销/作废和逻辑删除
+    category: business
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-WO-006
+    context: 已确认平板可申请删除、后台可删除，但没有明确删除后是否保留扫码、图片、重量和审批记录。
+    hypothesis: 删除后保留完整记录可以兼顾“界面看不到”和“证据可追溯”，避免撤销/删除造成不可恢复的数据丢失。
+    options:
+      - name: 保留全部记录
+        benefits:
+          - 证据可追溯
+          - 误删可恢复或可查
+        costs:
+          - 数据库存储会持续增加
+        risks:
+          - 需要规划长期存储策略
+      - name: 物理删除
+        benefits:
+          - 存储占用少
+        costs:
+          - 证据永久丢失
+        risks:
+          - 无法满足追溯和审计需求
+      - name: 普通账号隐藏，后台保留
+        benefits:
+          - 前台干净且后台可查
+        costs:
+          - 需要额外权限控制
+        risks:
+          - 复杂度略高
+    decision: 第一版删除也保留记录；工单撤销/删除采用撤销/作废和逻辑删除，不物理删除工单和证据。
+    reason_summary:
+      - 用户明确确认删除也要保留记录
+      - 扫码/图片和重量证据是防错追溯的核心
+      - 逻辑删除保持平板端干净，后台可追溯
+    conditions: []
+    action: 将 Q-010 标记为 answered，并更新 BL-WO-006 为逻辑删除/作废规则
+    expected_result: 撤销/删除后的工单在平板端不可执行，后台保留完整记录和证据
+    reversal_plan: 后续如需物理清理早期数据，再单独做数据归档和清理策略
+    observation: 用户答复“删除也要保留记录”
+    actual_result: 逻辑删除/作废策略已纳入第一版业务逻辑
+    outcome_status: successful
+    lesson: null
+    evidence:
+      - .project-log/business-logic/open-questions.yaml#Q-010
+    supersedes: []
+    created_at: "2026-09-08T09:58:19Z"
+    updated_at: "2026-09-08T09:58:19Z"
+  - id: DEC-011
+    title: 平板注册账号为普通操作员，后台账号为预置管理员
+    category: business
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-AUTH-001
+    context: 已确认平板为主业务端、电脑后台为管理端，但还需要明确账号注册来源和权限边界，避免普通账号获得后台能力。
+    hypothesis: 平板端注册账号限定为普通操作员，后台管理员使用预置账号，并由管理员创建和管理普通账号，可以保持责任边界清晰。
+    options:
+      - name: 平板普通账号 + 后台预置管理员
+        benefits:
+          - 权限边界清晰
+          - 符合平板为主的使用方式
+        costs:
+          - 管理员账号需要在部署时初始化
+        risks:
+          - 管理员密码需要妥善管理
+      - name: 所有账号同一权限
+        benefits:
+          - 实现简单
+        costs:
+          - 任何账号都可能进入后台
+        risks:
+          - 审批和设置权限失控
+      - name: 三类角色
+        benefits:
+          - 权限更细
+        costs:
+          - 第一版复杂度更高
+        risks:
+          - 对测试版不必要
+    decision: 平板端注册的账号均为普通操作员账号；电脑后台账号为管理员账号，管理员账号为预置账号；后台可以创建和管理普通账号。
+    reason_summary:
+      - 用户明确平板创建的账户都是普通账户
+      - 用户明确后台账户属于预置管理员账户
+      - 用户明确后台可创建和管理普通账户
+    conditions:
+      - 部署时初始化管理员账号
+    action: 将 Q-011 标记为 answered，并新增 BL-AUTH-001
+    expected_result: 普通账号不能进入后台，后台只能由预置管理员账号访问并能管理普通账号
+    reversal_plan: 如正式版需要更多角色，可在权限模型上扩展
+    observation: 用户确认账号来源和权限划分
+    actual_result: 账号角色模型已纳入第一版业务逻辑
+    outcome_status: successful
+    lesson: null
+    evidence:
+      - .project-log/business-logic/open-questions.yaml#Q-011
+    supersedes: []
+    created_at: "2026-09-08T10:32:39Z"
+    updated_at: "2026-09-08T10:32:39Z"
+  - id: DEC-012
+    title: 称重记录与证据长期保存
+    category: data
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-DATA-002
+    context: 已确认删除也保留记录，但还需要明确保存多久，以及是否需要设定清理策略。
+    hypothesis: 第一版长期保存所有称重记录和证据可以保证完整追溯，后续如有存储压力再增加归档/清理策略。
+    options:
+      - name: 长期保存
+        benefits:
+          - 历史可追溯
+          - 第一版无需清理任务
+        costs:
+          - 图片和数据会持续累积
+        risks:
+          - 需要规划备份和存储容量
+      - name: 固定周期保留
+        benefits:
+          - 控制数据量
+        costs:
+          - 需要定义保存周期和清理实现
+        risks:
+          - 可能提前删除追溯所需证据
+      - name: 只保留生产追溯周期
+        benefits:
+          - 存储占用少
+        costs:
+          - 需要客户提供明确的追溯周期
+        risks:
+          - 周期错误会损失关键数据
+    decision: 第一版称重记录、扫码/图片和审批证据长期保存，不限制保存时长。
+    reason_summary:
+      - 用户确认长期保存
+      - 与删除保留记录策略一致
+      - 第一版不引入自动清理复杂度
+    conditions:
+      - 后续规划备份和存储容量
+    action: 将 Q-012 标记为 answered，并新增 BL-DATA-002
+    expected_result: 工单和称重证据长期保留并可追溯
+    reversal_plan: 正式版如需清理或归档，再单独制定数据生命周期策略
+    observation: 用户答复“长期保存”
+    actual_result: 长期保存策略已纳入第一版业务逻辑
+    outcome_status: successful
+    lesson: null
+    evidence:
+      - .project-log/business-logic/open-questions.yaml#Q-012
+    supersedes: []
+    created_at: "2026-09-08T10:40:05Z"
+    updated_at: "2026-09-08T10:40:05Z"
+  - id: DEC-013
+    title: 配方按每吨成品辅料用量录入并按目标生产重量换算
+    category: business
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-WEIGH-001
+    context: 系统需要根据产品配方和目标生产重量生成辅料称量清单，但配方录入方式和换算规则此前未确定。
+    hypothesis: 使用“每吨成品需要多少辅料”作为标准配方，再按目标生产重量等比换算，可以覆盖任意生产量且便于维护。
+    options:
+      - name: 按每吨成品录入并等比换算
+        benefits:
+          - 1 吨、2 吨或任意目标重量都可计算
+          - 配方维护含义清楚
+        costs:
+          - 录入时需要统一换算到每吨
+        risks:
+          - 若历史配方不是按吨编写，需要转换
+      - name: 按固定批次录入绝对重量
+        benefits:
+          - 直接对应现成批次配方
+        costs:
+          - 不同生产量需要另做批次规则
+        risks:
+          - 生产量变化时容易算错
+      - name: 百分比/比例配方
+        benefits:
+          - 比例直观
+        costs:
+          - 需要额外定义基准产量
+        risks:
+          - 与客户现有配方表达方式可能不一致
+    decision: 配方按每吨成品需要的辅料用量录入；系统按“目标生产重量 ÷ 1000kg”等比换算。
+    reason_summary:
+      - 用户明确暂时按每吨多少辅料来写
+      - 每吨基准可以覆盖任意目标生产重量
+      - 与核心计算原子 BL-WEIGH-001 一致
+    conditions: []
+    action: 将 Q-013 标记为 answered，并更新 BL-WEIGH-001 的换算规则
+    expected_result: 生成称量清单时，按每吨配方和目标重量自动换算辅料用量
+    reversal_plan: 若客户后续提供固定批次配方，再增加批量换算规则
+    observation: 用户答复“暂时按照每吨多少辅料来写”
+    actual_result: 每吨配方换算规则已纳入业务基线
+    outcome_status: successful
+    lesson: null
+    evidence:
+      - .project-log/business-logic/open-questions.yaml#Q-013
+    supersedes: []
+    created_at: "2026-09-08T10:45:46Z"
+    updated_at: "2026-09-08T10:45:46Z"
+  - id: DEC-014
+    title: 第一版采用混合辅料识别方案
+    category: business
+    status: superseded
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-WEIGH-002
+      - BL-RECOG-001
+    context: 现场包装和码型不统一，现有码不能覆盖全部辅料，供应商二维码多为溯源信息，需要确定第一版如何识别辅料类型。
+    hypothesis: 第一版先利用现有有效码自动匹配，无法稳定匹配的辅料走拍照申请审批，可以在不强制贴码的情况下验证完整防错闭环。
+    options:
+      - name: 自制二维码贴纸
+        benefits:
+          - 所有辅料统一可扫码
+        costs:
+          - 需要打印和粘贴
+        risks:
+          - 贴错码会引入新的类型错误
+      - name: 仅现有码加拍照审批
+        benefits:
+          - 不需要增加贴码工作
+        costs:
+          - 自动识别覆盖率低
+        risks:
+          - 无码和无效码辅料依赖人工审批
+      - name: 混合方案
+        benefits:
+          - 现有有效码可自动匹配
+          - 无码或无法匹配辅料仍可走审批流程
+          - 保留未来贴码增强能力
+        costs:
+          - 需要同时处理扫码和拍照申请两条流程
+        risks:
+          - 无码辅料的自动防错能力有限
+    decision: 第一版采用方案 C 混合方案：现有有效码映射到内部代号后自动匹配；无码、无效码或未映射码走拍照、手动选择辅料和后台审批；自制二维码贴纸作为后续增强。
+    reason_summary:
+      - 用户明确选择方案 C
+      - 不强制铺开贴码，减少现场成本
+      - 兼容现有码和无码辅料，先验证完整流程
+    conditions:
+      - 现有码映射细节由 Q-014 进一步确认
+    action: 将 Q-015 标记为 answered，并新增 BL-RECOG-001
+    expected_result: 第一版同时支持现有码自动匹配和拍照申请审批
+    reversal_plan: 该方案后续被自制二维码为主方案取代
+    observation: 用户答复“按照方案C来走”，后根据现场码型参差不齐调整为自制二维码为主
+    actual_result: 混合识别方案曾被纳入第一版业务逻辑，随后由 DEC-015 取代
+    outcome_status: superseded
+    lesson: null
+    evidence:
+      - .project-log/business-logic/open-questions.yaml#Q-015
+    supersedes: []
+    created_at: "2026-09-09T02:53:43Z"
+    updated_at: "2026-09-09T03:21:41Z"
+  - id: DEC-015
+    title: 第一版采用公司自制二维码作为主识别方案
+    category: business
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-WEIGH-002
+      - BL-RECOG-001
+    context: 现场供应商二维码/条码参差不齐，用户明确第一版采用公司自制二维码为主，并提供了《辅料自制二维码方案设计说明》。
+    hypothesis: 自制二维码以稳定、不可变的 materialId 连接辅料实物与后台主数据，可以避开供应商码格式混乱，同时保留标签级追溯能力。
+    options:
+      - name: 自制二维码为主
+        benefits:
+          - 码值可控且稳定
+          - 可统一标签格式
+          - 支持标签级追溯
+        costs:
+          - 需要打印、粘贴和复核
+        risks:
+          - 贴错标签会引入新的类型错误
+      - name: 现有码加拍照审批
+        benefits:
+          - 不需要贴码
+        costs:
+          - 现场码质量不可控
+        risks:
+          - 自动识别覆盖率低
+      - name: 混合方案
+        benefits:
+          - 保留现有码自动匹配
+        costs:
+          - 需要兼容多套码规则
+        risks:
+          - 供应商动态码仍难以稳定处理
+    decision: 第一版采用公司自制二维码作为主识别方案；供应商原二维码/条码不作为核心身份；标签异常或无码仍走拍照申请审批。
+    reason_summary:
+      - 用户明确公司辅料包装上的二维码参差不齐
+      - 自制二维码可控性更好
+      - 外部设计说明与当前业务目标和已有决策基本一致
+    conditions:
+      - 辅料主数据需要不可变 system ID，例如 materialId
+      - 标签生成/打印需记录 labelId、打印人、时间和辅料快照
+      - 粘贴后建议扫码复核，降低贴错风险
+    action: 将 Q-016 标记为 answered，新增/更新自制二维码识别业务逻辑
+    expected_result: 扫码识别以本系统自制二维码为主，识别结果稳定且可追溯
+    reversal_plan: 若自制二维码在现场不可行，可退回混合方案或继续增强拍照流程
+    observation: 用户提供设计说明并要求确认是否适合
+    actual_result: 自制二维码作为主识别方案已纳入第一版业务逻辑
+    outcome_status: successful
+    lesson: null
+    evidence:
+      - .project-log/business-logic/open-questions.yaml#Q-016
+      - external-document/辅料自制二维码方案设计说明
+    supersedes:
+      - DEC-014
+    created_at: "2026-09-09T03:21:41Z"
+    updated_at: "2026-09-09T03:21:41Z"
+  - id: DEC-016
+    title: 第一版自制二维码标签生成、打印与粘贴复核流程
+    category: business
+    status: superseded
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-LABEL-001
+      - BL-RECOG-001
+    context: 第一版已确认以公司自制二维码为主，但标签由谁打印、打印时录入什么、每次打印是否独立编号、粘贴后是否复核尚未确认。
+    hypothesis: 由电脑后台管理员统一生成和打印标签，配合粘贴后扫码复核，可以同时满足标签可控和降低贴错风险。
+    options:
+      - name: 后台管理员打印并扫码复核
+        benefits:
+          - 权限边界清晰
+          - 标签记录完整
+          - 贴错风险可通过复核发现
+        costs:
+          - 需要管理员处理标签打印
+        risks:
+          - 管理员不在时会影响标签准备
+      - name: 平板操作员直接打印
+        benefits:
+          - 现场打印更灵活
+        costs:
+          - 权限边界弱
+        risks:
+          - 普通操作员可能误生成或误粘贴标签
+      - name: 只生成二维码图片由客户自行打印
+        benefits:
+          - 系统不依赖特定打印设备
+        costs:
+          - 打印质量和标签追溯较弱
+        risks:
+          - 二维码污损或格式不统一
+    decision: 第一版标签生成/打印放在电脑后台，由管理员操作；打印时录入实际生产日期，其余从辅料主数据带出；到期日期按“生产日期 + 保质期”计算；每次打印生成独立 labelId，同一种辅料可共用 materialId；标签状态保留 ACTIVE/VOID；粘贴后扫码复核；无码或标签异常继续走拍照申请审批。
+    reason_summary:
+      - 用户确认按推荐流程执行
+      - 后台打印便于保存打印人、打印时间和标签记录
+      - 粘贴后扫码复核可降低贴错标签的防错漏洞
+    conditions:
+      - 标签打印需要电脑后台具备标签打印界面或打印设备
+      - 辅料主数据保存默认保质期
+      - 标签记录不物理删除，作废标签保留
+    action: 将 Q-017 标记为 answered，并将 BL-LABEL-001 更新为用户确认的业务原子
+    expected_result: 第一版按统一标签流程生成、打印、粘贴和复核自制二维码
+    reversal_plan: 如现场打印或复核条件不满足，可先降级为后台生成二维码图片，再由客户自行打印
+    observation: 用户答复“这个就按照你说的来”
+    actual_result: 自制二维码标签流程曾纳入第一版基线，随后由 Q-022 将实际生产日期改为不录入，以标签打印日期为准；由 DEC-022 取代该部分规则
+    outcome_status: superseded
+    lesson: null
+    evidence:
+      - .project-log/business-logic/open-questions.yaml#Q-017
+    supersedes: []
+    created_at: "2026-09-09T03:45:00Z"
+    updated_at: "2026-09-09T04:30:00Z"
+  - id: DEC-017
+    title: 主数据支持后台手工录入和 Excel 模板导入导出
+    category: business
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-DATA-001
+    context: 已确认产品、配方和辅料主数据在独立系统内维护，但第一版是否需要 Excel 批量能力尚未确认。
+    hypothesis: 后台手工录入用于日常维护，Excel 模板导入/导出用于初始化、批量调整和备份，两者结合成本最低且最符合客户现有表格化数据习惯。
+    options:
+      - name: 后台手工录入 + Excel 导入导出
+        benefits:
+          - 初始化快
+          - 日常维护灵活
+          - 便于备份和批量修改
+        costs:
+          - 需要实现模板和导入校验
+        risks:
+          - 模板填写错误可能批量写入错误数据，需要校验和错误报告
+      - name: 仅后台手工录入
+        benefits:
+          - 首版实现最简单
+        costs:
+          - 客户数据量大时初始化成本高
+        risks:
+          - 批量修改效率低
+      - name: 仅一次性导入不提供导出
+        benefits:
+          - 可完成初始化
+        costs:
+          - 后续批量修改和备份能力弱
+        risks:
+          - 不便于核对已有数据
+    decision: 第一版同时支持后台手工录入和 Excel 模板导入/导出；产品、配方和辅料主数据均可批量导入，并可按模板导出。
+    reason_summary:
+      - 用户明确要求手工录入和 Excel 导入/导出都支持
+      - Excel 适合辅料、配方等基础数据的初始化和批量调整
+      - 导出可作为备份、核对和再次编辑的数据源
+    conditions:
+      - Excel 模板字段与后台手工录入字段一致
+      - 导入前进行格式、必填项、重复编码和引用关系校验
+      - 导入失败时应给出错误行和原因，不得静默覆盖有效数据
+    action: 将 Q-018 标记为 answered，并更新 BL-DATA-001 为主数据手工与 Excel 双通道维护
+    expected_result: 用户可手工维护主数据，也可通过 Excel 模板批量导入和导出
+    reversal_plan: 如首版开发压力过大，可先保留 Excel 导入模板和基本校验，导出作为后续增量
+    observation: 用户答复“支持手工手动录入，也支持直接excel导入导出”
+    actual_result: 主数据初始化与维护方式已纳入第一版业务基线
+    outcome_status: successful
+    lesson: null
+    evidence:
+      - .project-log/business-logic/open-questions.yaml#Q-018
+    supersedes: []
+    created_at: "2026-09-09T03:50:00Z"
+    updated_at: "2026-09-09T03:50:00Z"
+  - id: DEC-018
+    title: 辅料与产品配方主数据在电脑端和平板端录入的权限及范围
+    category: business
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-DATA-003
+      - BL-DATA-004
+    context: 用户要求辅料录入需要保存中文名称、英文名称/代号、公司内部代号、保质期和多张包装图片，并希望电脑和平板都能录入；产品配方从现有辅料库选择并填写每吨用量。需要明确双端录入范围和权限。
+    hypothesis: 平板端增加管理员角色入口，由管理员完成辅料和产品配方录入，普通操作员只能执行称重工单相关操作，可以同时满足拍照方便性和权限控制。
+    options:
+      - name: 电脑和平板均可录入，仅管理员可操作
+        benefits:
+          - 平板可直接拍辅料包装图
+          - 电脑可批量选择已有图片
+          - 权限边界清晰
+        costs:
+          - 平板端需要区分普通操作员和管理员
+        risks:
+          - 管理员账号若被冒用，错误主数据风险更高
+      - name: 仅电脑端可录入
+        benefits:
+          - 首版角色模型简单
+        costs:
+          - 现场拍摄和录入辅料不方便
+        risks:
+          - 不符合用户对平板拍照录入的需求
+      - name: 所有账号均可录入
+        benefits:
+          - 操作门槛最低
+        costs:
+          - 无法控制主数据质量
+        risks:
+          - 普通操作员可能误建辅料或配方
+    decision: 第一版辅料信息和产品配方信息均支持电脑后台和平板端录入，但仅管理员账号可操作；APP 根据账号角色展示管理员功能入口。辅料录入支持多张包装图片，电脑端可从本地文件选择，平板端可从相册选择或直接拍摄；产品配方从现有辅料库选择辅料并填写每吨用量，不涉及图片，无现有辅料时先补录辅料再录配方。
+    reason_summary:
+      - 用户明确提出双端录入和图片需求
+      - 平板非常适合现场拍摄包装外观
+      - 产品配方必须依赖已存在的辅料主数据，避免游离辅料进入工单计算
+    conditions:
+      - APP 必须支持普通操作员和管理员角色区分
+      - 管理员账号来源保持为后台预置/后台创建，不从平板普通注册获得管理员权限
+      - 辅料图片长期保存并作为工单追溯的辅料参考资料
+    action: 新增 BL-DATA-003、BL-DATA-004，并将录入规则写入业务澄清
+    expected_result: 管理员可在电脑和平板端录入辅料及产品配方，普通操作员不可进入主数据管理
+    reversal_plan: 如首版平板管理员功能开发量过大，可先保证电脑端管理，平板端只开放浏览/拍摄申请能力，再迭代放开管理
+    observation: 用户答复“能理解我的意思吗”，实际描述了完整的辅料和产品配方录入规则
+    actual_result: 双端录入、图片录入和管理员权限已纳入第一版业务逻辑
+    outcome_status: successful
+    lesson: null
+    evidence:
+      - user-statement/2026-09-09 辅料与产品配方录入细节
+    supersedes: []
+    created_at: "2026-09-09T03:55:00Z"
+    updated_at: "2026-09-09T03:55:00Z"
+  - id: DEC-019
+    title: 辅料主数据字段清单与英文名称选填规则
+    category: data
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-DATA-003
+      - BL-LABEL-001
+    context: 辅料录入范围已确认，但字段清单和必填规则尚未最终确定，需要与 Excel 模板、平板电脑端录入界面保持一致。
+    hypothesis: materialId 自动生成、materialCode 和中文名称必填、英文名称选填、默认保质期必填，可以兼容没有英文资料的辅料，同时保证现场身份识别和标签计算可依赖。
+    options:
+      - name: 英文名称选填
+        benefits:
+          - 不阻塞缺少英文资料的辅料
+          - 有英文资料时仍可保存
+        costs:
+          - 模板中出现空字段，需要允许为空
+        risks:
+          - 无
+      - name: 英文名称必填
+        benefits:
+          - 字段完整度更高
+        costs:
+          - 英文资料缺失时无法录入辅料
+        risks:
+          - 现场可能被卡住
+      - name: 不单独设置英文名称
+        benefits:
+          - 字段最少
+        costs:
+          - 丢失去客户现有英文称谓信息
+        risks:
+          - 后续需要英文信息时再补字段
+    decision: 第一版辅料字段按以下规则：materialId 系统自动生成且不可变；materialCode 公司内部代号必填；中文名称必填；英文名称选填；默认保质期必填；enabled 默认启用；包装图片支持多张。英文名称不作为身份匹配字段。
+    reason_summary:
+      - 用户确认按推荐方案执行
+      - 英文名称属于补充资料，不应阻塞辅料录入和标签生成
+      - 内部代号和中文名称足以支持现场展示和辅料匹配
+    conditions:
+      - Excel 辅料模板需包含上述字段并按相同必填规则校验
+      - 二维码标签展示以 materialCode 和中文名称为主，英文名称可选展示
+    action: 将 Q-020 标记为 answered，并更新 BL-DATA-003 的字段规则
+    expected_result: 辅料字段和必填规则进入第一版业务基线
+    reversal_plan: 若客户后续要求英文名称必填，可调整录入校验和 Excel 模板
+    observation: 用户答复“可以没问题，就按照你说的来”
+    actual_result: 辅料主数据字段方案已纳入第一版业务基线
+    outcome_status: successful
+    lesson: null
+    evidence:
+      - .project-log/business-logic/open-questions.yaml#Q-020
+    supersedes: []
+    created_at: "2026-09-09T04:00:00Z"
+    updated_at: "2026-09-09T04:00:00Z"
+  - id: DEC-020
+    title: 第一版后端主机与局域网部署边界
+    category: technical
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-DEVICE-002
+      - BL-LABEL-001
+    context: 已确认系统为电脑后端 + 平板 App 局域网架构，需要确认后端使用哪台主机、现场网络条件和标签打印设备。
+    hypothesis: 使用现场已有电脑作为后端，平板与后端处于同一 WiFi，系统不依赖互联网，可以形成简单稳定的第一版部署方案。
+    options:
+      - name: 现场可用电脑作为后端
+        benefits:
+          - 无需额外采购后端主机
+          - 便于接标签打印机和后续串口
+        costs:
+          - 需要现场电脑稳定运行服务
+        risks:
+          - 电脑被占用或关机会影响系统
+      - name: 使用 Q1S 收款机作为后端
+        benefits:
+          - 可复用现有设备
+        costs:
+          - 性能、系统兼容和扩展能力需要验证
+        risks:
+          - 可能不适合运行数据库和局域网服务
+      - name: 平板/电脑均不固定
+        benefits:
+          - 灵活
+        costs:
+          - 网络和硬件可用性不稳定
+        risks:
+          - 现场维护成本高
+    decision: 第一版后端和数据库部署在客户现场可用电脑上；现场已有可用 WiFi，平板与后端电脑处于同一局域网，系统不依赖互联网；标签打印由后台管理员在电脑端完成。
+    reason_summary:
+      - 用户确认现场有后端电脑和可用 WiFi
+      - 专用电脑比 Q1S 更适合作后端
+      - 局域网方案满足多平板并发的业务目标
+    conditions:
+      - 后端电脑需要固定在现场并可长期运行
+      - 平板和后端电脑需处于同一 WiFi/局域网
+      - 标签打印设备类型由 Q-021 继续确认
+    action: 将 Q-019 标记为 answered，并新增 BL-DEVICE-002 部署业务原子
+    expected_result: 第一版按现场电脑 + 局域网 WiFi 的部署边界推进
+    reversal_plan: 若现场无法固定后端电脑或 WiFi 不稳定，可改为后端电脑直连有线交换机，平板通过局域网访问
+    observation: 用户答复“可以没问题，现场有后端电脑，有可用wifi”
+    actual_result: 后端主机和网络部署边界已纳入第一版业务基线
+    outcome_status: successful
+    lesson: null
+    evidence:
+      - .project-log/business-logic/open-questions.yaml#Q-019
+    supersedes: []
+    created_at: "2026-09-09T04:10:00Z"
+    updated_at: "2026-09-09T04:10:00Z"
+  - id: DEC-021
+    title: 后台标签打印流程与新购标签打印机接入计划
+    category: technical
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-LABEL-002
+      - BL-DEVICE-002
+    context: 用户确认标签打印在后台完成，选择辅料、打印张数后由系统自动记录当前时间并发送打印指令；现场没有现成标签打印机，需要新购并配合系统接入。
+    hypothesis: 打印界面只承担“选择辅料、选择张数、发送打印指令和记录打印时间”的主流程，具体打印机型号可在主流程设计完成后选型，不阻塞需求基线。
+    options:
+      - name: 新购可编程热敏标签打印机
+        benefits:
+          - 可通过驱动或指令批量打印二维码标签
+          - 标签成本低
+        costs:
+          - 需要新购设备并验证驱动/指令集成
+        risks:
+          - 型号差异会影响集成方式
+      - name: 使用现有普通打印机临时打印
+        benefits:
+          - 不需要立即采购
+        costs:
+          - 标签裁剪和耐用性差
+        risks:
+          - 二维码打印质量不稳定
+      - name: 暂不打印，仅生成 PDF/图片
+        benefits:
+          - 主流程开发不依赖打印机
+        costs:
+          - 现场需要在别处打印
+        risks:
+          - 标签质量不可控
+    decision: 第一版后台提供标签打印界面：选择辅料、选择打印张数、点击打印，系统自动记录当前打印时间 printedAt 并发送打印指令；标签打印后由操作员粘贴。打印机需要新购并配合系统接入，具体型号延后确定，不阻塞主流程。
+    reason_summary:
+      - 用户明确打印流程和打印机需新购
+      - 标签打印属于独立硬件环节，可延后选型
+      - 打印指令和记录应先按通用打印机接口/驱动抽象设计
+    conditions:
+      - 标签打印界面需支持选择辅料和打印张数
+      - 打印记录保存打印人、打印时间、辅料、张数和 labelId
+      - 生产日期录入方式由 Q-022 继续确认
+    action: 将 Q-021 标记为 answered，新增 BL-LABEL-002 打印业务原子
+    expected_result: 后台可完成辅料标签批量打印，打印机型号选型延后不阻塞主流程
+    reversal_plan: 若新购打印机选型后接口特殊，可在打印适配层增加对应实现
+    observation: 用户答复“打印机需要配置新的设备，功能需要和我们的系统配合”
+    actual_result: 后台标签打印流程已纳入第一版业务基线，硬件选型延后
+    outcome_status: successful
+    lesson: null
+    evidence:
+      - .project-log/business-logic/open-questions.yaml#Q-021
+    supersedes: []
+    created_at: "2026-09-09T04:20:00Z"
+    updated_at: "2026-09-09T04:20:00Z"
+  - id: DEC-022
+    title: 第一版二维码标签日期以标签打印日期为准
+    category: data
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-LABEL-001
+      - BL-LABEL-002
+    context: 早期方案建议打印时录入实际生产日期并据此计算到期日期；用户确认第一版不管理实际生产日期，暂时以标签打印日期为二维码标签日期。
+    hypothesis: 第一版只记录标签打印日期，可以简化打印界面并避免现场必须补录生产日期；实际生产日期和有效期管理留到后续批次/有效期需求出现时再增加。
+    options:
+      - name: 只使用标签打印日期
+        benefits:
+          - 打印界面简单
+          - 不阻塞补打场景
+        costs:
+          - 二维码中不再包含真实生产日期
+        risks:
+          - 后续需要批次追溯时需补录历史数据
+      - name: 打印前录入实际生产日期
+        benefits:
+          - 可计算到期日期
+        costs:
+          - 每次打印都要录入，现场操作更繁琐
+        risks:
+          - 生产日期填错会影响有效期判断
+      - name: 既不录入也不保存任何日期
+        benefits:
+          - 数据最少
+        costs:
+          - 丢失标签打印时间线索
+        risks:
+          - 无法追溯标签产生时间
+    decision: 第一版标签打印界面不录入实际生产日期；二维码标签日期以系统当前打印时间 printedAt 为准；第一版不对实际生产日期和到期日期做业务校验，后续需要批次、有效期或到期校验时再增强。
+    reason_summary:
+      - 用户明确“不管实际生产日期，暂时只管标签打印日期”
+      - 简化第一版打印流程和标签字段
+      - 现有防错核心是辅料类型和重量，不依赖有效期校验
+    conditions:
+      - 标签记录和二维码中的日期字段以 printedAt 为准
+      - productionDate、shelfLifeMonths、expiryDate 暂不作为第一版业务判断字段
+      - 后续如增加有效期管理，需要重新定义字段和打印界面
+    action: 将 Q-022 标记为 answered，更新 BL-LABEL-001 和标签业务逻辑
+    expected_result: 第一版标签打印不录入生产日期，二维码以打印日期为标签日期
+    reversal_plan: 若客户后续要求有效期校验，可在打印界面增加实际生产日期录入和到期日期计算
+    observation: 用户答复“不管实际生产日期，暂时只管标签打印日期就行”
+    actual_result: 第一版二维码标签日期规则已纳入业务基线
+    outcome_status: successful
+    lesson: null
+    evidence:
+      - .project-log/business-logic/open-questions.yaml#Q-022
+    supersedes:
+      - DEC-016
+    created_at: "2026-09-09T04:30:00Z"
+    updated_at: "2026-09-09T04:30:00Z"

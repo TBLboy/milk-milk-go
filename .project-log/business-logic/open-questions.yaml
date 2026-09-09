@@ -2,7 +2,7 @@ version: "0.2.1"
 questions:
   - id: Q-001
     title: 本系统在客户现有 IT 环境中的交付边界
-    status: open
+    status: answered
     authority: C
     impact: high
     uncertainty: high
@@ -13,12 +13,481 @@ questions:
       - BL-WEIGH-003
     related_tasks: []
     context: 客户有金蝶系统，但其作用、接口和辅料防错能力均未知；系统边界会直接决定配方数据来源、部署方式和结果回写方案。
-    recommendation: 本轮先按独立系统交付，产品、配方和辅料主数据通过金蝶接口或受控导入进入本系统；不修改金蝶核心，避免被其未知能力阻塞。
+    recommendation: 按独立系统交付，不连接金蝶；产品、配方和辅料主数据由本系统维护或导入。
     alternatives:
       - 作为金蝶内部子系统开发，需要先完成金蝶平台能力调研。
       - 嵌入现有金蝶流程，需要先确认开发方式和账号权限。
-    answer: null
+    answer: 独立系统，不连接金蝶；范围聚焦辅料类型识别和重量校验，简单好上手即可。
     source_refs:
       - user-statement/2026-09-08
     created_at: "2026-09-08T07:02:18Z"
-    answered_at: null
+    answered_at: "2026-09-08T07:59:53Z"
+  - id: Q-002
+    title: 独立系统内的产品、配方和辅料主数据来源与维护方式
+    status: answered
+    authority: C
+    impact: high
+    uncertainty: high
+    rework_cost: high
+    related_business_logic:
+      - BL-SCOPE-001
+      - BL-WEIGH-001
+    related_tasks: []
+    context: 系统已确认不连接金蝶，因此产品、配方和辅料主数据必须在本系统内维护或导入，否则无法自动生成称量清单。
+    recommendation: 由本系统自带基础数据维护功能，先支持手工录入和 Excel 模板导入；客户提供现有配方表用于初始化。
+    alternatives:
+      - 完全手工录入，不提供导入，适合数据量很少的场景，但初始化成本高。
+      - 只保留 SQL 或文件级预置数据，操作员日常可维护性低。
+    answer: 由用户在本系统内自行录入和维护产品信息、产品配料信息、辅料信息；系统提供相应的管理功能。
+    source_refs:
+      - user-statement/2026-09-08
+    created_at: "2026-09-08T07:59:53Z"
+    answered_at: "2026-09-08T08:05:12Z"
+  - id: Q-003
+    title: 现场辅料识别和系统操作使用什么设备
+    status: answered
+    authority: C
+    impact: high
+    uncertainty: high
+    rework_cost: medium
+    related_business_logic:
+      - BL-SCOPE-001
+      - BL-WEIGH-002
+    related_tasks: []
+    context: 客户没有扫码枪，辅料通常有二维码且可能存在无码辅料；设备形态决定扫码、拍照确认和称重操作方式。
+    recommendation: MVP 先使用手机或平板摄像头扫码/拍照，不额外采购扫码枪；无码辅料保留拍照或手动选择辅料类型兜底。
+    alternatives:
+      - 使用电脑配合扫码枪，需要采购硬件并依赖现场 PC。
+      - 使用手机/平板配合扫码枪，操作体验好但增加硬件成本。
+    answer: 首选平板，次选扫码枪；本轮 MVP 先按平板实现。
+    source_refs:
+      - user-statement/2026-09-08
+    created_at: "2026-09-08T08:05:12Z"
+    answered_at: "2026-09-08T08:10:16Z"
+  - id: Q-004
+    title: 电子秤重量数据如何进入系统
+    status: answered
+    authority: C
+    impact: critical
+    uncertainty: high
+    rework_cost: high
+    related_business_logic:
+      - BL-DEVICE-001
+      - BL-WEIGH-003
+    related_tasks: []
+    context: 平板设备已确定，客户提供现有硬件为 ENTOAM 映拓 Qy-C126，配套收款机 Q1S（主板 Gm-J6412D16-V2E）。公开资料显示映拓计价秤可通过串口/默认 COM2 实时取重，同系列 QY-A126 也有第三方抓包证据，但未找到 Qy-C126 官方手册，实物端口和协议状态仍需核实。需要向客户确认三项：1. 现有电子秤是否支持外部连接读取实时称重数据；2. 如不支持，客户是否有必须连接的硬性需求，是否可以购买支持连接的新电子秤；3. 如允许不连接，重量确认如何设计。
+    recommendation: 先向客户确认这三项；实现上按“自动读取为主、手动确认兜底”准备，但最终以客户答案为准。
+    alternatives:
+      - 现有电子秤支持外部连接：系统自动读取实时重量，防错效果最好。
+      - 现有电子秤不支持但客户必须连接：评估转接方案或采购支持连接的新电子秤。
+      - 客户允许不连接电子秤：设计人工输入或确认秤面读数的流程，并明确如何防止误确认。
+    answer: 第一版不连接电子秤，称重结果由操作员在平板手动输入并标记为“手动读数”；电子秤串口/网络接入、协议和是否需要换新秤留到后续版本再研究和验证。
+    source_refs:
+      - user-statement/2026-09-08
+    created_at: "2026-09-08T08:10:16Z"
+    answered_at: "2026-09-09T06:00:00Z"
+  - id: Q-005
+    title: 第一版无二维码辅料的申请、放行与称重时序
+    status: answered
+    authority: C
+    impact: high
+    uncertainty: high
+    rework_cost: high
+    related_business_logic:
+      - BL-WEIGH-002
+      - BL-WEIGH-004
+    related_tasks: []
+    context: 第一版不做模型自动识别，无二维码辅料只能靠拍照和人工确认。需要明确“拍照申请 -> 放行 -> 称重”的先后顺序，否则工单状态、审批角色和证据留存无法定稿。
+    recommendation: 无码辅料先拍照并提交申请，审批通过后才允许继续称重；审批记录与证据存入工单。若现场希望不中断生产，可改为“拍照 + 必填原因立即放行并留痕”，但防错强度会降低。
+    alternatives:
+      - 先审批后称重：类型确认更严格，但现场可能需要等待审批人。
+      - 先称重后补审批：生产不中断，但防错和追责能力下降。
+      - 无审批、仅拍照确认：MVP 最简单，但不满足“申请放行”的业务意图。
+    answer: 第一版测试版采用先审批后称重：平板端拍照申请，电脑端马上审批，审批通过后才能继续称重；真实生产版本的无码放行策略后续再确认。
+    source_refs:
+      - user-statement/2026-09-08
+    created_at: "2026-09-08T09:12:26Z"
+    answered_at: "2026-09-08T09:17:09Z"
+  - id: Q-006
+    title: 称重完成时如何判定重量正确
+    status: answered
+    authority: C
+    impact: critical
+    uncertainty: high
+    rework_cost: high
+    related_business_logic:
+      - BL-WEIGH-003
+      - BL-WEIGH-004
+    related_tasks: []
+    context: 重量正确是第一版防错核心，但当前只确认了“电子秤读数达标”，没有定义允差、稳定条件和完成时机。这会影响主数据字段、称重校验和异常处理。
+    recommendation: 按每条辅料/配方配置允差，支持固定克重和百分比；测试版先使用统一默认值（如 ±5g 或 ±1%），达到目标 ± 允差且电子秤读数稳定后允许完成。
+    alternatives:
+      - 按辅料/配方配置允差：最贴合实际，但主数据和配置界面略多一点。
+      - 全系统统一允差：实现最简单，但大重量和小重量辅料可能过严或过松。
+      - 不允许任何偏差：防错最严，但现场难以操作，可能频繁阻塞。
+    answer: 按第一种方案：每条辅料/配方可配置允差；测试版先使用统一默认值；允差、稳定条件等参数放在设置界面，允许用户自行调整。
+    source_refs:
+      - user-statement/2026-09-08
+    created_at: "2026-09-08T09:17:09Z"
+    answered_at: "2026-09-08T09:23:17Z"
+  - id: Q-007
+    title: 电子秤离线或读数异常时如何确认重量
+    status: answered
+    authority: C
+    impact: critical
+    uncertainty: high
+    rework_cost: high
+    related_business_logic:
+      - BL-WEIGH-003
+      - BL-WEIGH-004
+    related_tasks: []
+    context: 已确认连接失败时支持手动输入当前秤面读数，但未明确手动读数的防错规则。若手动输入可直接完成，电子秤防错可能被绕过；若要求审批，电子秤断线时流程会更慢。
+    recommendation: 第一版测试允许操作员手动输入，但系统必须明确标记“手动读数”，记录操作员、时间和读数；测试版暂不做电脑端审批，正式版再决定是否需要审批或二次确认。
+    alternatives:
+      - 手动输入直接允许并留痕：流程简单，测试能继续，但无法完全证明重量正确。
+      - 手动输入需电脑端审批：更严格，但电子秤断线时会更慢。
+      - 电子秤离线时禁止称重：防错最强，但失去手动兜底能力。
+    answer: 第一版测试按建议：电子秤离线或读数异常时允许手动输入，系统明确标记为“手动读数”并记录操作员、时间和读数；测试版不做电脑端审批，正式版规则后续再定。
+    source_refs:
+      - user-statement/2026-09-08
+    created_at: "2026-09-08T09:23:17Z"
+    answered_at: "2026-09-08T09:27:42Z"
+  - id: Q-008
+    title: 工单创建、绑定账号与接管规则
+    status: answered
+    authority: C
+    impact: high
+    uncertainty: medium
+    rework_cost: high
+    related_business_logic:
+      - BL-WEIGH-001
+      - BL-WEIGH-002
+    related_tasks: []
+    context: 系统支持多台平板同时工作，但未确认工单如何决定“谁可以操作”。用户提出了工单绑定账号和后台审批交接的方案，需要将其纳入业务基线。
+    recommendation: 工单绑定到一个操作员账号，只有该账号可操作；平板创建工单要后台审批后才生效；其他账号可申请接管，由后台审批；后台也可创建工单并指定绑定账号。
+    alternatives:
+      - 平板创建/后台审批/账号绑定：业务流程清晰，适合当前现场组织方式。
+      - 后台集中创建和分配：后台负担更重，不符合平板为主的业务习惯。
+      - 工单不绑定账号、自由认领：实现简单，但责任和状态不清。
+    answer: 平板是主要业务操作端；操作员在平板登录后创建工单，后台审批通过后工单绑定到该账号，只有该账号可操作。平板可查看其他工单状态和绑定账号，并可申请接管，后台审批通过后归申请人操作。电脑后台主要做审批、工单创建/分配和数据管理。
+    source_refs:
+      - user-statement/2026-09-08
+    created_at: "2026-09-08T09:27:42Z"
+    answered_at: "2026-09-08T09:44:18Z"
+  - id: Q-009
+    title: 进行中工单的完成、撤销与作废规则
+    status: answered
+    authority: C
+    impact: high
+    uncertainty: medium
+    rework_cost: high
+    related_business_logic:
+      - BL-WO-001
+      - BL-WO-002
+    related_tasks: []
+    context: 工单绑定账号和后台审批的流转已确认，但还没有定义操作员如何提交完成，以及创建错误、无法继续或重复创建时如何处理。
+    recommendation: 工单必须按顺序完成所有辅料步骤后才能提交完成；每个辅料步骤保留二维码/图片证据和实际重量记录。撤销/删除由平板端申请，后台审批通过后才生效；后台也可以直接撤销/删除。
+    alternatives:
+      - 后台可作废，操作员不可自行作废：责任边界清楚，异常工单不会失控。
+      - 绑定操作员可自行作废并留原因：现场灵活，但可能掩盖未完成或错误操作。
+      - 不允许作废，只能完成：状态最简单，但错误工单无法处理。
+    answer: 工单按顺序完成全部辅料步骤后才可提交完成；每个辅料保留二维码扫码信息或图片记录以及实际投放重量记录。平板端可申请撤销/删除，需后台审批；后台也可以撤销/删除工单。
+    source_refs:
+      - user-statement/2026-09-08
+    created_at: "2026-09-08T09:44:18Z"
+    answered_at: "2026-09-08T09:52:19Z"
+  - id: Q-010
+    title: 工单撤销/删除后是否保留历史记录
+    status: answered
+    authority: C
+    impact: high
+    uncertainty: high
+    rework_cost: high
+    related_business_logic:
+      - BL-WO-006
+    related_tasks: []
+    context: 用户确认平板可申请撤销/删除、后台可撤销/删除，但没有说明删除后是否仍保留扫码、图片、重量等证据。删除策略会直接影响追溯能力和数据安全。
+    recommendation: 第一版采用“撤销/作废”而不是物理删除：工单在平板端不再显示，但后台保留完整记录和被撤销状态；这样扫码、图片和重量证据不会被误删。
+    alternatives:
+      - 撤销/作废并保留记录：可追溯，安全，推荐。
+      - 允许物理删除：界面更干净，但证据会永久丢失。
+      - 显示作废但隐藏证据：兼顾展示与追溯，需要额外权限控制。
+    answer: 删除也要保留记录；第一版采用撤销/作废和逻辑删除，完整工单、扫码/图片、重量、操作员和审批记录均保留。
+    source_refs:
+      - user-statement/2026-09-08
+    created_at: "2026-09-08T09:52:19Z"
+    answered_at: "2026-09-08T09:58:19Z"
+  - id: Q-011
+    title: 电脑后台账号和权限如何划分
+    status: answered
+    authority: C
+    impact: critical
+    uncertainty: high
+    rework_cost: high
+    related_business_logic:
+      - BL-WO-001
+      - BL-WO-006
+      - BL-SETTINGS-001
+    related_tasks: []
+    context: 已确认后台可审批、创建/分配工单、撤销/删除工单、管理数据和设置，但还没有定义哪些账号能使用后台，以及操作员账号是否可能获得后台权限。
+    recommendation: 平板端注册的账号均为普通操作员账号，不能进入后台；电脑后台管理员账号为预置账号，可以审批和管理，也可以在后台创建和管理普通账号。管理员账号不能通过平板注册获得。
+    alternatives:
+      - 区分操作员和管理员：责任边界清晰，适合第一版。
+      - 所有人同一权限：实现简单，但任何账号都可能审批或改设置。
+      - 增加审批员/管理员/操作员三类角色：更细分，但第一版复杂度更高。
+    answer: 平板创建的账户都是普通账户；后台账户属于管理员账户，管理员账户为预置账号；后台可以创建和管理普通账户。
+    source_refs:
+      - user-statement/2026-09-08
+    created_at: "2026-09-08T09:58:19Z"
+    answered_at: "2026-09-08T10:32:39Z"
+  - id: Q-012
+    title: 称重记录和证据需要保存多久
+    status: answered
+    authority: C
+    impact: medium
+    uncertainty: medium
+    rework_cost: medium
+    related_business_logic:
+      - BL-WEIGH-003
+      - BL-WO-005
+    related_tasks: []
+    context: 已确认删除也保留记录，但还没有定义应保留多久。若长期累积，图片和称重记录会影响存储、导出和备份策略。
+    recommendation: 第一版先不限制保存时长，默认长期保留；后续如果存储压力大，再在设置界面增加归档/清理策略，而不是直接物理删除。
+    alternatives:
+      - 长期保留：可随时追溯，第一版实现最简单。
+      - 按固定周期保留：例如保留 N 个月或 N 年，需要定义清理策略。
+      - 只保留生产追溯周期：节省存储，但需要客户确认周期。
+    answer: 长期保存；第一版不限制保存时长，后续如需归档或清理再单独制定策略。
+    source_refs:
+      - user-statement/2026-09-08
+    created_at: "2026-09-08T10:32:39Z"
+    answered_at: "2026-09-08T10:40:05Z"
+  - id: Q-013
+    title: 配方中辅料重量如何配置和换算
+    status: answered
+    authority: C
+    impact: critical
+    uncertainty: high
+    rework_cost: high
+    related_business_logic:
+      - BL-WEIGH-001
+    related_tasks: []
+    context: 系统需要根据产品配方和目标生产重量计算每种辅料的应称重量，但还没有确认客户如何录入配方，以及系统按什么规则把配方换算到实际生产重量。
+    recommendation: 配方中的每种辅料按一个标准生产量（如每 1000kg 成品）录入重量；系统按“目标生产重量 / 标准生产量”等比换算得到应称重量。这样 1 吨、2 吨或任意生产量都能自动计算。
+    alternatives:
+      - 按单位产量录入并等比换算：灵活，适合不同生产量。
+      - 按固定批次录入绝对重量：实现简单，但每次只能针对该批次重量。
+      - 配方存百分比/比例：需要额外定义基准产量和换算规则。
+    answer: 配方按“每吨成品需要多少辅料”录入；系统按目标生产重量除以 1000kg 等比换算得到应称重量。
+    source_refs:
+      - user-statement/2026-09-08
+    created_at: "2026-09-08T10:40:05Z"
+    answered_at: "2026-09-08T10:45:46Z"
+  - id: Q-014
+    title: 二维码/条码如何映射到辅料内部代号
+    status: deferred
+    authority: C
+    impact: critical
+    uncertainty: high
+    rework_cost: high
+    related_business_logic:
+      - BL-WEIGH-002
+      - BL-DATA-001
+    related_tasks: []
+    context: 现场包装不统一，有塑料桶、纸箱、蛇皮袋；部分有码、部分无码；条码有的扫描无效；二维码多为辅料供应商自己的产品溯源信息；公司内部使用 A1/E2 这类代号。第一版扫码确认需要把这些码映射到内部辅料代号。
+    recommendation: 供应商原有码映射不作为第一版核心；第一版采用公司自制二维码作为主身份，供应商码后续如需增强再评估。
+    alternatives:
+      - 后台维护二维码值并精确匹配：灵活，兼容现有标签内容。
+      - 二维码内容必须按规范编码：更稳定，但需要现场标签符合规范。
+      - 不做二维码匹配，只拍照留档：第一版无法实现自动类型确认。
+    answer: 第一版不再解析供应商原有二维码/条码作为核心识别；自制二维码成为扫码主方案，供应商码映射推迟到后续增强。
+    source_refs:
+      - user-statement/2026-09-09
+    created_at: "2026-09-08T10:45:46Z"
+    answered_at: "2026-09-09T03:21:41Z"
+  - id: Q-015
+    title: 第一版辅料类型识别采用贴码、现有码还是拍照申请方案
+    status: superseded
+    authority: C
+    impact: critical
+    uncertainty: high
+    rework_cost: high
+    related_business_logic:
+      - BL-WEIGH-002
+      - BL-WEIGH-005
+      - BL-DATA-001
+    related_tasks: []
+    context: 客户反馈包装和码型不统一，现有码不能覆盖全部辅料，且供应商二维码是溯源信息。需要确定第一版采用自制贴码、利用现有码加拍照申请，还是混合方案。
+    recommendation: 第一版采用混合方案：能有效扫描的现有码在后台映射到内部代号后自动匹配；无码、无效码或未映射的码走拍照 + 手动选择辅料 + 后台审批。自制二维码贴纸作为后续增强，不在第一版强制铺开。
+    alternatives:
+      - 自制二维码贴纸：所有辅料统一可扫码，但需要打印、粘贴，存在贴错风险。
+      - 现有码 + 拍照审批：不增加贴码工作量，但有效码覆盖不足，人工确认会多一些。
+      - 包装图片模型自动识别：最终目标更彻底，但第一版暂不做。
+    answer: 原确认采用方案 C 混合方案，后续根据现场码型混乱情况调整为“第一版自制二维码为主”；该方案被 Q-016 取代。
+    source_refs:
+      - user-statement/2026-09-09
+    created_at: "2026-09-09T02:49:37Z"
+    answered_at: "2026-09-09T03:21:41Z"
+  - id: Q-016
+    title: 第一版是否采用公司自制二维码作为主识别方案
+    status: answered
+    authority: C
+    impact: critical
+    uncertainty: high
+    rework_cost: high
+    related_business_logic:
+      - BL-WEIGH-002
+      - BL-RECOG-001
+    related_tasks: []
+    context: 用户提供《辅料自制二维码方案设计说明》，并明确因供应商包装码参差不齐，第一版采用公司自制二维码为主。
+    recommendation: 第一版采用自制二维码作为辅料品类主身份；二维码携带不可变 materialId、labelId 和标签快照，后台主数据作为真实数据源；标签异常或无码继续走拍照申请审批。
+    alternatives:
+      - 自制二维码为主：二维码可控、身份稳定，但需要打印、粘贴，存在贴错风险。
+      - 继续采用现有码混合方案：省贴码工作量，但现场码质量不可控。
+      - 包装图片模型自动识别：最终目标更彻底，但第一版不做。
+    answer: 第一版采用公司自制二维码作为主识别方案，供应商原有二维码/条码不作为核心身份；无码、标签异常或无法识别时走拍照申请审批。具体标签字段、打印权限和复核流程由 Q-017 继续确认。
+    source_refs:
+      - user-statement/2026-09-09
+      - external-document/辅料自制二维码方案设计说明
+    created_at: "2026-09-09T03:21:41Z"
+    answered_at: "2026-09-09T03:21:41Z"
+  - id: Q-017
+    title: 自制二维码标签的生成、打印、粘贴复核流程
+    status: answered
+    authority: C
+    impact: high
+    uncertainty: high
+    rework_cost: high
+    related_business_logic:
+      - BL-LABEL-001
+      - BL-RECOG-001
+      - BL-WEIGH-005
+    related_tasks: []
+    context: 第一版已确认以公司自制二维码为主；外部设计说明建议由指定权限人员生成标签，打印时录入生产日期，系统自动带出保质期并计算到期日期，记录 labelId、打印人、打印时间和辅料快照，粘贴后扫码复核。这些操作细节尚未由客户确认。
+    recommendation: 第一版标签生成/打印放在电脑后台，由管理员操作；打印时至少录入实际生产日期，其余从辅料主数据带出；每次打印生成独立 labelId，同一种辅料可共用 materialId；标签状态保留 ACTIVE/VOID；粘贴后建议扫码复核；标签未生成、污损或扫描异常仍走拍照申请审批。
+    alternatives:
+      - 后台管理员打印并扫码复核：可控性好，可减少贴错风险，推荐。
+      - 允许平板操作员直接打印：现场更方便，但权限边界弱，贴错风险更依赖复核。
+      - 只生成二维码图片由客户自行打印：省打印设备，但打印质量和标签追溯较弱。
+    answer: 第一版按推荐流程执行：标签生成/打印放在电脑后台由管理员操作；打印时录入实际生产日期，保质期从辅料主数据自动带出，到期日期按“生产日期 + 保质期”计算；每次打印生成独立 labelId，同一种辅料可共用 materialId；标签状态保留 ACTIVE/VOID；粘贴后扫码复核；标签未生成、污损或扫描异常仍走拍照申请审批。
+    source_refs:
+      - external-document/辅料自制二维码方案设计说明
+      - user-statement/2026-09-09 Q-017 确认
+    created_at: "2026-09-09T03:40:00Z"
+    answered_at: "2026-09-09T03:45:00Z"
+  - id: Q-018
+    title: 第一版产品、配方和辅料主数据的初始化与维护方式
+    status: answered
+    authority: C
+    impact: high
+    uncertainty: medium
+    rework_cost: medium
+    related_business_logic:
+      - BL-DATA-001
+      - BL-LABEL-001
+    related_tasks: []
+    context: 已确认独立系统内由用户自行维护产品、配方和辅料数据，但尚未确认第一版是否支持 Excel 批量导入导出，还是只提供后台界面手工录入。
+    recommendation: 第一版同时提供后台手工录入和 Excel 模板导入/导出；模板用于初始化产品、配方、辅料及标签打印所需字段，界面用于日常增改。
+    alternatives:
+      - 后台手工录入 + Excel 导入导出：初始化和批量修改成本低，推荐。
+      - 仅后台手工录入：首版实现最简，但客户数据多时录入成本高。
+      - 仅一次性导入，不提供导出：可完成初始化，但后续批量修改和导出备份能力弱。
+    answer: 第一版同时支持后台手工录入和 Excel 模板导入/导出；导入/导出覆盖产品、配方和辅料主数据，模板字段与后台手工维护字段一致。
+    source_refs:
+      - user-statement/2026-09-08 主数据由用户自主维护
+      - user-statement/2026-09-09 Q-018 确认
+    created_at: "2026-09-09T03:45:00Z"
+    answered_at: "2026-09-09T03:50:00Z"
+  - id: Q-019
+    title: 第一版后端主机、局域网和标签打印设备边界
+    status: answered
+    authority: C
+    impact: high
+    uncertainty: medium
+    rework_cost: high
+    related_business_logic:
+      - BL-DEVICE-001
+      - BL-DATA-001
+      - BL-LABEL-001
+    related_tasks: []
+    context: 已确认电脑端承担数据库和后端服务，平板通过局域网访问，标签由后台管理员打印；但后端主机是否使用现有 Q1S、现场是否已有可用的局域网/WiFi、标签打印用什么设备尚未确认。
+    recommendation: 第一版后端优先部署在一台专用办公电脑或笔记本上；平板和后台电脑处于同一个局域网/WiFi；标签打印优先使用现有标签打印机或普通可打印二维码标签的打印机；系统不依赖互联网。
+    alternatives:
+      - 专用办公电脑/笔记本作为后端：稳定、易维护、便于接电子秤和打印机，推荐。
+      - 使用现有 Q1S 收款机作为后端：省一台电脑，但性能、系统兼容和串口/打印机接入需要现场验证。
+      - 平板/电脑均不固定，现场即插即用：灵活，但局域网和硬件可用性依赖现场网络条件。
+    answer: 第一版后端部署在客户现场可用电脑上，现场已有可用 WiFi；平板与后端电脑处于同一局域网，系统不依赖互联网即可运行。标签打印设备按推荐准备，具体是否为现有设备或需新购由 Q-021 继续确认。
+    source_refs:
+      - user-statement/2026-09-08 电脑后端 + 平板局域网架构
+      - user-statement/2026-09-09 Q-019 确认
+    created_at: "2026-09-09T03:50:00Z"
+    answered_at: "2026-09-09T04:10:00Z"
+  - id: Q-020
+    title: 辅料主数据字段范围与英文名称必填规则
+    status: answered
+    authority: C
+    impact: high
+    uncertainty: medium
+    rework_cost: medium
+    related_business_logic:
+      - BL-DATA-003
+    related_tasks: []
+    context: 用户已确认辅料录入需要保存中文名称、英文名称/代号、公司内部代号、保质期和多张包装图片；需要最终确定字段清单和必填规则，避免后续模板、平板电脑端录入字段不一致。
+    recommendation: 辅料字段建议为：materialId 系统自动生成、materialCode 公司内部代号必填、中文名称必填、英文名称选填、默认保质期必填、enabled 启用状态、多张包装图片；英文名称不作为身份匹配字段。
+    alternatives:
+      - 英文名称选填：兼容有英文资料和无英文资料的辅料，推荐。
+      - 英文名称必填：字段更完整，但会阻塞缺少英文资料的辅料录入。
+      - 不单独设置英文名称，只用内部代号和中文名称：更简单，但可能丢失客户现有英文称谓信息。
+    answer: 按推荐字段方案执行：materialId 系统自动生成且不可变；materialCode 公司内部代号必填；中文名称必填；英文名称选填；默认保质期必填；enabled 默认启用；包装图片支持多张。英文名称不作为身份匹配字段。
+    source_refs:
+      - user-statement/2026-09-09 辅料信息录入细节
+      - user-statement/2026-09-09 Q-020 确认
+    created_at: "2026-09-09T03:55:00Z"
+    answered_at: "2026-09-09T04:00:00Z"
+  - id: Q-021
+    title: 现场标签打印设备是现有设备还是需要新购
+    status: answered
+    authority: C
+    impact: medium
+    uncertainty: low
+    rework_cost: medium
+    related_business_logic:
+      - BL-LABEL-001
+      - BL-DEVICE-002
+    related_tasks: []
+    context: 已确认标签由后台管理员在电脑端打印，但现场是否已有可打印二维码标签的打印机尚未确认。
+    recommendation: 如果现场已有标签打印机，第一版按现有设备接入；如果没有，建议新购一台普通热敏标签打印机，支持 40-60mm 标签纸即可。
+    alternatives:
+      - 使用现有标签打印机：成本最低，需要确认品牌和驱动。
+      - 新购热敏标签打印机：兼容性和耗材简单，推荐。
+      - 暂时用普通 A4 打印机打印二维码标签：可先测试，但标签耐用性和粘贴便利性较弱。
+    answer: 标签打印机需要新购并配合系统接入，具体品牌和型号可以延后确定，不影响主流程。打印操作在后台进行：选择辅料、选择打印张数、点击打印，系统自动记录当前打印时间并发送打印指令，操作员拿标签去粘贴。
+    source_refs:
+      - user-statement/2026-09-09 Q-019 确认
+      - user-statement/2026-09-09 Q-021 确认
+    created_at: "2026-09-09T04:10:00Z"
+    answered_at: "2026-09-09T04:20:00Z"
+  - id: Q-022
+    title: 标签打印时实际生产日期如何录入
+    status: answered
+    authority: C
+    impact: critical
+    uncertainty: medium
+    rework_cost: medium
+    related_business_logic:
+      - BL-LABEL-001
+      - BL-LABEL-002
+    related_tasks: []
+    context: 二维码标签需要保存 productionDate 和 expiryDate，到期日期按“生产日期 + 保质期”计算；用户描述的打印界面是选择辅料、打印张数后直接打印，系统自动读取当前时间。这里的“当前时间”是打印时间 printedAt，但生产日期是否仍由管理员录入尚未明确。
+    recommendation: 标签打印界面保留生产日期录入/选择；系统自动读取的时间只作为打印时间 printedAt；如果没有单独录入生产日期，不应把当前日期当作生产日期，否则会人为改变到期日期。
+    alternatives:
+      - 打印前录入生产日期：到期日期准确，符合原流程，推荐。
+      - 默认当前日期为生产日期：界面简单，但补打旧批次标签时会把当天错当作生产日期。
+      - 不打印生产日期，只按标签打印时间估算：会破坏过期校验能力。
+    answer: 第一版不录入和管理实际生产日期，二维码标签日期以标签打印日期为准；实际生产日期、到期日期相关校验暂时不做，后续需要批次/有效期管理时再增强。
+    source_refs:
+      - external-document/辅料自制二维码方案设计说明
+      - user-statement/2026-09-09 Q-021 标签打印流程
+      - user-statement/2026-09-09 Q-022 确认
+    created_at: "2026-09-09T04:20:00Z"
+    answered_at: "2026-09-09T04:30:00Z"

@@ -5,24 +5,26 @@ atoms:
     title: 根据产品配方和目标生产重量生成辅料称量清单
     kind: flow
     domain: weighing
-    status: draft
+    status: active
     priority: critical
     risk: medium
     authority: user-confirmed
     source:
       type: user-statement
       reference: "2026-09-08 业务澄清会话"
-    description: 系统根据所选产品的配方和目标生产重量，自动计算需要称取的辅料类型和重量。
+    description: 系统根据所选产品配方中的每吨辅料用量和目标生产重量，自动等比换算需要称取的辅料类型和重量。
     actors:
       - 生产计划人员
     trigger: 用户选择生产产品名称并输入目标生产重量
     preconditions:
-      - 产品配方和辅料主数据已维护
+      - 产品、配方和辅料主数据已在本系统内维护
+      - 配方已按每吨成品录入辅料用量
     inputs:
       - 产品名称
       - 目标生产重量
+      - 配方每吨辅料用量
     rule:
-      statement: 系统按所选产品的配方和目标生产重量，计算每种辅料应称取的辅料类型和重量。
+      statement: 系统按“配方每吨辅料用量 × 目标生产重量 ÷ 1000kg”计算每种辅料应称取的辅料类型和重量。
     outputs:
       - 应称辅料清单，包含辅料类型和应称重量
     side_effects: []
@@ -36,58 +38,63 @@ atoms:
       - 同一产品、同一配方和同一目标重量的本次计算结果应一致
     acceptance:
       - id: AC-WEIGH-001
-        given: 产品已有配方且目标生产重量已输入
+        given: 产品配方写明每吨需要辅料 A 10kg，目标生产重量为 2 吨
         when: 用户请求生成称量清单
-        then: 系统输出该产品所需辅料的类型和应称重量
+        then: 系统输出辅料 A 应称 20kg
         method: null
         evidence: null
         status: not-verified
     dependencies: []
     baseline_refs: []
-    decision_refs: []
+    decision_refs:
+      - DEC-013
     implementation_refs: []
     test_refs: []
     supersedes: []
-    notes: null
+    notes: Q-013 已确认配方按每吨成品录入并等比换算。
     created_at: "2026-09-08T07:02:18Z"
-    updated_at: "2026-09-08T07:02:18Z"
+    updated_at: "2026-09-08T10:45:46Z"
     last_verified_at: null
   - id: BL-WEIGH-002
     title: 称重前确认辅料类型
     kind: rule
     domain: weighing
-    status: draft
+    status: active
     priority: critical
     risk: medium
     authority: user-confirmed
     source:
       type: user-statement
       reference: "2026-09-08 业务澄清会话"
-    description: 系统在称量前确认当前辅料与任务要求的辅料类型一致。
+    description: 系统在称量前确认当前辅料与任务要求的辅料类型一致；第一版以本系统自制二维码为主，扫码解析 materialId 后与工单要求匹配；无本系统二维码或标签异常时走拍照申请审批。
     actors:
       - 生产/称重操作员
     trigger: 进入某一辅料的称重步骤
     preconditions:
       - 当前称重任务已生成
-      - 辅料包装或二维码可读取
+      - 辅料贴有本系统二维码，或已具备拍照申请条件
     inputs:
-      - 二维码
+      - 本系统二维码识别值
+      - materialId
+      - labelId
       - 辅料包装图片
     rule:
-      statement: 系统确认当前辅料是任务要求的辅料类型后，才允许进入重量称量。
+      statement: 系统确认当前本系统二维码中的 materialId 与任务要求 requiredMaterialId 一致，或辅料已通过拍照申请审批后，才允许进入重量称量。
     outputs:
       - 辅料类型确认结果
     side_effects: []
     exceptions:
-      - 二维码缺失或无法识别
-      - 包装图片无法识别
+      - 本系统二维码缺失、污损或无法识别
+      - 扫描到供应商二维码、普通条码或非本系统标签
+      - 标签已作废或辅料已停用
     failure_handling:
       - 阻止继续称重并提示重新确认
+      - 非本系统标签或标签异常时进入拍照申请审批
     invariants: []
     acceptance:
       - id: AC-WEIGH-002
-        given: 当前称重任务要求辅料 A，现场辅料为 A
-        when: 操作员扫码或拍摄包装图片
+        given: 当前称重任务要求辅料 MAT-00023，现场辅料贴有本系统二维码
+        when: 操作员扫码解析得到 materialId=MAT-00023
         then: 系统确认类型正确并允许下一步称重
         method: null
         evidence: null
@@ -95,71 +102,264 @@ atoms:
     dependencies:
       - BL-WEIGH-001
     baseline_refs: []
-    decision_refs: []
+    decision_refs:
+      - DEC-015
     implementation_refs: []
     test_refs: []
     supersedes: []
-    notes: null
+    notes: Q-016 已确认第一版采用自制二维码为主；无码/标签异常按 Q-005 拍照申请审批。
     created_at: "2026-09-08T07:02:18Z"
-    updated_at: "2026-09-08T07:02:18Z"
+    updated_at: "2026-09-09T03:40:00Z"
+    last_verified_at: null
+  - id: BL-RECOG-001
+    title: 第一版自制二维码为主辅料识别流程
+    kind: flow
+    domain: recognition
+    status: active
+    priority: critical
+    risk: medium
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-09 Q-016"
+    description: 第一版以公司自制二维码作为辅料品类主身份；扫码解析本系统标签并读取不可变 materialId，与工单要求比较；非本系统标签、无码或标签异常时走拍照申请审批。
+    actors:
+      - 生产/称重操作员
+      - 电脑后台管理员
+    trigger: 操作员进入某一辅料的类型确认步骤
+    preconditions:
+      - 辅料主数据已维护内部代号
+      - 当前工单包含该辅料步骤
+    inputs:
+      - 本系统二维码内容
+      - materialId
+      - labelId
+      - 辅料包装图片
+      - 后台审批结果
+    rule:
+      statement: 辅料识别以本系统自制二维码为主；扫码后以 materialId 与工单要求匹配，匹配成功才放行；供应商码不作为核心身份，标签异常或无码时走拍照申请审批。
+    outputs:
+      - 辅料类型确认通过结果
+    side_effects:
+      - 自动匹配和拍照审批过程均留痕
+    exceptions:
+      - 扫描到供应商二维码或普通条码
+      - 标签已作废或辅料已停用
+      - 后台驳回拍照申请
+    failure_handling:
+      - 非本系统二维码不直接放行；拍照申请被驳回时禁止称重
+    invariants:
+      - 未匹配或未审批通过的辅料不能进入称重
+      - 制成品识别结果均关联不可变 materialId
+    acceptance:
+      - id: AC-RECOG-001
+        given: 当前工单步骤要求 MAT-00023
+        when: 扫码得到本系统二维码且 materialId 为 MAT-00023
+        then: 系统确认辅料正确并允许进入称重
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-WEIGH-002
+      - BL-WEIGH-005
+    baseline_refs: []
+    decision_refs:
+      - DEC-015
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: 供应商原码映射由 Q-014 推迟到后续增强；标签异常走拍照审批。
+    created_at: "2026-09-09T02:53:43Z"
+    updated_at: "2026-09-09T03:21:41Z"
+    last_verified_at: null
+  - id: BL-LABEL-001
+    title: 自制二维码标签生成与标签记录
+    kind: flow
+    domain: labeling
+    status: active
+    priority: high
+    risk: medium
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-09 Q-017 确认 + 外部设计说明"
+    description: 第一版由电脑后台管理员生成和打印标签；系统以标签打印时间 printedAt 作为二维码标签日期，不录入实际生产日期；生成本系统二维码和唯一 labelId，后台保存标签记录，粘贴后扫码复核。
+    actors:
+      - 电脑后台管理员/标签打印人员
+    trigger: 用户生成或打印自制辅料二维码标签
+    preconditions:
+      - 辅料主数据已存在且启用
+      - 用户具备标签生成权限
+    inputs:
+      - materialId
+      - 打印张数
+      - 标签打印日期/printedAt
+      - 打印人员
+    rule:
+      statement: 标签记录以 labelId 全局唯一；二维码包含 version、labelId、materialId、标签快照和标签打印日期 printedAt；后台标签记录是追溯数据源。第一版不校验实际生产日期和到期日期。
+    outputs:
+      - 自制二维码标签
+      - 标签记录
+    side_effects:
+      - 后台保存打印人、打印时间、辅料快照和标签状态 ACTIVE/VOID
+      - 粘贴后扫码复核记录留痕
+    exceptions:
+      - 辅料已停用
+    failure_handling:
+      - 阻止生成标签并提示管理员修正
+    invariants:
+      - labelId 全局唯一
+      - materialId 不可变
+      - 标签生成后后台保留完整记录
+      - 二维码标签日期以 printedAt 为准
+    acceptance:
+      - id: AC-LABEL-001
+        given: 管理员选择 MAT-00023 并打印标签
+        when: 系统生成二维码标签
+        then: 二维码包含 materialId 和标签打印日期，后台保存 labelId、打印人和打印时间
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-RECOG-001
+    baseline_refs: []
+    decision_refs:
+      - DEC-015
+      - DEC-016
+      - DEC-022
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: Q-017 已确认标签流程；Q-022/DEC-022 已确认第一版不录入实际生产日期，以标签打印日期为准。
+    created_at: "2026-09-09T03:21:41Z"
+    updated_at: "2026-09-09T04:30:00Z"
+    last_verified_at: null
+  - id: BL-LABEL-002
+    title: 后台选择辅料并批量打印自制二维码标签
+    kind: flow
+    domain: labeling
+    status: active
+    priority: high
+    risk: medium
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-09 Q-021 标签打印流程"
+    description: 管理员在后台标签打印界面选择辅料和打印张数，点击打印后系统自动读取当前时间作为打印时间，生成对应数量的标签记录并发送打印指令；打印完成后操作员拿标签粘贴。
+    actors:
+      - 电脑后台管理员/标签打印人员
+    trigger: 管理员选择辅料并点击打印标签
+    preconditions:
+      - 辅料主数据已存在且启用
+      - 后台电脑已连接可用标签打印机
+    inputs:
+      - materialId
+      - 打印张数
+      - 打印人员
+      - 打印时间（系统自动读取）
+    rule:
+      statement: 系统按打印张数生成对应数量的 labelId 和标签记录，自动记录当前时间作为 printedAt（即标签日期），不录入实际生产日期，并向标签打印机发送打印指令；标签打印后由操作员粘贴。
+    outputs:
+      - 标签打印指令
+      - 对应张数的标签记录
+    side_effects:
+      - 打印记录留痕，包含打印人、打印时间、辅料、张数
+    exceptions:
+      - 打印机离线或打印指令发送失败
+      - 打印张数非法
+    failure_handling:
+      - 阻止打印并提示检查打印机或修正张数
+      - 已生成但未成功打印的标签记录按失败处理，不视为已打印
+    invariants:
+      - 每张标签都有独立 labelId
+      - printedAt 为系统当前时间，不由手工录入
+      - 打印记录长期保存
+    acceptance:
+      - id: AC-LABEL-002
+        given: 管理员选择 MAT-00023 并输入 10 张
+        when: 管理员点击打印
+        then: 系统生成 10 个 labelId 并向打印机发送打印指令，后台保存打印记录
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-LABEL-001
+      - BL-DEVICE-002
+    baseline_refs: []
+    decision_refs:
+      - DEC-021
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: 打印机需新购并配合系统接入，具体型号延后确定；Q-022 已确认打印时不录入实际生产日期，以标签打印日期为准。
+    created_at: "2026-09-09T04:20:00Z"
+    updated_at: "2026-09-09T04:30:00Z"
     last_verified_at: null
   - id: BL-WEIGH-003
-    title: 电子秤称量结果满足目标重量才允许完成
+    title: 按配置允差校验称重结果
     kind: rule
     domain: weighing
-    status: draft
+    status: active
     priority: critical
     risk: medium
     authority: user-confirmed
     source:
       type: user-statement
       reference: "2026-09-08 业务澄清会话"
-    description: 系统以电子秤读数作为重量正确性的判断依据。
+    description: 第一版由操作员提交称重结果和电子秤读数照片，系统以输入重量和辅料/配方配置的允差判断重量正确；重量达到目标加减允差且读数照片已保存才允许完成。
     actors:
       - 生产/称重操作员
-    trigger: 辅料类型已确认后读取电子秤读数
+    trigger: 辅料类型已确认后提交称重结果
     preconditions:
-      - 电子秤在线且读数稳定
+      - 当前辅料已配置允差，或系统存在默认允差
+      - 操作员已获得并确认当前实际称量结果
+      - 操作员已拍摄可辨认的电子秤读数照片
     inputs:
-      - 电子秤读数
+      - 操作员录入或未来自动读取的称重结果
+      - 电子秤读数照片
+      - 辅料/配方允差配置
     rule:
-      statement: 系统按电子秤读数判断是否达到该辅料应称重量；未达到时不得将本步骤标记完成。
+      statement: 系统按辅料/配方配置的允差判断提交重量；重量达到目标加减允差且电子秤读数照片已提交时允许标记完成，否则禁止完成。
     outputs:
       - 重量校验结果
     side_effects: []
     exceptions:
-      - 电子秤离线
-      - 读数不稳定或长时间不满足重量
+      - 输入值非法或明显不合理
+      - 未提供可读取的电子秤读数照片
+      - 未配置允差
     failure_handling:
       - 禁止记录为完成并提示操作员处理
+      - 未配置允差时阻止称重并要求管理员在设置界面配置
     invariants: []
     acceptance:
       - id: AC-WEIGH-003
-        given: 目标辅料重量为 500g
-        when: 电子秤读数达到目标重量
-        then: 系统允许该步骤完成
+        given: 目标辅料重量为 500g，允许差为 ±5g
+        when: 操作员提交 497g 作为实际称重结果，并上传可辨认的电子秤读数照片
+        then: 系统允许该步骤完成并同时保存数字重量和读数照片
         method: null
         evidence: null
         status: not-verified
     dependencies:
       - BL-WEIGH-002
     baseline_refs: []
-    decision_refs: []
+    decision_refs:
+      - DEC-005
+      - DEC-026
     implementation_refs: []
     test_refs: []
     supersedes: []
-    notes: null
+    notes: Q-006 已确认允差按辅料/配方配置，参数可在设置界面调整；DEC-023 已确认第一版不接电子秤，重量以手动输入为主；DEC-026 已确认手动称重必须同时保存电子秤读数照片。
     created_at: "2026-09-08T07:02:18Z"
-    updated_at: "2026-09-08T07:02:18Z"
+    updated_at: "2026-09-09T06:40:00Z"
     last_verified_at: null
   - id: BL-WEIGH-004
     title: 类型或重量不匹配时拦截错误结果
     kind: constraint
     domain: weighing
-    status: draft
+    status: active
     priority: critical
     risk: medium
-    authority: inferred
+    authority: user-confirmed
     source:
       type: user-statement
       reference: "2026-09-08 业务澄清会话"
@@ -195,7 +395,975 @@ atoms:
     implementation_refs: []
     test_refs: []
     supersedes: []
-    notes: 具体拦截方式和错误处理仍需客户确认。
+    notes: 用户首轮已明确系统核心目标是防止辅料类型和重量错误，因此拦截错误结果纳入确认基线；具体拦截方式和错误处理仍可在实现前细化。
     created_at: "2026-09-08T07:02:18Z"
-    updated_at: "2026-09-08T07:02:18Z"
+    updated_at: "2026-09-09T04:40:00Z"
+    last_verified_at: null
+  - id: BL-WEIGH-005
+    title: 无码或无自动识别辅料先审批后称重
+    kind: flow
+    domain: weighing
+    status: active
+    priority: critical
+    risk: medium
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-08 Q-005"
+    description: 第一版测试版中，辅料无法通过二维码自动确认时，操作员在平板端拍照并提交申请，电脑端审批通过后，该辅料才允许称重。
+    actors:
+      - 生产/称重操作员（平板端）
+      - 电脑端审批人
+    trigger: 当前辅料无二维码、二维码无法识别或识别不匹配
+    preconditions:
+      - 当前称重工单已生成
+      - 当前辅料步骤未完成
+      - 操作员已拍摄或上传辅料包装图片
+    inputs:
+      - 辅料包装图片
+      - 放行申请理由
+      - 审批结果
+    rule:
+      statement: 没有二维码自动识别结果时，类型确认必须经过“已提交申请 -> 已审批通过”；审批通过前不得进入重量称量。
+    outputs:
+      - 类型确认通过结果
+      - 申请与审批留痕
+    side_effects:
+      - 工单记录申请时间、申请理由、图片证据、审批人、审批时间和审批结论
+    exceptions:
+      - 审批驳回
+      - 申请材料不完整
+      - 申请撤销
+    failure_handling:
+      - 审批驳回或材料不完整时阻止称重，并允许操作员补充材料或重新申请
+    invariants:
+      - 审批通过前该辅料不能标记为类型已确认
+      - 每次申请都保留申请人和审批人记录
+    acceptance:
+      - id: AC-WEIGH-005
+        given: 无码辅料已拍照并提交申请
+        when: 电脑端审批人通过申请
+        then: 系统允许该辅料进入称重，并保存申请与审批证据
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-WEIGH-002
+      - BL-WEIGH-004
+    baseline_refs: []
+    decision_refs:
+      - DEC-004
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: 真实生产版本的无码放行策略待后续确认，暂不影响第一版测试版基线。
+    created_at: "2026-09-08T09:17:09Z"
+    updated_at: "2026-09-08T09:17:09Z"
+    last_verified_at: null
+  - id: BL-SETTINGS-001
+    title: 允差与稳定条件可由用户在设置界面维护
+    kind: flow
+    domain: settings
+    status: active
+    priority: high
+    risk: low
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-08 Q-006"
+    description: 系统提供设置界面，允许用户自行调整全局默认允差和按辅料或配方的允差覆盖；稳定时间等称重参数保留给后续电子秤接入场景。
+    actors:
+      - 系统用户/管理员
+    trigger: 用户修改称重允差或稳定参数
+    preconditions:
+      - 用户已登录并具备设置权限
+    inputs:
+      - 全局默认允差
+      - 辅料或配方允差覆盖
+      - 稳定时间等称重参数
+    rule:
+      statement: 参数变更保存后应用于后续称重任务；已完成的称重记录不受参数变更影响。
+    outputs:
+      - 更新后的参数配置
+    side_effects:
+      - 后续称重步骤使用新参数
+    exceptions:
+      - 参数非法，例如负数、格式错误
+    failure_handling:
+      - 阻止保存并提示可修正范围
+    invariants:
+      - 每次称重步骤使用的允差参数可以被追溯
+      - 设置变更只影响变更后的称重校验
+    acceptance:
+      - id: AC-SETTINGS-001
+        given: 允许差参数已配置为 ±5g
+        when: 用户完成一次称重
+        then: 系统使用 ±5g 判断目标重量是否达标
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-WEIGH-003
+    baseline_refs: []
+    decision_refs:
+      - DEC-005
+      - DEC-006
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: 测试版默认建议为取目标重量 5g 与 1% 中的较大绝对偏差，用户可在设置界面调整；稳定条件参数暂不用于第一版手动称重。
+    created_at: "2026-09-08T09:23:17Z"
+    updated_at: "2026-09-08T09:23:17Z"
+    last_verified_at: null
+  - id: BL-WEIGH-006
+    title: 第一版手动输入称重结果并保存电子秤读数照片
+    kind: flow
+    domain: weighing
+    status: active
+    priority: critical
+    risk: medium
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-08 Q-007"
+    description: 第一版不连接电子秤，操作员在平板端手动输入实际称量结果，并拍摄电子秤读数照片；系统必须将数字重量和读数照片一起保存，标记数据来源为“手动读数/manual”，记录操作员和时间，测试版不要求电脑端审批。
+    actors:
+      - 生产/称重操作员
+    trigger: 操作员完成辅料称量并提交手动重量和电子秤读数照片
+    preconditions:
+      - 当前辅料步骤已进入称重
+      - 操作员已确认当前实际称量结果
+      - 操作员已拍摄能清楚显示电子秤读数的照片
+    inputs:
+      - 手动输入重量
+      - 电子秤读数照片
+      - 操作员身份
+    rule:
+      statement: 第一版以手动输入作为称重结果来源；数字重量和电子秤读数照片必须一起提交，数据来源标记为“manual”，并记录操作员、时间和输入重量；只有重量在允差范围内且读数照片已保存才允许完成。
+    outputs:
+      - 手动读数记录
+      - 电子秤读数照片记录
+    side_effects:
+      - 工单称重记录同时保存数字重量和电子秤读数照片，并标记为手动读数
+    exceptions:
+      - 输入值非法或明显不合理
+      - 未拍摄电子秤读数照片
+      - 电子秤读数照片模糊或无法辨认
+      - 操作员取消手动输入
+    failure_handling:
+      - 阻止提交并提示操作员重新输入或重新拍摄读数照片
+    invariants:
+      - 每条称重记录都能区分自动读数或手动读数
+      - 第一版默认称重记录来源为 manual，未来自动读数作为新增来源而不覆盖历史记录
+      - 每次手动称重记录必须同时包含数字重量、电子秤读数照片、操作员和操作时间
+    acceptance:
+      - id: AC-WEIGH-006
+        given: 当前辅料步骤位于称重阶段
+        when: 操作员手动输入实际称重结果、拍摄电子秤读数照片并确认
+        then: 系统同时记录手动读数、读数照片、操作员和时间，并允许进入后续步骤
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-WEIGH-003
+    baseline_refs: []
+    decision_refs:
+      - DEC-007
+      - DEC-026
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: 正式生产版本是否需要审批或二次确认，后续再确认；DEC-023 已确认第一版不接电子秤，重量来源为 manual；DEC-026 已确认数字重量和电子秤读数照片必须一起留痕。
+    created_at: "2026-09-08T09:27:42Z"
+    updated_at: "2026-09-09T06:40:00Z"
+    last_verified_at: null
+  - id: BL-WO-001
+    title: 工单与操作员账号绑定
+    kind: rule
+    domain: work-order
+    status: active
+    priority: critical
+    risk: medium
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-08 Q-008"
+    description: 工单通过后台审批或后台分配后绑定到一个操作员账号；只有绑定的账号可以操作该工单。
+    actors:
+      - 生产/称重操作员
+    trigger: 工单被后台审批通过或由电脑后台完成绑定
+    preconditions:
+      - 工单已创建
+      - 待绑定账号有效
+    inputs:
+      - 工单
+      - 操作员账号
+    rule:
+      statement: 每个工单同一时间最多绑定一个操作员账号；只有绑定账号可以操作该工单。
+    outputs:
+      - 工单绑定状态
+    side_effects:
+      - 非绑定账号不能执行该工单的称重步骤
+    exceptions:
+      - 账号不存在或不可用
+      - 工单已绑定其他账号
+    failure_handling:
+      - 拒绝绑定并提示后台处理
+    invariants:
+      - 同一工单同一时间最多有一个绑定操作员账号
+      - 绑定变更需要后台审批并保留记录
+    acceptance:
+      - id: AC-WO-001
+        given: 工单已绑定操作员 A
+        when: 操作员 B 尝试操作该工单
+        then: 系统拒绝操作并显示该工单当前绑定账号
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-WO-002
+      - BL-WO-004
+    baseline_refs: []
+    decision_refs:
+      - DEC-008
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: null
+    created_at: "2026-09-08T09:44:18Z"
+    updated_at: "2026-09-08T09:44:18Z"
+    last_verified_at: null
+  - id: BL-WO-002
+    title: 平板创建工单并由后台审批绑定
+    kind: flow
+    domain: work-order
+    status: active
+    priority: critical
+    risk: medium
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-08 Q-008"
+    description: 操作员在平板端登录后创建工单并选择产品、目标生产重量；后台审批通过后工单生效并绑定到创建账号。
+    actors:
+      - 生产/称重操作员
+      - 电脑后台管理员
+    trigger: 操作员在平板端创建工单
+    preconditions:
+      - 操作员已登录
+      - 产品与配方已存在
+      - 目标生产重量已输入且合法
+    inputs:
+      - 产品
+      - 目标生产重量
+      - 创建账号
+    rule:
+      statement: 平板创建的工单先进入待审批状态；后台审批通过后工单绑定到创建账号并允许操作，审批不通过则不能操作。
+    outputs:
+      - 工单及审批状态
+    side_effects:
+      - 审批通过后工单绑定创建账号
+    exceptions:
+      - 后台审批驳回
+      - 产品或配方不存在
+      - 目标生产重量非法
+    failure_handling:
+      - 驳回或校验失败时工单不生效，并提示操作员或后台
+    invariants:
+      - 审批通过前工单不可执行称重步骤
+      - 每次审批都有后台操作记录
+    acceptance:
+      - id: AC-WO-002
+        given: 操作员 A 在平板创建了工单并提交
+        when: 后台审批通过
+        then: 工单绑定到账号 A 并可以开始操作
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-WO-001
+    baseline_refs: []
+    decision_refs:
+      - DEC-008
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: null
+    created_at: "2026-09-08T09:44:18Z"
+    updated_at: "2026-09-08T09:44:18Z"
+    last_verified_at: null
+  - id: BL-WO-003
+    title: 平板端查看工单状态并申请接管
+    kind: flow
+    domain: work-order
+    status: active
+    priority: critical
+    risk: medium
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-08 Q-008"
+    description: 平板端用户可查看其他工单的状态和绑定账号，并申请接管；后台审批通过后，工单重新绑定到申请账号。
+    actors:
+      - 生产/称重操作员
+      - 电脑后台管理员
+    trigger: 用户申请接管一个非本人绑定的工单
+    preconditions:
+      - 工单已存在
+      - 用户不是当前绑定账号
+    inputs:
+      - 工单
+      - 申请账号
+      - 后台审批结果
+    rule:
+      statement: 接管申请必须先经过后台审批；审批通过后工单绑定账号变更为申请账号，审批不通过则绑定关系不变。
+    outputs:
+      - 接管审批结果
+    side_effects:
+      - 工单绑定账号发生变更
+    exceptions:
+      - 后台驳回
+      - 原绑定账号正在操作
+    failure_handling:
+      - 驳回时工单仍归原账号，并保留申请记录
+    invariants:
+      - 接管过程保留申请人、审批人和时间
+      - 任意时刻工单只有一个可操作绑定账号
+    acceptance:
+      - id: AC-WO-003
+        given: 操作员 B 申请接管绑定给 A 的工单
+        when: 后台审批通过
+        then: 工单重新绑定到 B，只有 B 可操作
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-WO-001
+    baseline_refs: []
+    decision_refs:
+      - DEC-008
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: null
+    created_at: "2026-09-08T09:44:18Z"
+    updated_at: "2026-09-08T09:44:18Z"
+    last_verified_at: null
+  - id: BL-WO-004
+    title: 电脑后台创建工单并绑定指定账号
+    kind: flow
+    domain: work-order
+    status: active
+    priority: high
+    risk: low
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-08 Q-008"
+    description: 电脑后台也可以创建工单，并在创建时选择要绑定的操作员账号；该工单直接进入可操作状态或按后台规则生效。
+    actors:
+      - 电脑后台管理员
+    trigger: 后台创建工单并选择绑定账号
+    preconditions:
+      - 产品与配方已存在
+      - 指定操作员账号有效
+    inputs:
+      - 产品
+      - 目标生产重量
+      - 绑定账号
+    rule:
+      statement: 电脑后台可以创建工单并绑定指定操作员账号；该工单对该账号开放操作。
+    outputs:
+      - 已绑定工单
+    side_effects:
+      - 指定账号可在平板端看到并操作该工单
+    exceptions:
+      - 产品不存在
+      - 指定账号不存在
+    failure_handling:
+      - 阻止创建并提示后台修正
+    invariants:
+      - 后台创建的工单也遵循一个账号一个可操作工单绑定的规则
+    acceptance:
+      - id: AC-WO-004
+        given: 后台创建工单并指定账号 A
+        when: 账号 A 在平板端登录
+        then: 该工单对账号 A 可见并可操作
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-WO-001
+    baseline_refs: []
+    decision_refs:
+      - DEC-008
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: null
+    created_at: "2026-09-08T09:44:18Z"
+    updated_at: "2026-09-08T09:44:18Z"
+    last_verified_at: null
+  - id: BL-WO-005
+    title: 工单按顺序完成全部辅料步骤并保留证据后才可完成
+    kind: rule
+    domain: work-order
+    status: active
+    priority: critical
+    risk: medium
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-08 Q-009"
+    description: 工单必须按配方顺序完成全部辅料步骤；每个辅料都要有二维码扫码信息或图片记录，以及实际投放重量记录，全部完成后才允许提交工单完成。
+    actors:
+      - 生产/称重操作员
+    trigger: 操作员提交工单完成
+    preconditions:
+      - 工单已绑定到当前操作员
+      - 所有辅料步骤已按顺序执行
+    inputs:
+      - 每个辅料的类型确认证据
+      - 每个辅料的实际重量记录
+    rule:
+      statement: 只要有一个辅料步骤未完成、未按顺序完成或证据不完整，工单就不能提交完成。
+    outputs:
+      - 工单完成状态
+    side_effects:
+      - 工单状态变为已完成
+    exceptions:
+      - 缺少二维码或图片证据
+      - 缺少实际重量记录
+      - 辅料步骤未全部完成
+    failure_handling:
+      - 阻止提交完成并列出缺失步骤和缺失证据
+    invariants:
+      - 已完成工单的所有辅料步骤都有类型确认证据和重量记录
+      - 工单完成后不再允许修改称重记录
+    acceptance:
+      - id: AC-WO-005
+        given: 工单所有辅料步骤均已按顺序完成且证据完整
+        when: 绑定操作员提交工单完成
+        then: 系统允许工单完成并保存全流程记录
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-WEIGH-002
+      - BL-WEIGH-003
+      - BL-WO-001
+    baseline_refs: []
+    decision_refs:
+      - DEC-009
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: null
+    created_at: "2026-09-08T09:52:19Z"
+    updated_at: "2026-09-08T09:52:19Z"
+    last_verified_at: null
+  - id: BL-WO-006
+    title: 平板申请撤销/删除工单需后台审批
+    kind: flow
+    domain: work-order
+    status: active
+    priority: high
+    risk: medium
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-08 Q-009"
+    description: 平板端可申请撤销/删除工单，但必须经过后台审批；电脑后台也可以直接撤销/删除工单。所有撤销/删除均保留历史记录，不物理删除工单和证据。
+    actors:
+      - 生产/称重操作员
+      - 电脑后台管理员
+    trigger: 平板端申请撤销/删除工单，或后台直接执行撤销/删除
+    preconditions:
+      - 工单已存在
+      - 操作员登录账号有效或后台管理员已登录
+    inputs:
+      - 工单
+      - 申请账号或后台账号
+      - 撤销/删除原因
+      - 审批结果
+    rule:
+      statement: 平板端提交的撤销/删除申请必须先经后台审批；审批通过后工单生效为已撤销/已删除状态。后台可直接撤销/删除，但必须记录原因和操作人；所有记录保留，不物理删除。
+    outputs:
+      - 撤销/删除审批结果
+      - 工单状态变更
+    side_effects:
+      - 工单不再作为可执行工单出现
+      - 后台仍可查看完整历史记录和证据
+    exceptions:
+      - 后台驳回申请
+      - 工单已完成
+      - 工单已被撤销/删除
+    failure_handling:
+      - 驳回时保持原状态，并保留申请记录
+    invariants:
+      - 撤销/删除申请和审批均保留操作记录
+      - 已完成工单不能重新变为可执行工单
+      - 撤销/删除后的工单和证据仍保留在系统中
+    acceptance:
+      - id: AC-WO-006
+        given: 绑定操作员在平板端申请撤销/删除工单
+        when: 后台审批通过
+        then: 工单状态变为已撤销/已删除，平板端不再显示为可执行工单，后台仍保留完整记录
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-WO-001
+    baseline_refs: []
+    decision_refs:
+      - DEC-009
+      - DEC-010
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: Q-010 已确认删除也保留记录，采用撤销/作废和逻辑删除。
+    created_at: "2026-09-08T09:52:19Z"
+    updated_at: "2026-09-08T09:58:19Z"
+    last_verified_at: null
+  - id: BL-AUTH-001
+    title: 平板注册账号为普通操作员，后台账号为预置管理员
+    kind: constraint
+    domain: account
+    status: active
+    priority: critical
+    risk: medium
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-08 Q-011"
+    description: 平板端注册产生的账号均为普通操作员账号，不能进入电脑后台；电脑后台账号为预置管理员账号，可以在后台创建和管理普通账号。
+    actors:
+      - 平板端普通操作员
+      - 电脑后台管理员
+    trigger: 创建账号或登录后台
+    preconditions:
+      - 账号体系已初始化
+    inputs:
+      - 账号来源
+      - 账号类型
+    rule:
+      statement: 平板注册只能创建普通操作员账号；后台管理员账号为预置账号；管理员可创建和管理普通账号。
+    outputs:
+      - 账号权限分配
+    side_effects:
+      - 普通账号不能进入后台管理界面
+    exceptions:
+      - 管理员账号不存在或密码丢失
+      - 普通账号重复注册
+    failure_handling:
+      - 管理员账号不可用时由部署者恢复预置账号
+      - 重复账号由后台管理员管理
+    invariants:
+      - 平板端注册的账号不会自动获得后台权限
+      - 后台管理员账号不能通过平板注册产生
+    acceptance:
+      - id: AC-AUTH-001
+        given: 用户从平板端注册一个新账号
+        when: 该账号登录平板 App
+        then: 账号为普通操作员权限，不能进入电脑后台
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-WO-001
+    baseline_refs: []
+    decision_refs:
+      - DEC-011
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: null
+    created_at: "2026-09-08T10:32:39Z"
+    updated_at: "2026-09-08T10:32:39Z"
+    last_verified_at: null
+  - id: BL-SCOPE-001
+    title: 系统独立运行且不连接金蝶
+    kind: constraint
+    domain: scope
+    status: active
+    priority: critical
+    risk: medium
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-08 客户反馈 Q-001"
+    description: 本系统作为独立交付系统运行，不连接或依赖金蝶，产品、配方和辅料主数据由本系统自行维护或导入。
+    actors: []
+    trigger: 确定系统交付边界
+    preconditions: []
+    inputs: []
+    rule:
+      statement: 系统独立运行，不需要金蝶接口；产品、配方和辅料主数据在本系统内维护或导入。
+    outputs:
+      - 独立运行的辅料称重防错系统
+    side_effects: []
+    exceptions: []
+    failure_handling: []
+    invariants:
+      - 系统运行不依赖金蝶账号、接口或数据
+    acceptance:
+      - id: AC-SCOPE-001
+        given: 客户已确认不使用金蝶
+        when: 系统初始化基础数据并执行辅料称重防错流程
+        then: 系统可独立完成，不需要与金蝶连接
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-WEIGH-001
+    baseline_refs: []
+    decision_refs:
+      - DEC-001
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: null
+    created_at: "2026-09-08T07:59:53Z"
+    updated_at: "2026-09-08T07:59:53Z"
+    last_verified_at: null
+  - id: BL-DATA-001
+    title: 用户自主维护产品、配方和辅料主数据
+    kind: flow
+    domain: master-data
+    status: active
+    priority: critical
+    risk: medium
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-08 客户反馈 Q-002"
+    description: 系统提供基础数据管理功能，让用户通过后台手工录入或 Excel 模板导入/导出，自行创建和维护产品、产品配料和辅料信息，供称量清单计算使用。
+    actors:
+      - 电脑后台管理员
+    trigger: 用户需要创建或修改产品、配方或辅料信息
+    preconditions: []
+    inputs:
+      - 产品信息
+      - 产品配料/配方信息
+      - 辅料信息
+      - Excel 模板文件
+      - 导出的主数据文件
+    rule:
+      statement: 系统允许用户通过后台手工界面或 Excel 模板批量导入/导出，创建和维护产品信息、产品配料信息和辅料信息，并保证这些信息可用于生成称量清单。
+    outputs:
+      - 可供称量清单计算使用的产品、配方和辅料主数据
+      - 按模板导出的主数据文件
+    side_effects:
+      - 导入/导出和修改主数据的行为留痕
+    exceptions:
+      - Excel 模板格式或字段错误
+      - 必填项缺失
+      - 辅料/产品编码重复
+      - 配方引用了不存在的辅料
+    failure_handling:
+      - 导入前校验并显示错误行与原因
+      - 阻止错误数据覆盖已有有效主数据
+    invariants:
+      - 主数据变更后应影响后续称量清单生成
+      - Excel 导入字段与后台手工维护字段保持一致
+    acceptance:
+      - id: AC-DATA-001
+        given: 用户具有基础数据维护权限
+        when: 用户创建产品或辅料并维护产品配料
+        then: 系统保存这些信息，并可在后续生成称量清单时使用
+        method: null
+        evidence: null
+        status: not-verified
+      - id: AC-DATA-002
+        given: 用户上传符合模板的 Excel 主数据文件
+        when: 系统执行批量导入
+        then: 合法数据入库，错误行被拒绝并显示原因，导出文件可按模板再次编辑
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies: []
+    baseline_refs: []
+    decision_refs:
+      - DEC-002
+      - DEC-017
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: Q-018 已确认支持后台手工录入和 Excel 模板导入/导出。
+    created_at: "2026-09-08T08:05:12Z"
+    updated_at: "2026-09-09T03:50:00Z"
+    last_verified_at: null
+  - id: BL-DATA-002
+    title: 称重记录与证据长期保存
+    kind: rule
+    domain: data
+    status: active
+    priority: high
+    risk: low
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-08 Q-012"
+    description: 工单、称重记录、扫码/图片和审批证据长期保存，不因撤销/删除或时间原因物理删除。
+    actors:
+      - 系统用户/管理员
+    trigger: 保存或追溯称重记录
+    preconditions: []
+    inputs:
+      - 工单记录
+      - 辅料证据
+      - 称重记录
+    rule:
+      statement: 所有工单与称重相关记录长期保留，第一版不设置保存期限，也不提供物理删除。
+    outputs:
+      - 可长期追溯的历史记录
+    side_effects:
+      - 数据会长期累积，需要规划备份和存储
+    exceptions: []
+    failure_handling: []
+    invariants:
+      - 撤销/删除后的工单和证据仍可追溯
+      - 不因时间到期自动删除
+    acceptance:
+      - id: AC-DATA-002
+        given: 系统已保存一批工单和称重证据
+        when: 管理员在后台查询历史记录
+        then: 记录仍可查看和追溯
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-WO-006
+    baseline_refs: []
+    decision_refs:
+      - DEC-012
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: 后续如需归档或清理，再单独制定策略。
+    created_at: "2026-09-08T10:40:05Z"
+    updated_at: "2026-09-08T10:40:05Z"
+    last_verified_at: null
+  - id: BL-DATA-003
+    title: 辅料主数据录入与包装图片管理
+    kind: flow
+    domain: master-data
+    status: active
+    priority: high
+    risk: medium
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-09 辅料与产品配方录入细节"
+    description: 管理员可在电脑后台或平板端创建和维护辅料信息；辅料信息包含系统自动生成的 materialId、公司内部代号、中文名称、选填英文名称、默认保质期和启用状态，并可保存多张包装外观图片；电脑端从本地文件选择图片，平板端从相册选择或直接拍摄。
+    actors:
+      - 电脑后台管理员
+      - 平板端管理员
+    trigger: 管理员创建或修改辅料主数据
+    preconditions:
+      - 当前账号具有管理员权限
+    inputs:
+      - 中文名称
+      - 英文名称（选填）
+      - 公司内部代号
+      - 默认保质期
+      - 多张辅料包装图片
+    rule:
+      statement: 辅料主数据创建和编辑仅管理员可操作；materialCode、中文名称和默认保质期必填，英文名称选填；系统保存辅料身份字段，并支持电脑端选择本地图片、平板端从相册选择或拍摄多张包装图片。
+    outputs:
+      - 可供产品配方、二维码标签和称重流程使用的辅料主数据及图片
+    side_effects:
+      - 辅料图片和修改历史长期保存
+    exceptions:
+      - 非管理员尝试进入辅料管理
+      - 内部代号或必填字段缺失
+      - 图片格式或大小不合法
+    failure_handling:
+      - 非管理员看不到辅料管理入口
+      - 必填字段或图片不符合要求时阻止保存并提示
+    invariants:
+      - materialId 自动生成且不可变
+      - 公司内部代号在启用辅料中保持唯一
+      - 中文名称和默认保质期必填，英文名称选填
+      - 一种辅料可关联多张包装图片
+    acceptance:
+      - id: AC-DATA-003
+        given: 管理员在平板端选择拍摄辅料包装并录入中文名称、英文名称/代号、内部代号和保质期
+        when: 管理员保存辅料
+        then: 辅料进入辅料库，多张图片可供后续查看和辅助识别
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-DATA-001
+    baseline_refs: []
+    decision_refs:
+      - DEC-018
+      - DEC-019
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: Q-020 已确认字段方案：materialCode、中文名称和默认保质期必填，英文名称选填。
+    created_at: "2026-09-09T03:55:00Z"
+    updated_at: "2026-09-09T04:00:00Z"
+    last_verified_at: null
+  - id: BL-DATA-004
+    title: 产品配方从现有辅料库选择并录入每吨用量
+    kind: flow
+    domain: master-data
+    status: active
+    priority: high
+    risk: medium
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-09 辅料与产品配方录入细节"
+    description: 管理员在电脑后台或平板端创建和维护产品信息及配方；配方行只能从现有辅料库选择辅料，并填写每吨成品所需用量；产品录入不涉及图片。
+    actors:
+      - 电脑后台管理员
+      - 平板端管理员
+    trigger: 管理员创建或修改产品配方
+    preconditions:
+      - 当前账号具有管理员权限
+      - 配方所需的辅料已存在于辅料库
+    inputs:
+      - 产品名称
+      - 所选辅料
+      - 每吨成品所需辅料用量
+    rule:
+      statement: 产品信息包含产品名称和配方；配方只能引用现有辅料库中的辅料并填写每吨用量；辅料尚未录入时，操作人员应先录入辅料再创建产品配方。
+    outputs:
+      - 可用于生成称量清单的产品配方
+    side_effects: []
+    exceptions:
+      - 配方引用的辅料不存在
+      - 产品名称重复或每吨用量非法
+    failure_handling:
+      - 阻止保存并提示先增加辅料或修正用量
+    invariants:
+      - 配方引用的每个辅料都必须存在于辅料库
+      - 配方中的用量按每吨成品保存，后续按目标生产重量等比换算
+    acceptance:
+      - id: AC-DATA-004
+        given: 管理员创建产品并从辅料库选中三种辅料
+        when: 管理员填写每种辅料每吨用量并保存
+        then: 系统保存产品配方，并可在生成工单称量清单时使用
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-DATA-001
+      - BL-DATA-003
+      - BL-WEIGH-001
+    baseline_refs: []
+    decision_refs:
+      - DEC-018
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: 产品配方录入支持电脑和平板端，但仅管理员可操作。
+    created_at: "2026-09-09T03:55:00Z"
+    updated_at: "2026-09-09T03:55:00Z"
+    last_verified_at: null
+  - id: BL-DEVICE-001
+    title: 平板优先作为现场操作与辅料识别设备
+    kind: constraint
+    domain: device
+    status: active
+    priority: critical
+    risk: medium
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-08 客户反馈 Q-003"
+    description: 客户确定现场操作首选平板，扫码枪作为次选；MVP 按平板实现扫码、拍照、称重结果录入和确认流程。
+    actors:
+      - 生产/称重操作员
+    trigger: 确定现场硬件设备
+    preconditions: []
+    inputs: []
+    rule:
+      statement: MVP 以平板为主要操作和辅料识别设备；扫码枪可作为后续扩展或次选方案，不应阻塞平板流程。
+    outputs:
+      - 平板上的辅料识别和称重操作流程
+    side_effects: []
+    exceptions: []
+    failure_handling: []
+    invariants:
+      - 系统主流程不依赖扫码枪硬件
+    acceptance:
+      - id: AC-DEVICE-001
+        given: 现场只有平板和称量工具
+        when: 操作员使用平板扫码或拍照并手动输入称重结果
+        then: 系统可以完整走通辅料类型确认和重量确认流程
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-WEIGH-002
+      - BL-WEIGH-003
+    baseline_refs: []
+    decision_refs:
+      - DEC-003
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: DEC-023 已确认第一版不接电子秤，称重结果由平板手动输入。
+    created_at: "2026-09-08T08:10:16Z"
+    updated_at: "2026-09-09T06:10:00Z"
+    last_verified_at: null
+  - id: BL-DEVICE-002
+    title: 后端电脑与局域网部署边界
+    kind: constraint
+    domain: device
+    status: active
+    priority: high
+    risk: medium
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-09 Q-019 确认"
+    description: 第一版后端和数据库部署在现场可用电脑上，平板与后端通过可用 WiFi 处于同一局域网，系统不依赖互联网即可运行；标签由后台管理员在电脑端打印。
+    actors:
+      - 现场系统管理员
+      - 平板端操作员
+    trigger: 部署第一版系统
+    preconditions:
+      - 现场有一台可长期运行的后端电脑
+      - 现场存在可用 WiFi/局域网
+    inputs: []
+    rule:
+      statement: 后端电脑承担数据库和服务端程序，平板 App 通过局域网访问；系统离线可运行；标签打印设备由 Q-021 继续确认后接入。
+    outputs:
+      - 可供平板并发访问的后端服务环境
+    side_effects: []
+    exceptions:
+      - 后端电脑关机会导致系统不可用
+      - WiFi 不稳定可能导致平板连接中断
+    failure_handling:
+      - 建议后端电脑固定位置并保持运行
+      - 局域网不稳定时优先使用有线网络或改善 WiFi 覆盖
+    invariants:
+      - 平板和后端电脑必须处于同一可通信网络
+      - 系统核心业务不应依赖互联网
+    acceptance:
+      - id: AC-DEVICE-002
+        given: 后端电脑已运行服务，平板与后端连接同一 WiFi
+        when: 平板登录并创建工单
+        then: 平板可通过局域网与后端完成业务操作
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-DEVICE-001
+      - BL-LABEL-001
+    baseline_refs: []
+    decision_refs:
+      - DEC-020
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: Q-019 已确认后端主机和 WiFi；标签打印设备见 Q-021。
+    created_at: "2026-09-09T04:10:00Z"
+    updated_at: "2026-09-09T04:10:00Z"
     last_verified_at: null

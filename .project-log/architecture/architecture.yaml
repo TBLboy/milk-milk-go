@@ -1,2 +1,167 @@
 version: "0.2"
-architectures: []
+architectures:
+  - id: ARCH-001
+    status: draft
+    goal: 为第一版辅料称重防错系统定义后端、浏览器管理端、Android 平板 App、数据库、文件存储、打印和备份的模块边界与数据流，使后续任务拆解不需要再发明业务规则。
+    related_business_logic:
+      - BL-WEIGH-001
+      - BL-WEIGH-002
+      - BL-RECOG-001
+      - BL-LABEL-001
+      - BL-LABEL-002
+      - BL-WEIGH-003
+      - BL-WEIGH-004
+      - BL-WEIGH-005
+      - BL-WEIGH-006
+      - BL-SETTINGS-001
+      - BL-WO-001
+      - BL-WO-002
+      - BL-WO-003
+      - BL-WO-004
+      - BL-WO-005
+      - BL-WO-006
+      - BL-AUTH-001
+      - BL-SCOPE-001
+      - BL-DATA-001
+      - BL-DATA-002
+      - BL-DATA-003
+      - BL-DATA-004
+      - BL-DEVICE-001
+      - BL-DEVICE-002
+    decision_refs:
+      - DEC-023
+      - DEC-024
+      - DEC-025
+      - DEC-026
+      - DEC-027
+    components:
+      - id: backend-api
+        name: FastAPI 后端服务
+        responsibilities:
+          - 提供浏览器管理端和 Android App 共用的 REST API
+          - 管理账号、权限、主数据、工单、审批、称重记录、标签记录和设置
+          - 校验 Excel 导入并生成错误报告
+          - 生成二维码标签 PDF，调用 Windows 系统打印
+          - 执行数据库备份
+      - id: web-admin
+        name: React + Vite 浏览器管理端
+        responsibilities:
+          - 电脑后台登录与管理界面
+          - 维护辅料、产品、配方、账号和设置
+          - 审批工单、无码放行申请、撤销/删除
+          - 标签打印、Excel 导入导出、备份查看
+      - id: android-app
+        name: Android 平板 App
+        responsibilities:
+          - 操作员和平板管理员登录
+          - 创建工单、查看工单、执行辅料步骤
+          - 二维码扫码、无码拍照、电子秤读数拍照
+          - 手动输入重量并提交称重证据
+          - 申请接管、撤销/删除
+      - id: database
+        name: SQLite 数据库
+        responsibilities:
+          - 保存主数据、工单、步骤、称重记录、审批、标签、账号和操作日志
+          - 保存配方调用和工单创建时的配方快照
+      - id: file-storage
+        name: 本地文件存储
+        responsibilities:
+          - 保存辅料包装图片、无码申请照片、电子秤读数照片、Excel 文件和标签 PDF
+          - 保存数据库备份文件
+      - id: windows-runtime
+        name: Windows 安装包与后台服务
+        responsibilities:
+          - 部署 FastAPI 后端和静态管理端
+          - 开机自启动、防火墙端口、升级保护和自动备份
+          - 调用系统打印机输出标签 PDF
+    interfaces:
+      - id: API
+        name: REST API
+        description: FastAPI 暴露给 React 管理端和 Android App 的 JSON 接口，覆盖认证、主数据、工单、称重、审批、标签、Excel、备份和设置。
+        owners:
+          - backend-api
+        consumers:
+          - web-admin
+          - android-app
+      - id: ADMIN-STATIC
+        name: 管理端静态文件
+        description: FastAPI 同端口托管 React 构建产物，浏览器通过局域网访问 `http://后端IP:8000`。
+        owners:
+          - backend-api
+        consumers:
+          - web-admin
+      - id: UPLOAD
+        name: 文件上传
+        description: Android App 上传辅料包装照片、无码申请照片和电子秤读数照片；后端校验类型、大小并写入 file-storage。
+        owners:
+          - backend-api
+        consumers:
+          - android-app
+      - id: PRINT
+        name: 标签打印
+        description: 后端生成一页标签 PDF，交给 Windows 系统打印程序；第一版不绑定具体打印机驱动。
+        owners:
+          - backend-api
+          - windows-runtime
+        consumers:
+          - web-admin
+      - id: BACKUP
+        name: 自动备份
+        description: Windows 服务按配置备份 SQLite 数据库和必要配置文件；图片证据按备份策略复制到备份目录。
+        owners:
+          - windows-runtime
+        consumers:
+          - file-storage
+    data_flows:
+      - name: 主数据维护
+        description: web-admin 或 android-app 管理员创建/修改辅料、产品、配方和设置，backend-api 校验后写入 database。
+      - name: 工单创建与配方快照
+        description: 平板创建工单时选择产品和目标生产重量，backend-api 按产品配方生成步骤并保存创建时的配方快照。
+      - name: 辅料类型确认
+        description: 二维码扫码由 android-app 读取本系统标签，backend-api 比较 materialId；无码/标签异常时上传照片并进入审批，审批通过后继续。
+      - name: 手动称重证据
+        description: 操作员手动输入重量并上传电子秤读数照片，backend-api 校验目标重量与允差后，将数字、图片、操作员和时间写入 database/file-storage。
+      - name: Excel 导入导出
+        description: web-admin 上传 Excel，backend-api 按模板校验后写入 database 并返回错误行；导出生成标准模板文件。
+      - name: 标签打印
+        description: web-admin 选择辅料和张数，backend-api 生成 labelId 和标签 PDF，windows-runtime 调用系统打印并保存打印记录。
+      - name: 自动备份
+        description: windows-runtime 按计划备份 database 和相关配置到 file-storage 的备份目录，记录备份结果。
+    state_and_concurrency:
+      - 工单状态：待审批/已绑定/执行中/已完成/已撤销/已删除；每一步有独立步骤状态。
+      - 无码类型确认状态：待申请/待审批/已通过/已驳回/已重新申请。
+      - 同一工单同一时间最多绑定一个操作员账号；多台平板并发操作不同工单。
+      - 文件上传使用客户端生成的请求标识，避免重复拍照导致同一证据重复提交。
+      - 工单支持暂停后在平板继续上次未完成步骤。
+    failure_paths:
+      - 平板断网：第一版不做离线队列，界面提示网络不可用并保留当前步骤状态，恢复后继续。
+      - 照片缺失/模糊：称重步骤禁止提交，提示重新拍照。
+      - 无码审批 pending：当前步骤保持等待，不能进入称重。
+      - 标签打印失败：阻止打印并提示检查 Windows 打印机；已生成的 labelId 不标记为已打印。
+      - SQLite 写入失败：后端返回可识别错误并保留操作日志，安装包提供备份和恢复入口。
+      - 自动备份失败：记录失败日志，管理端显示最近备份状态。
+    security_and_privacy:
+      - 平板注册账号为普通操作员；管理员账号由初始化预置，后台可创建普通账号。
+      - API 使用登录令牌区分角色；管理端和 Android App 不开放公开注册管理员。
+      - 上传文件校验类型、大小和路径，不直接信任文件名。
+      - 系统只在内网使用，数据不主动上传互联网。
+    observability:
+      - 后端记录登录、操作、审批、称重、导入、打印、备份等关键日志。
+      - 提供健康检查接口，管理端显示服务状态和备份状态。
+      - 称重和审批证据在管理端可追溯查看。
+    deployment_and_compatibility:
+      - 后端默认部署在 Windows 11 现场电脑，使用 Windows 安装包 + 后台服务。
+      - 平板默认适配最新 Android 系统，交付 APK；Windows 支持安装系统软件。
+      - 默认端口 8000，后端电脑建议使用固定 IP。
+      - 升级安装包保留数据目录和配置，不覆盖业务数据。
+    open_questions:
+      - id: LABEL-PRINTER-MODEL
+        summary: 标签打印机具体型号和驱动待现场确定
+        blocking: false
+        reason: 第一版先用 PDF + Windows 系统打印，具体驱动后续接入
+      - id: TABLET-BRAND
+        summary: 平板品牌和具体摄像头能力待现场确认
+        blocking: false
+        reason: 用户已确认采用最新 Android 平板，可按通用 Android 适配
+    created_at: "2026-09-09T07:10:00Z"
+    updated_at: "2026-09-09T07:10:00Z"

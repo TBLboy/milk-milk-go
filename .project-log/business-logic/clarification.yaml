@@ -1,73 +1,338 @@
 version: "0.4"
-status: active
+status: passed
 functional_business_logic:
   actors:
     - "[inferred] 生产/称重操作员：执行扫码、拍照和称量"
     - "[inferred] 生产计划人员：选择产品并输入目标生产重量"
+    - "[user-confirmed-first-version] 电脑端审批人：审批无码辅料的放行申请"
+    - "[user-confirmed] 系统用户/管理员：在设置界面维护允差和称重参数"
+    - "[user-confirmed] 电脑后台管理员：审批工单创建、审批接管、创建/分配工单、管理数据"
+    - "[user-confirmed] 平板端普通操作员账号：创建和操作工单，不能进入后台管理"
+    - "[user-confirmed] 电脑后台管理员/标签打印人员：生成和打印自制二维码标签"
+    - "[user-confirmed] 平板端管理员：可录入/维护辅料和产品配方，并可执行后台管理员授权的管理操作"
   scenarios:
     - "[user-confirmed] 生产人员选择产品名称并输入目标生产重量，系统自动计算需要称取的辅料类型和重量。"
     - "[user-confirmed] 称重人员扫描二维码或拍摄辅料包装图片，确认辅料类型正确后在电子秤上称量重量。"
+    - "[user-confirmed] 操作员在平板 App 创建工单、选择产品，按配方步骤逐项准备辅料；每个辅料先确认类型，再称重。"
+    - "[user-confirmed-first-version] 无码辅料由平板端操作员拍照申请，电脑端审批人审批通过后，操作员才可称重。"
+    - "[user-confirmed-first-version] 电子秤离线或读数异常时，操作员可手动输入秤面读数；系统标记手动读数并留痕。"
+    - "[user-confirmed] 操作员在平板创建工单，后台审批通过后工单绑定到该账号，只有该账号可操作。"
+    - "[user-confirmed] 平板端可查看其他工单状态和绑定账号，可申请接管；后台审批通过后工单归申请账号操作。"
+    - "[user-confirmed] 电脑后台可以创建工单并选择绑定哪个账号。"
+    - "[user-confirmed] 工单按顺序完成全部辅料步骤，且每个辅料都有二维码/图片证据和实际重量记录后，才可提交完成。"
+    - "[user-confirmed] 平板端可申请撤销/删除工单，需后台审批；后台也可以撤销/删除工单。"
+    - "[user-confirmed] 删除也保留记录；撤销/删除采用逻辑删除或作废，不物理删除工单和证据。"
+    - "[user-confirmed] 平板端注册的账号均为普通操作员账号；后台账号为管理员账号，管理员账号为预置账号，后台可创建和管理普通账号。"
+    - "[user-confirmed] 称重记录、扫码/图片和审批证据长期保存。"
+    - "[user-confirmed] 配方按每吨成品需要多少辅料录入；系统按目标生产重量除以 1000kg 等比换算应称重量。"
+    - "[user-confirmed-first-version] 第一版以公司自制二维码为主：扫码解析本系统标签，按 materialId 与工单要求匹配；供应商原码不作核心身份；无码、非本系统二维码或标签异常走拍照申请审批。"
+    - "[user-confirmed] 电脑后台管理员选择辅料和张数后打印标签，系统以打印日期作为标签日期，不录入实际生产日期；打印后粘贴到辅料包装，再扫码复核。"
+    - "[user-confirmed] 管理员在后台标签打印界面选择辅料、输入打印张数并点击打印，系统自动记录当前时间并发送打印指令；操作员取标签后粘贴。"
+    - "[user-confirmed] 电脑后台管理员可在后台界面手工维护产品、配方和辅料主数据，也可通过 Excel 模板批量导入/导出。"
+    - "[user-confirmed] 管理员可在平板端直接拍摄或从相册选择多张辅料包装图片，录入辅料信息；普通操作员看不到辅料管理入口。"
+    - "[user-confirmed] 管理员在电脑端或平板端创建产品配方时，只能从现有辅料库选择辅料并填写每吨用量，不涉及图片。"
+    - "[user-confirmed] 后端服务和数据库部署在现场可用电脑上，平板通过现场 WiFi 与后端同一局域网访问，系统不依赖互联网。"
   rules:
     - "[user-confirmed] 每个产品对应配方；按配方和实际生产重量计算需要称取的辅料类型及重量。"
     - "[user-confirmed] 辅料通常有二维码，但可能存在无二维码辅料。"
     - "[user-confirmed] 辅料称重防错的核心目标是确保辅料类型正确、重量正确。"
+    - "[user-confirmed] 系统作为独立系统交付，不连接金蝶。"
+    - "[user-confirmed] 产品、配方和辅料主数据由用户在本系统内自行创建和维护。"
+    - "[user-confirmed] 主数据支持后台手工录入和 Excel 模板导入/导出；导入前校验必填项、重复编码和配方引用关系，失败行需给出原因且不覆盖有效数据。"
+    - "[user-confirmed] 现场操作首选平板，扫码枪为次选，MVP 先按平板实现。"
+    - "[user-confirmed] 系统分为电脑端后端/数据库和平板端 App，平板通过局域网连接电脑后端。"
+    - "[user-confirmed] 支持多个平板同时工作，操作员账号用于区分操作员身份。"
+    - "[user-confirmed] 电子秤连接成功时自动读取重量；连接失败时允许手动输入当前秤面读数。"
+    - "[user-confirmed-final-goal] 有二维码时自动识别辅料；无二维码时拍照并由后端模型与辅料包装图片对比，正确后放行。"
+    - "[user-confirmed-final-goal] 模型识别不匹配但实际正确时，操作员可申请放行并提交理由及图片/视频证据。"
+    - "[user-confirmed-first-version] 第一版先实现二维码识别和拍照申请/审批流程，模型自动识别后续再做。"
+    - "[user-confirmed-first-version] 无码辅料测试版采用先审批后称重；审批通过前不得进入重量称量。"
+    - "[user-confirmed] 称重允差按辅料/配方配置；测试版先使用统一默认值；允差、稳定条件等参数放在设置界面，允许用户调整。"
+    - "[user-confirmed-first-version] 电子秤离线或读数异常时允许手动输入；系统必须标记为手动读数，并记录操作员、时间和读数；测试版不做电脑端审批。"
+    - "[user-confirmed] 工单绑定到一个操作员账号；只有绑定账号可以操作该工单。"
+    - "[user-confirmed] 平板创建工单后需后台审批通过才生效并绑定；接管工单也需后台审批。"
+    - "[user-confirmed] 平板端是主要业务操作端；电脑后台主要做审批、工单管理和数据管理。"
+    - "[user-confirmed] 工单只有全部辅料步骤按顺序完成并且证据完整后，才能提交完成。"
+    - "[user-confirmed] 工单撤销/删除：平板端申请需后台审批；后台可以直接执行撤销/删除。"
+    - "[user-confirmed] 工单撤销/删除后必须保留工单、扫码/图片、重量、操作员和审批记录。"
+    - "[user-confirmed] 普通账号不能进入电脑后台；超管/管理员能力来自预置管理员账号。"
+    - "[user-confirmed] 工单、称重记录、图片和审批证据长期保留，不因撤销/删除或时间原因物理删除。"
+    - "[user-confirmed] 配方基准为每吨成品；目标重量变化时按比例换算辅料用量。"
+    - "[user-confirmed-first-version] 辅料主数据使用不可变 materialId 和公司内部代号 materialCode；二维码以 materialId 为匹配主字段，后台主数据为真实数据源。"
+    - "[user-confirmed] 自制二维码标签由电脑后台管理员生成/打印；第一版不录入实际生产日期，以标签打印日期 printedAt 作为二维码标签日期，生成 labelId 并保存打印记录；粘贴后扫码复核。"
+    - "[user-confirmed] 第一版不校验实际生产日期和到期日期；后续需要批次或有效期管理时再增强。"
+    - "[user-confirmed] 标签打印界面支持选择辅料和打印张数，点击打印后系统自动记录 printedAt 并发送打印指令；打印机需新购并配合系统接入，具体型号延后确定。"
+    - "[user-confirmed] 辅料和产品配方录入均支持电脑和平板端，但仅管理员可操作；APP 根据账号角色区分普通操作员和管理员，管理功能只对管理员开放。"
+    - "[user-confirmed] 辅料信息包含中文名称、选填英文名称、公司内部代号、默认保质期和多张包装图片；materialCode、中文名称和默认保质期必填，英文名称选填；电脑端选择本地图片，平板端从相册选择或直接拍摄。"
+    - "[user-confirmed] 产品配方只能从现有辅料库选择辅料并录入每吨用量；缺少的辅料先补录辅料，再创建产品配方。"
   state_transitions:
     - "[draft] 待称重 -> 类型已确认 -> 重量已确认 -> 完成"
     - "[draft] 类型或重量不匹配 -> 阻止通过并要求处理"
+    - "[user-confirmed-first-version] 无码辅料：待称重 -> 已提交申请 -> 已审批通过 -> 称重 -> 完成；审批驳回则阻止称重并可重新申请。"
+    - "[user-confirmed] 平板创建工单 -> 待后台审批 -> 审批通过/已绑定 -> 执行中 -> 完成"
+    - "[user-confirmed] 其他账号申请接管 -> 待后台审批 -> 审批通过/重新绑定"
+    - "[user-confirmed] 执行中/待处理工单 -> 撤销/删除申请 -> 后台审批 -> 已撤销/已删除"
   exceptions:
-    - "[unknown] 二维码缺失、损坏或无法识别时如何处理"
-    - "[unknown] 电子秤离线、读数波动或超时如何处理"
-    - "[unknown] 称重允差如何定义"
+    - "[user-confirmed-first-version] 本系统二维码缺失、损坏、扫描到非本系统标签或标签异常时走拍照申请；审批通过前不称重"
+    - "[user-confirmed-first-version] 电子秤离线、读数波动或超时：允许手动输入，标记手动读数并留痕；测试版无需电脑端审批"
+    - "[user-confirmed] 称重允差：按辅料/配方配置，参数可在设置界面调整"
   boundaries:
     - "[user-confirmed] 当前客户有电子秤，没有扫码枪"
-    - "[unknown] 金蝶系统是否作为产品、配方和辅料主数据来源"
-    - "[unknown] 是否要把称重结果回写金蝶"
+    - "[user-confirmed] 系统按独立系统交付，不连接金蝶"
+    - "[user-confirmed] 不依赖金蝶接口，不要求回写金蝶"
+    - "[user-confirmed] 产品、配方和辅料主数据由用户在本系统内自行创建和维护"
+    - "[user-confirmed] 现场操作和辅料识别首选平板，扫码枪作为次选硬件"
+    - "[user-confirmed] 后端服务和数据库部署在电脑，平板 App 为操作主界面"
+    - "[user-confirmed-first-version] 平板以安装包形态交付，暂按安卓准备，最终设备系统需确认"
+    - "[user-confirmed-first-version] 测试版两人协作：平板端申请，电脑端审批；真实生产放行策略待后续确认"
+    - "[user-confirmed] 允差、稳定条件等称重参数放在设置界面，允许用户自行维护"
+    - "[user-confirmed-first-version] 自动读数与手动读数分别标记，便于追溯"
+    - "[user-confirmed] 平板 App 为主要业务操作端；电脑后台负责审批、工单管理、数据管理和其他管理功能"
+    - "[user-confirmed] 工单完成前必须保留每个辅料的类型确认证据和重量记录"
+    - "[user-confirmed] 平板端撤销/删除需后台审批；后台可直接撤销/删除工单"
+    - "[user-confirmed] 第一版不提供物理删除；撤销/删除后平板端不可见，后台可追溯"
+    - "[user-confirmed] 平板端注册账号只获得普通操作员权限；后台预置管理员账号拥有后台管理权限"
+    - "[user-confirmed] 称重记录和证据长期保存，后续如需归档/清理再单独制定策略"
+    - "[user-confirmed] 配方录入使用每吨辅料用量作为标准"
+    - "[user-confirmed-first-version] 第一版采用自制二维码为主；供应商原二维码/条码不作为核心身份"
+    - "[user-confirmed] 辅料和产品配方管理仅管理员账号可操作；普通操作员不显示或不开放相关管理入口"
 technical_business_logic:
   current_implementation_facts:
-    - "[user-confirmed] 公司已有电子秤，但型号、接口和读数协议未确认"
+    - "[user-confirmed] 公司已有电子秤，但接口和读数协议未确认"
+    - "[user-confirmed] 客户提供现有电子秤标识：ENTOAM 映拓，型号 Qy-C126；配套收款机型号 Q1S，主板 Gm-J6412D16-V2E"
+    - "[user-confirmed] 后端服务和数据库部署在同一台电脑，平板 App 通过局域网访问"
     - "[user-confirmed] 公司目前没有扫码枪"
+    - "[user-confirmed] 辅料包装不统一：塑料桶、纸箱、蛇皮袋；有码/无码混合"
+    - "[user-confirmed] 部分条形码扫描无效；二维码扫描结果多为辅料供应商产品溯源信息"
+    - "[user-confirmed] 公司内部使用 A1/E2 类辅料代号，不直接使用辅料名称"
     - "[user-confirmed] 金蝶系统存在，且金蝶未与电子秤连接"
     - "[user-confirmed] 金蝶目前没有辅料防错功能"
+    - "[user-confirmed] 本系统不接入金蝶"
+    - "[user-confirmed-first-version] 测试版一名操作员使用平板，一名审批人使用电脑端"
+    - "[user-confirmed] 平板端操作用户可创建工单；电脑后台用户可审批和分配工单"
+    - "[user-confirmed] 平板端账号由注册产生且为普通账号；后台管理员账号为预置账号，可创建和管理普通账号"
+    - "[user-confirmed-first-version] 第一版以公司自制二维码作为主识别方案；二维码字段具体结构、打印权限和复核流程仍待确认"
   interface_contracts:
-    - "[unknown] 金蝶系统接口、权限和可扩展性未知"
+    - "[user-confirmed] 本系统不连接金蝶，无金蝶接口依赖"
+    - "[evidence-candidate] 映拓计价秤有公开对接参数：通讯秤、默认 COM2、约 50ms 取重间隔、映拓主动通讯协议"
+    - "[evidence-candidate] 同系列 QY-A126 第三方通过串口工具可实时抓取 23 字节重量帧，含稳定标志和克重"
+    - "[unknown] Qy-C126 实物是否暴露 COM/USB 数据口、固件是否启用主动通讯协议、Q1S 主机中的 COM 端口号均未确认"
     - "[unknown] 电子秤是否能通过串口、USB 或网络输出重量数据未知"
+    - "[unknown] 待客户确认：电子秤连接能力、是否必须连接/可换新秤、不连接时重量如何确认"
+    - "[unknown] 平板 App 形态（PWA/原生）及局域网摄像头访问方案待技术选型"
+    - "[unknown] 后端电脑是否就是直连电子秤串口的主机；若不是，需要串口桥接方案"
+    - "[user-confirmed] 同一工单绑定一个账号，只有该账号可操作；多台平板可并发处理不同工单"
   data_and_state_rules:
-    - "[unknown] 产品、配方、辅料主数据在哪里维护、由谁维护"
-    - "[unknown] 称重记录是否需要保存、保存多久"
+    - "[user-confirmed] 产品、配方、辅料主数据由用户维护；允差等称重参数可在设置界面调整"
+    - "[user-confirmed] 产品、配方和辅料主数据支持后台手工录入和 Excel 模板导入/导出，字段保持一致"
+    - "[user-confirmed] 辅料主数据使用公司内部代号，如 A1、E2"
+    - "[user-confirmed] 辅料主数据包含多张包装图片并长期保存；电脑端从本地图片选择，平板端从相册选择或拍摄"
+    - "[user-confirmed] 辅料字段规则：materialId 自动生成；materialCode、中文名称、默认保质期必填；英文名称选填"
+    - "[user-confirmed] 产品配方录入引用现有辅料库中的辅料，配方行保存每吨用量"
+    - "[deferred] 供应商原码映射不是第一版核心；是否作为后续增强待后续范围确认"
+    - "[user-confirmed] 标签记录字段至少包含 labelId、materialId、辅料快照、printedAt、printedBy、status；status 保留 ACTIVE/VOID；productionDate、shelfLifeMonths、expiryDate 暂不作为第一版业务判断字段"
+    - "[user-confirmed] 打印操作按张数生成 labelId，并记录打印人、打印时间、辅料和张数"
+    - "[user-confirmed] 工单包含产品、目标生产重量、绑定账号、审批状态和操作记录"
+    - "[user-confirmed] 工单撤销/删除后保留历史记录和证据，不物理删除"
+    - "[user-confirmed] 称重记录、扫码/图片和审批证据长期保存"
   consistency_and_concurrency:
-    - "[unknown] 同一批次是否可能多人同时称重"
+    - "[user-confirmed] 同一工单同一时间只有一个绑定操作员，不会多人同时操作同一工单"
   external_constraints:
     - "[user-confirmed] 现场以电子秤为准；扫码枪需要采购"
-    - "[unknown] 现场网络、供电、部署主机等环境未确认"
+    - "[user-confirmed] 系统形态应独立、简单、好上手"
+    - "[user-confirmed] 后端电脑提供数据库和服务，平板在同一局域网访问"
+    - "[user-confirmed] 现场已有可用后端电脑和可用 WiFi，部署不依赖互联网"
+    - "[unknown] 现场是否已有标签打印设备、设备型号和接入方式待 Q-021 确认"
   compatibility_constraints:
-    - "[unknown] 是否必须兼容金蝶现有业务流程和账号体系"
+    - "[user-confirmed] 无需兼容金蝶现有业务流程和账号体系"
 alignment:
-  confirmed_matches: []
+  confirmed_matches:
+    - id: ALIGN-001
+      type: confirmed-match
+      summary: 金蝶集成边界已确认：独立系统，不连接金蝶
+      status: resolved
+      authority: C
+      evidence:
+        - .project-log/business-logic/open-questions.yaml#Q-001
+    - id: ALIGN-004
+      type: confirmed-match
+      summary: 产品、配方和辅料主数据由用户在独立系统内自行维护，支持后台手工录入和 Excel 模板导入/导出
+      status: resolved
+      authority: C
+      evidence:
+        - .project-log/business-logic/open-questions.yaml#Q-002
+        - .project-log/business-logic/open-questions.yaml#Q-018
+    - id: ALIGN-005
+      type: confirmed-match
+      summary: 现场操作首选平板，扫码枪为次选
+      status: resolved
+      authority: C
+      evidence:
+        - .project-log/business-logic/open-questions.yaml#Q-003
+    - id: ALIGN-007
+      type: confirmed-match
+      summary: 第一版无码辅料采用平板申请、电脑审批、审批通过后才可称重；测试版由两人协作完成
+      status: resolved
+      authority: C
+      evidence:
+        - .project-log/business-logic/open-questions.yaml#Q-005
+    - id: ALIGN-008
+      type: confirmed-match
+      summary: 称重允差按辅料/配方配置，测试版先使用统一默认值；允差和稳定参数可在设置界面调整
+      status: resolved
+      authority: C
+      evidence:
+        - .project-log/business-logic/open-questions.yaml#Q-006
+    - id: ALIGN-009
+      type: confirmed-match
+      summary: 电子秤离线或读数异常时允许手动输入并强制标记为手动读数，记录操作员、时间和读数；测试版不做电脑端审批
+      status: resolved
+      authority: C
+      evidence:
+        - .project-log/business-logic/open-questions.yaml#Q-007
+    - id: ALIGN-010
+      type: confirmed-match
+      summary: 工单绑定操作员账号；平板创建/后台审批/账号绑定/接管审批；电脑后台可创建并分配工单
+      status: resolved
+      authority: C
+      evidence:
+        - .project-log/business-logic/open-questions.yaml#Q-008
+    - id: ALIGN-011
+      type: confirmed-match
+      summary: 工单按顺序完成全部辅料步骤并保留扫码/图片和重量记录后方可完成；撤销/删除需后台审批，后台可直接撤销/删除
+      status: resolved
+      authority: C
+      evidence:
+        - .project-log/business-logic/open-questions.yaml#Q-009
+    - id: ALIGN-012
+      type: confirmed-match
+      summary: 删除也保留记录；工单撤销/删除采用逻辑删除或作废，不物理删除工单和证据
+      status: resolved
+      authority: C
+      evidence:
+        - .project-log/business-logic/open-questions.yaml#Q-010
+    - id: ALIGN-013
+      type: confirmed-match
+      summary: 平板注册账号为普通操作员账号；后台账号为预置管理员账号，后台可创建和管理普通账号
+      status: resolved
+      authority: C
+      evidence:
+        - .project-log/business-logic/open-questions.yaml#Q-011
+    - id: ALIGN-014
+      type: confirmed-match
+      summary: 称重记录、扫码/图片和审批证据长期保存
+      status: resolved
+      authority: C
+      evidence:
+        - .project-log/business-logic/open-questions.yaml#Q-012
+    - id: ALIGN-015
+      type: confirmed-match
+      summary: 配方按每吨成品辅料用量录入，系统按目标生产重量等比换算
+      status: resolved
+      authority: C
+      evidence:
+        - .project-log/business-logic/open-questions.yaml#Q-013
+    - id: ALIGN-017
+      type: confirmed-match
+      summary: 第一版曾确认混合识别方案，后由 Q-016/DEC-015 调整为自制二维码为主，本记录不再作为当前基线
+      status: resolved
+      authority: C
+      evidence:
+        - .project-log/business-logic/open-questions.yaml#Q-015
+    - id: ALIGN-018
+      type: confirmed-match
+      summary: 第一版采用公司自制二维码为主；扫码按 materialId 匹配工单要求，供应商原码不作核心身份，无码/标签异常走拍照申请审批
+      status: resolved
+      authority: C
+      evidence:
+        - .project-log/business-logic/open-questions.yaml#Q-016
+        - .project-log/decisions/decision-log.yaml#DEC-015
+    - id: ALIGN-019
+      type: confirmed-match
+      summary: 第一版标签流程由后台管理员生成/打印，以标签打印日期为二维码标签日期，不录入实际生产日期，每次打印生成独立 labelId，粘贴后扫码复核，标签状态保留 ACTIVE/VOID
+      status: resolved
+      authority: C
+      evidence:
+        - .project-log/business-logic/open-questions.yaml#Q-017
+        - .project-log/business-logic/open-questions.yaml#Q-022
+        - .project-log/decisions/decision-log.yaml#DEC-016
+    - id: ALIGN-020
+      type: confirmed-match
+      summary: 主数据第一版同时支持后台手工录入和 Excel 模板导入/导出，导入校验失败行并保留有效数据
+      status: resolved
+      authority: C
+      evidence:
+        - .project-log/business-logic/open-questions.yaml#Q-018
+        - .project-log/decisions/decision-log.yaml#DEC-017
+    - id: ALIGN-021
+      type: confirmed-match
+      summary: 辅料录入在电脑和平板端均可操作，仅管理员可见；materialCode、中文名称、默认保质期必填，英文名称选填，支持多张包装图片
+      status: resolved
+      authority: C
+      evidence:
+        - .project-log/decisions/decision-log.yaml#DEC-018
+        - .project-log/business-logic/open-questions.yaml#Q-020
+        - .project-log/business-logic/atoms.yaml#BL-DATA-003
+    - id: ALIGN-022
+      type: confirmed-match
+      summary: 产品配方在电脑和平板端均可操作，仅管理员可见；配方从现有辅料库选择并填写每吨用量，不涉及图片
+      status: resolved
+      authority: C
+      evidence:
+        - .project-log/decisions/decision-log.yaml#DEC-018
+        - .project-log/business-logic/atoms.yaml#BL-DATA-004
+    - id: ALIGN-023
+      type: confirmed-match
+      summary: 后端部署在现场可用电脑，平板与后端同一 WiFi 局域网访问，系统不依赖互联网；标签打印设备具体型号待确认
+      status: resolved
+      authority: C
+      evidence:
+        - .project-log/business-logic/open-questions.yaml#Q-019
+        - .project-log/decisions/decision-log.yaml#DEC-020
+    - id: ALIGN-024
+      type: confirmed-match
+      summary: 后台标签打印界面支持选择辅料、打印张数并自动记录打印时间；打印机需新购配合系统接入，型号延后
+      status: resolved
+      authority: C
+      evidence:
+        - .project-log/business-logic/open-questions.yaml#Q-021
+        - .project-log/decisions/decision-log.yaml#DEC-021
+    - id: ALIGN-025
+      type: confirmed-match
+      summary: 第一版不录入实际生产日期，二维码标签日期以 printedAt 为准，实际生产日期和到期日期校验延后
+      status: resolved
+      authority: C
+      evidence:
+        - .project-log/business-logic/open-questions.yaml#Q-022
+        - .project-log/decisions/decision-log.yaml#DEC-022
   conflicts: []
   unknowns:
-    - id: ALIGN-001
-      type: unknown
-      summary: 金蝶系统与称重流程的集成边界未知
-      status: open
-      authority: C
-      evidence: []
     - id: ALIGN-002
       type: unknown
-      summary: 电子秤数据接口未知
+      summary: 客户已提供型号，但 Qy-C126 实物数据接口、协议版本和 Q1S COM 端口仍需现场确认
       status: open
       authority: C
-      evidence: []
-    - id: ALIGN-003
+      evidence:
+        - .project-log/research/solution-research.yaml#RES-001
+    - id: ALIGN-006
       type: unknown
-      summary: 无二维码辅料的现场确认方式未知
+      summary: 电子秤连接能力、连接必要性和无连接方案待客户确认
       status: open
       authority: C
       evidence: []
+    - id: ALIGN-016
+      type: unknown
+      summary: 供应商原码映射不作为第一版核心；是否作为后续增强待后续范围确认
+      status: deferred
+      authority: C
+      evidence:
+        - .project-log/business-logic/open-questions.yaml#Q-015
+        - .project-log/business-logic/open-questions.yaml#Q-017
   decisions_required:
-    - Q-001
+    []
 gate:
-  status: open
+  status: passed
   blocking_unknowns:
-    - Q-001
-  notes: 已收集用户首轮业务描述，先确认本系统交付边界。
-updated_at: "2026-09-08T07:02:18Z"
+    []
+  notes: REQ-001 v1 已整理为需求基线草稿并完成校验；Q-004 电子秤串口能力、标签打印机型号、平板系统和真实生产放行策略均为非阻塞未决项，暂不阻塞需求基线；待用户批准 REQ-001 后进入技术方案研究。
+updated_at: "2026-09-09T05:10:00Z"
