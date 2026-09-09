@@ -389,6 +389,7 @@ export function LabelsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [successNotice, setSuccessNotice] = useState<string | null>(null)
   const [qrSrc, setQrSrc] = useState<string | null>(null)
+  const [printedAtText, setPrintedAtText] = useState('')
   const [previewOpen, setPreviewOpen] = useState(false)
   const [largeQrSrc, setLargeQrSrc] = useState<string | null>(null)
   const [batchPage, setBatchPage] = useState(1)
@@ -410,6 +411,7 @@ export function LabelsPage() {
 
   useEffect(() => {
     if (!selectedMat) return
+    setPrintedAtText(new Date().toLocaleString('zh-CN', { hour12: false }))
     QRCode.toDataURL(JSON.stringify(buildQrPayload(selectedMat)), { width: 180, margin: 1, color: { dark: '#1f5742', light: '#ffffff' } })
       .then(setQrSrc)
       .catch(() => setQrSrc(null))
@@ -497,14 +499,9 @@ export function LabelsPage() {
             <button className="preview-tag" onClick={openPreview}>预览</button>
           </div>
           <div className="label-preview">
-            <div className="label-top">
-              <strong>牧衡 · 辅料标签</strong>
-              <span>ACTIVE</span>
-            </div>
             {qrSrc ? <img className="qr-preview" src={qrSrc} alt="辅料二维码预览" /> : <div className="fake-qr">▦</div>}
             <strong className="preview-material">{selectedMat ? selectedMat.name_zh : '等待选择辅料'}</strong>
-            <span className="preview-code">内部代号 {selectedMat ? selectedMat.material_code : '—'}　·　系统时间自动录入</span>
-            <small>扫描此二维码确认辅料身份</small>
+            <span className="preview-code">{printedAtText || '—'}</span>
           </div>
         </section>
       </div>
@@ -547,14 +544,9 @@ export function LabelsPage() {
       {previewOpen && (
         <Modal title="标签放大预览" onClose={() => setPreviewOpen(false)}>
           <div className="label-preview large-label-preview">
-            <div className="label-top">
-              <strong>牧衡 · 辅料标签</strong>
-              <span>ACTIVE</span>
-            </div>
             {largeQrSrc ? <img className="qr-preview large-qr" src={largeQrSrc} alt="放大辅料二维码" /> : <div className="fake-qr">▦</div>}
             <strong className="preview-material">{selectedMat ? selectedMat.name_zh : '等待选择辅料'}</strong>
-            <span className="preview-code">内部代号 {selectedMat ? selectedMat.material_code : '—'}　·　系统时间自动录入</span>
-            <small>扫描此二维码确认辅料身份</small>
+            <span className="preview-code">{printedAtText || '—'}</span>
           </div>
         </Modal>
       )}
