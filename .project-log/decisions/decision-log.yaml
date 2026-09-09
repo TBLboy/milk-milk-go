@@ -1,5 +1,65 @@
 version: "0.2"
 decisions:
+  - id: DEC-028
+    title: 第一批先开发 PC 端前端，后端接口保留为适配层
+    category: process
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks:
+      - TASK-001
+      - TASK-002
+      - TASK-003
+    related_business_logic:
+      - BL-WEIGH-001
+      - BL-WEIGH-002
+      - BL-WEIGH-003
+      - BL-WO-001
+      - BL-WO-005
+      - BL-DATA-003
+      - BL-DATA-004
+      - BL-LABEL-002
+    context: 用户希望分批开发，先确认电脑端前端界面，再实现后端功能；前端需要预留后续 FastAPI 接口。
+    hypothesis: 先用 mock 数据和接口适配层完成 PC 端管理流程，可以在不依赖后端实现的情况下确认页面信息架构、审批操作和主数据管理体验，并降低后续返工风险。
+    options:
+      - name: 先开发 PC 前端和接口适配层
+        benefits:
+          - 可先验证界面和管理流程
+          - 后端接口边界更容易根据真实页面需求稳定下来
+          - 前后端可以分批验收
+        costs:
+          - 前期需要维护 mock 数据
+          - 后续需要把适配层切换到真实 API
+        risks:
+          - mock 行为与后端最终规则不一致时需要调整
+      - name: 前后端同时开发
+        benefits:
+          - 可以尽早联调
+        costs:
+          - 业务和接口变化会同时影响两端
+        risks:
+          - 页面问题和后端问题难以区分，验证成本更高
+    decision: 第一批只开发 pc 文件夹中的浏览器前端界面和接口适配层，使用可替换的 mock 数据展示核心管理流程；后端 FastAPI、SQLite 和真实接口留到前端确认后再开发。app 端暂不进入本批次。
+    reason_summary:
+      - 用户明确希望先确认前端界面
+      - 用户接受接口先留出来、后续再开发后端功能
+      - 当前没有应用代码，前端可独立形成可观察原型
+    conditions:
+      - 前端不得把 mock 数据结构当成最终后端实现事实
+      - 适配层接口名称和数据类型要与 ARCH-001 的接口分组一致
+      - 前端确认前不启动后端业务实现和 Android App 实现
+    action: 创建第一批 PC 前端任务，并将生命周期推进到 task-decomposition。
+    expected_result: 下一步可以选择一个明确的 PC 前端实现任务，完成后可在浏览器中运行并由用户验收界面。
+    reversal_plan: 如果页面验证发现业务流程需要调整，回到需求或架构阶段更新记录后再继续实现。
+    observation: 用户确认“先开发 pc 端代码，先开发前端界面，把接口留出来，我确认前端界面没问题之后再开始开发后端功能”。
+    actual_result: 第一批开发范围确定为 PC 前端原型与接口适配层，后端实现后置。
+    outcome_status: successful
+    lesson: null
+    evidence:
+      - user-statement/2026-09-09 PC 前端优先开发
+    supersedes: []
+    created_at: "2026-09-09T08:30:00Z"
+    updated_at: "2026-09-09T08:30:00Z"
   - id: DEC-023
     title: 第一版不连接电子秤，称重结果以手动输入为主
     category: business

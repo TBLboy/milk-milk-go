@@ -1,3 +1,210 @@
 version: "0.2"
 active_goal: null
-tasks: []
+tasks:
+  - id: TASK-001
+    title: 建立 PC 前端工程骨架与可替换接口适配层
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 在 pc 文件夹中建立可运行的浏览器前端工程，统一页面布局、路由、角色状态、mock 数据和 API adapter 边界。
+    status: implemented-unverified
+    priority: critical
+    risk: medium
+    authority: A
+    owner: agent
+    tags:
+      - pc
+      - frontend
+      - mock
+    related_business_logic:
+      - BL-AUTH-001
+      - BL-SCOPE-001
+    acceptance_refs: []
+    related_decisions:
+      - DEC-024
+      - DEC-028
+    depends_on: []
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - ARCH-001 的 REST API 分组和角色边界
+      - 用户已确认的 PC 前端优先开发顺序
+    outputs:
+      - pc 前端工程骨架
+      - 页面路由和基础布局
+      - 可替换的 mock/API adapter
+    plan:
+      - 初始化 React + Vite 前端工程
+      - 建立认证状态、角色权限和统一请求适配接口
+      - 建立基础布局、导航、加载、空状态和错误状态
+      - 使用本地 mock 数据保证页面可独立运行
+    done_when:
+      - 从 pc 目录可以启动开发服务器并打开前端
+      - 页面不直接在组件中散落 mock 数据请求
+      - 普通操作员和管理员的导航权限有明确展示差异
+      - 后续切换真实 API 时不需要修改业务页面的数据调用方式
+    verification:
+      status: partial
+      commands:
+        - npm run build
+        - Playwright desktop navigation smoke test
+        - Playwright mobile menu smoke test
+      evidence:
+        - pc/dist generated successfully
+        - all primary navigation entries rendered their expected page heading
+        - mobile sidebar opened at 390x844
+      limitations:
+        - 尚未接入 FastAPI 和真实数据库
+    result:
+      summary: PC 前端工程骨架、统一布局、导航、角色入口和 mock/API adapter 已完成。
+      changed_files:
+        - pc/package.json
+        - pc/src/main.tsx
+        - pc/src/layouts/AppShell.tsx
+        - pc/src/services/api.ts
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-09T08:30:00Z"
+    updated_at: "2026-09-09T08:30:00Z"
+  - id: TASK-002
+    title: 实现 PC 工单与辅料称重管理界面原型
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 在 PC 前端展示工单列表、工单详情、辅料步骤、类型确认、称重证据和完成状态，覆盖后台管理人员的主要查看与审批场景。
+    status: implemented-unverified
+    priority: high
+    risk: medium
+    authority: A
+    owner: agent
+    tags:
+      - pc
+      - work-order
+      - weighing
+    related_business_logic:
+      - BL-WEIGH-001
+      - BL-WEIGH-002
+      - BL-WEIGH-003
+      - BL-WEIGH-004
+      - BL-WO-001
+      - BL-WO-005
+    acceptance_refs: []
+    related_decisions:
+      - DEC-026
+      - DEC-028
+    depends_on:
+      - TASK-001
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - PC 前端工程骨架和 adapter
+      - 操作员称量工作流
+    outputs:
+      - 工单列表和详情页面
+      - 步骤状态和称重证据展示
+      - 审批操作占位交互
+    plan:
+      - 设计工单列表筛选和状态展示
+      - 设计步骤时间线和当前步骤详情
+      - 展示扫码记录、拍照申请、重量输入和读数照片
+      - 使用 mock adapter 模拟审批、刷新和冲突状态
+    done_when:
+      - 管理员可以从列表进入工单详情并识别当前步骤
+      - 页面能区分类型确认未通过、待审批、称重超差和已完成
+      - 读数照片和称重数字在详情中成组展示
+      - 不依赖真实后端也能完成演示流程
+    verification:
+      status: partial
+      commands:
+        - npm run build
+        - Playwright desktop navigation smoke test
+      evidence:
+        - work-order and approval pages rendered successfully
+        - mock approval interaction is available on dashboard
+      limitations:
+        - 审批和数据保存仅为 mock 行为
+    result:
+      summary: 工单管理和审批中心页面原型已完成，包含状态、进度、审批占位交互和证据展示结构。
+      changed_files:
+        - pc/src/pages/Dashboard.tsx
+        - pc/src/pages/ManagementPages.tsx
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-09T08:30:00Z"
+    updated_at: "2026-09-09T08:30:00Z"
+  - id: TASK-003
+    title: 实现 PC 主数据、标签、账号和设置界面原型
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 在 PC 前端展示管理员维护辅料、包装图片、产品配方、普通账号、二维码标签打印和允差设置的完整入口。
+    status: implemented-unverified
+    priority: high
+    risk: medium
+    authority: A
+    owner: agent
+    tags:
+      - pc
+      - master-data
+      - labeling
+    related_business_logic:
+      - BL-DATA-003
+      - BL-DATA-004
+      - BL-LABEL-001
+      - BL-LABEL-002
+      - BL-SETTINGS-001
+      - BL-AUTH-001
+    acceptance_refs: []
+    related_decisions:
+      - DEC-017
+      - DEC-019
+      - DEC-021
+      - DEC-028
+    depends_on:
+      - TASK-001
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 辅料和产品配方录入规则
+      - 自制二维码标签打印规则
+      - 设置项和管理员权限边界
+    outputs:
+      - 辅料列表、详情、图片管理界面
+      - 产品和配方编辑界面
+      - 账号、标签打印和设置界面
+    plan:
+      - 设计主数据导航和表单校验提示
+      - 设计多张包装图片上传/预览占位
+      - 设计配方从辅料库选择和每吨用量录入
+      - 设计标签打印张数、打印状态和设置表单
+    done_when:
+      - 管理员可以通过导航进入所有管理模块
+      - 普通操作员看不到管理员维护入口
+      - 主数据表单能展示必填项、唯一代号和停用状态等规则
+      - 标签打印和设置页面明确保留真实 API 接入位置
+    verification:
+      status: partial
+      commands:
+        - npm run build
+        - Playwright desktop navigation smoke test
+      evidence:
+        - materials, recipes, labels, accounts and settings pages rendered successfully
+        - mock forms and table states are visible
+      limitations:
+        - 不生成真实二维码、不调用真实打印机、不持久化数据库
+    result:
+      summary: 辅料、产品配方、标签打印、账号管理和系统设置页面原型已完成。
+      changed_files:
+        - pc/src/pages/ManagementPages.tsx
+        - pc/src/styles/global.css
+        - pc/public/favicon.svg
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-09T08:30:00Z"
+    updated_at: "2026-09-09T08:30:00Z"

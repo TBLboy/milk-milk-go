@@ -9,17 +9,22 @@
 
 ## 当前状态
 
-- 当前阶段：architecture-decision
-- 当前任务：ARCH-001 架构设计草稿与评审
-- 当前状态：进行中
+- 当前阶段：task-decomposition
+- 当前任务：PC 前端三个任务已实现，等待用户界面验收
+- 当前状态：PC 前端已实现并通过构建和浏览器冒烟验证，状态为 implemented-unverified，后端尚未开始
 - 最近验证：`validate_project.py` 通过；`loopctl validate` 通过
 - 下一步：
   - 已确认 FastAPI + SQLite + Android 原生 + 浏览器管理端
   - 已确认第一版手动称重必须同时保存数字重量和电子秤读数照片
   - 已确认架构设计默认规则和 Windows 11/Latest Android/自动备份
   - 已创建 ARCH-001 架构草稿
-  - 继续评审架构并细化接口、数据模型和失败路径
-  - 尚未进入写代码阶段
+  - 已补充后端领域服务、文件证据服务、接口分组、核心实体、状态并发、幂等和失败路径
+  - 用户已确认先开发 pc 前端、接口先预留、后端后置
+  - 已创建 DEC-028 并将 ARCH-001 标记为 active
+  - 已拆出 TASK-001、TASK-002、TASK-003
+  - 已完成 TASK-001、TASK-002、TASK-003
+  - PC 前端仍使用 mock adapter，真实 FastAPI 接口后置
+  - 下一步由用户验收界面，确认后进入后端接口实现
 
 ## 2026-09-09 架构输入默认确认
 

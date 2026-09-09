@@ -1,7 +1,7 @@
-version: "0.2"
+version: "0.3"
 architectures:
   - id: ARCH-001
-    status: draft
+    status: active
     goal: 为第一版辅料称重防错系统定义后端、浏览器管理端、Android 平板 App、数据库、文件存储、打印和备份的模块边界与数据流，使后续任务拆解不需要再发明业务规则。
     related_business_logic:
       - BL-WEIGH-001
@@ -74,6 +74,21 @@ architectures:
           - 部署 FastAPI 后端和静态管理端
           - 开机自启动、防火墙端口、升级保护和自动备份
           - 调用系统打印机输出标签 PDF
+      - id: domain-services
+        name: 后端领域服务层
+        responsibilities:
+          - 执行配方换算、工单快照、步骤顺序、二维码匹配和允差校验
+          - 执行角色权限、工单归属、接管和审批状态转换
+          - 以数据库事务保证关键状态和证据关联的一致性
+        boundaries:
+          - 不直接依赖 Android、浏览器或具体打印机
+          - 不把客户端提交的状态视为可信结果
+      - id: file-service
+        name: 文件证据服务
+        responsibilities:
+          - 接收、校验、生成和关联图片、Excel、标签 PDF 与备份文件
+          - 使用业务实体类型和随机文件名组织存储路径
+          - 返回不可变文件标识和受权限保护的读取接口
     interfaces:
       - id: API
         name: REST API
@@ -83,6 +98,67 @@ architectures:
         consumers:
           - web-admin
           - android-app
+        contracts:
+          - 所有业务写入接口必须携带登录令牌，并由后端重新读取当前用户和资源状态
+          - 成功写入返回资源 ID、当前状态和服务端时间；失败返回稳定错误码和可修正提示
+          - 列表接口返回分页、状态筛选和更新时间，避免平板一次加载全部历史数据
+          - 关键提交支持客户端 requestId 幂等重试，重复请求返回首次结果
+      - id: AUTH
+        name: 认证与权限接口
+        description: 登录、普通账号注册、管理员维护、当前用户信息和令牌刷新；普通账号不能调用管理员资源。
+        owners:
+          - backend-api
+        consumers:
+          - web-admin
+          - android-app
+      - id: MASTER-DATA
+        name: 主数据接口
+        description: 辅料、包装图片、产品、配方、设置以及启停用管理；写入权限为管理员。
+        owners:
+          - backend-api
+        consumers:
+          - web-admin
+          - android-app
+      - id: WORK-ORDER
+        name: 工单与步骤接口
+        description: 创建、审批、查询、绑定、接管、撤销/删除申请、步骤推进和完成提交。
+        owners:
+          - backend-api
+        consumers:
+          - web-admin
+          - android-app
+      - id: EVIDENCE
+        name: 类型与称重证据接口
+        description: 扫码记录、无码拍照申请、审批、手动重量和电子秤读数照片提交。
+        owners:
+          - backend-api
+          - file-service
+        consumers:
+          - web-admin
+          - android-app
+      - id: IMPORT-EXPORT
+        name: Excel 导入导出接口
+        description: 下载模板、上传并校验、提交合法行、下载错误报告和导出主数据；导入只新增，不静默覆盖。
+        owners:
+          - backend-api
+        consumers:
+          - web-admin
+      - id: LABEL
+        name: 标签接口
+        description: 生成标签预览、按辅料和张数创建打印批次、获取打印结果和标签复核记录。
+        owners:
+          - backend-api
+          - windows-runtime
+        consumers:
+          - web-admin
+      - id: HEALTH
+        name: 健康与运维接口
+        description: 服务健康、数据库容量、最近备份、打印状态和版本信息。
+        owners:
+          - backend-api
+          - windows-runtime
+        consumers:
+          - web-admin
       - id: ADMIN-STATIC
         name: 管理端静态文件
         description: FastAPI 同端口托管 React 构建产物，浏览器通过局域网访问 `http://后端IP:8000`。
@@ -113,6 +189,10 @@ architectures:
         consumers:
           - file-storage
     data_flows:
+      - name: 核心数据实体
+        description: database 至少包含 users（账号与角色）、materials（辅料主数据与不可变 materialId）、material_images（包装图片）、products（产品）、recipes/recipe_items（配方及每吨用量）、work_orders（工单与归属）、work_order_steps（工单创建时的配方/辅料/目标重量/允差快照）、type_confirmations（扫码或拍照审批结果）、weighing_attempts（每次称重尝试及手动重量）、evidence_files（文件元数据与哈希）、approvals（审批动作）、labels/print_batches（标签和打印批次）、settings（参数）、audit_logs（审计日志）、idempotency_records（幂等请求结果）。业务表保存 created_at、updated_at；审计和证据记录只追加不覆盖。
+      - name: 主数据生命周期
+        description: 管理员通过 web-admin 或 android-app 写入辅料、图片、产品和配方；domain-services 校验编码唯一、必填字段、启用状态和配方引用，database 采用停用/版本化而非物理删除。配方修改只影响新工单，不回写已创建工单的步骤快照。
       - name: 主数据维护
         description: web-admin 或 android-app 管理员创建/修改辅料、产品、配方和设置，backend-api 校验后写入 database。
       - name: 工单创建与配方快照
@@ -120,30 +200,47 @@ architectures:
       - name: 辅料类型确认
         description: 二维码扫码由 android-app 读取本系统标签，backend-api 比较 materialId；无码/标签异常时上传照片并进入审批，审批通过后继续。
       - name: 手动称重证据
-        description: 操作员手动输入重量并上传电子秤读数照片，backend-api 校验目标重量与允差后，将数字、图片、操作员和时间写入 database/file-storage。
+        description: 操作员先上传包含辅料和秤面读数的照片，再提交手动重量；domain-services 校验当前步骤已完成类型确认、重量为合法非负 kg、图片已上传且属于当前用户/工单，并按步骤快照允差判断。database 写入不可变称重尝试、照片文件关联、操作者和服务器时间；超差尝试保留但不完成步骤。
       - name: Excel 导入导出
         description: web-admin 上传 Excel，backend-api 按模板校验后写入 database 并返回错误行；导出生成标准模板文件。
       - name: 标签打印
-        description: web-admin 选择辅料和张数，backend-api 生成 labelId 和标签 PDF，windows-runtime 调用系统打印并保存打印记录。
+        description: web-admin 选择辅料和张数，backend-api 创建打印批次并生成每张 labelId 与标签 PDF；windows-runtime 通过 Windows 打印能力执行打印，结果回写打印批次和标签记录。打印结果未知时不得自动标记为成功。
       - name: 自动备份
         description: windows-runtime 按计划备份 database 和相关配置到 file-storage 的备份目录，记录备份结果。
+      - name: 证据读取
+        description: web-admin 和 android-app 只通过受权限控制的文件接口读取证据缩略图或原图；database 保存文件类型、大小、哈希、来源、上传者、上传时间和关联实体，file-storage 不直接暴露目录。
     state_and_concurrency:
-      - 工单状态：待审批/已绑定/执行中/已完成/已撤销/已删除；每一步有独立步骤状态。
+      - 用户状态：普通操作员和管理员；管理员权限由后端判定，客户端隐藏菜单不构成安全边界。
+      - 主数据状态：启用/停用；辅料、产品和配方不物理删除，历史工单通过快照保持可读。
+      - 工单状态：待审批/已绑定/执行中/已完成/已撤销/已删除；创建时生成产品、配方、辅料代号/名称和目标重量快照。
+      - 步骤状态：待处理/类型确认中/待无码审批/称重中/已完成；后端只允许当前顺序步骤写入。
+      - 类型确认状态：待确认/扫码通过/待拍照审批/拍照已通过/拍照已驳回。
+      - 称重提交是不可变证据记录；重新称量创建新尝试，旧尝试保留并标记未通过或被替代。
+      - 同一工单同一时间最多绑定一个操作员账号；绑定、接管、审批和步骤推进使用事务条件更新，状态不符合时返回冲突错误。
       - 无码类型确认状态：待申请/待审批/已通过/已驳回/已重新申请。
-      - 同一工单同一时间最多绑定一个操作员账号；多台平板并发操作不同工单。
-      - 文件上传使用客户端生成的请求标识，避免重复拍照导致同一证据重复提交。
+      - 多台平板可并发工作；同一工单只允许绑定账号操作，管理员审批操作仍可并发但同一申请只能生效一次。
+      - 文件先临时上传并完成类型、大小、校验和检查，再由业务提交接口关联到记录；孤立临时文件由清理任务回收。
+      - 文件上传、扫码记录、称重提交、审批和打印请求使用客户端生成的 requestId 幂等。
       - 工单支持暂停后在平板继续上次未完成步骤。
+      - 服务器时间作为审计时间；客户端时间仅作为可选设备信息保存。
     failure_paths:
       - 平板断网：第一版不做离线队列，界面提示网络不可用并保留当前步骤状态，恢复后继续。
       - 照片缺失/模糊：称重步骤禁止提交，提示重新拍照。
       - 无码审批 pending：当前步骤保持等待，不能进入称重。
       - 标签打印失败：阻止打印并提示检查 Windows 打印机；已生成的 labelId 不标记为已打印。
+      - 标签打印结果未知：打印批次进入 UNKNOWN，管理员必须人工核对后选择确认成功或作废，不允许无依据重打造成重复标签。
+      - 同一工单被其他设备更新：后端返回 WORK_ORDER_CONFLICT，客户端刷新工单后再决定是否继续。
+      - 重复提交：按 requestId 返回首次处理结果，不重复生成步骤完成记录、审批结果或标签。
+      - 上传成功但业务提交失败：文件保持临时状态并允许重试；超过保留期自动清理并写入清理日志。
       - SQLite 写入失败：后端返回可识别错误并保留操作日志，安装包提供备份和恢复入口。
       - 自动备份失败：记录失败日志，管理端显示最近备份状态。
     security_and_privacy:
       - 平板注册账号为普通操作员；管理员账号由初始化预置，后台可创建普通账号。
       - API 使用登录令牌区分角色；管理端和 Android App 不开放公开注册管理员。
       - 上传文件校验类型、大小和路径，不直接信任文件名。
+      - 文件读取必须经过资源权限校验；普通操作员只能读取自己可见工单的证据，管理员可按权限查看管理范围内记录。
+      - 密码只保存单向哈希；令牌设置过期时间；初始化管理员首次登录必须修改预置密码。
+      - SQLite、上传目录、备份目录和配置目录不通过静态 Web 路由直接暴露。
       - 系统只在内网使用，数据不主动上传互联网。
     observability:
       - 后端记录登录、操作、审批、称重、导入、打印、备份等关键日志。
@@ -154,6 +251,10 @@ architectures:
       - 平板默认适配最新 Android 系统，交付 APK；Windows 支持安装系统软件。
       - 默认端口 8000，后端电脑建议使用固定 IP。
       - 升级安装包保留数据目录和配置，不覆盖业务数据。
+      - 推荐目录边界：程序目录可覆盖升级；数据目录保存 SQLite、上传文件、生成文件和审计日志；备份目录独立保存并可配置到其他磁盘。
+      - 服务启动前执行数据库备份检查；升级失败保留旧程序目录和最近备份，支持回滚到上一版本。
+      - 初始部署需配置固定局域网地址或可发现的主机地址、服务端口和 Windows 防火墙入站规则；不要求互联网访问。
+      - Android App 通过版本化 API 访问后端；服务端至少兼容当前已发布 App 的 API 版本。
     open_questions:
       - id: LABEL-PRINTER-MODEL
         summary: 标签打印机具体型号和驱动待现场确定
@@ -163,5 +264,13 @@ architectures:
         summary: 平板品牌和具体摄像头能力待现场确认
         blocking: false
         reason: 用户已确认采用最新 Android 平板，可按通用 Android 适配
+      - id: PRINT-RESULT
+        summary: 现场打印机驱动能否可靠返回打印成功状态待验证
+        blocking: false
+        reason: 第一版先保留打印批次状态和人工确认，不把驱动反馈当作已确认事实
+      - id: BACKUP-DESTINATION
+        summary: 自动备份是否需要复制到外置磁盘或网络共享目录待现场确认
+        blocking: false
+        reason: 第一版可先备份到本机独立数据目录，部署时再配置第二份目标
     created_at: "2026-09-09T07:10:00Z"
-    updated_at: "2026-09-09T07:10:00Z"
+    updated_at: "2026-09-09T08:10:00Z"
