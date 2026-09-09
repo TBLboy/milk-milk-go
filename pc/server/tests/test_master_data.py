@@ -26,3 +26,18 @@ def test_recipe_rejects_disabled_material(client):
     response = client.post("/api/v1/master-data/products", headers=headers, json={"name": "测试产品", "items": [{"material_id": material["material_id"], "quantity_per_ton_kg": 1}]})
     assert response.status_code == 422
     assert response.json()["detail"]["code"] == "MATERIAL_NOT_AVAILABLE"
+
+
+def test_product_can_store_optional_image(client):
+    headers = admin_headers(client)
+    material = client.post("/api/v1/master-data/materials", headers=headers, json={"material_code": "IMG01", "name_zh": "带图辅料", "shelf_life_months": 12}).json()
+    product = client.post("/api/v1/master-data/products", headers=headers, json={
+        "name": "带图产品",
+        "items": [{"material_id": material["material_id"], "quantity_per_ton_kg": 2}],
+        "image_file_id": "FILE-product-image",
+    })
+    assert product.status_code == 201
+    assert product.json()["image_file_id"] == "FILE-product-image"
+    listed = client.get("/api/v1/master-data/products", headers=headers).json()
+    target = next(item for item in listed if item["name"] == "带图产品")
+    assert target["image_file_id"] == "FILE-product-image"

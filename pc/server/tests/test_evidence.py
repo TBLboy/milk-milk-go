@@ -34,6 +34,16 @@ def test_photo_approval_is_required_before_weight(client):
     assert weight.status_code == 200
     assert weight.json()["status"] == "passed"
 
+
+def test_uploaded_evidence_file_can_be_fetched(client):
+    headers = admin_headers(client)
+    uploaded = client.post("/api/v1/evidence/files", headers=headers, files={"file": ("label.png", b"fake-image-bytes", "image/png")})
+    assert uploaded.status_code == 201
+    file_id = uploaded.json()["file_id"]
+    fetched = client.get(f"/api/v1/evidence/files/{file_id}", headers=headers)
+    assert fetched.status_code == 200
+    assert fetched.content == b"fake-image-bytes"
+
 def test_approvals_api_lists_and_rejects(client):
     headers, order_no, _ = setup_order(client)
     file_id = client.post("/api/v1/evidence/files", headers=headers, files={"file": ("material.jpg", b"fake-image", "image/jpeg")}).json()["file_id"]

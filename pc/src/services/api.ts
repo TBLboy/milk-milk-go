@@ -206,7 +206,7 @@ export const api = {
     return request('/master-data/products')
   },
 
-  async createProduct(payload: { name: string; items: { material_id: string; quantity_per_ton_kg: number }[] }): Promise<any> {
+  async createProduct(payload: { name: string; items: { material_id: string; quantity_per_ton_kg: number }[]; image_file_id?: string }): Promise<any> {
     return request('/master-data/products', {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -218,6 +218,13 @@ export const api = {
     const form = new FormData()
     form.append('file', file)
     return request('/evidence/files', { method: 'POST', body: form })
+  },
+
+  async getFileUrl(fileId: string): Promise<string> {
+    const response = await fetch(`${API_BASE}/evidence/files/${fileId}`, { headers: getAuthHeader() })
+    if (!response.ok) throw new Error('图片加载失败')
+    const blob = await response.blob()
+    return URL.createObjectURL(blob)
   },
 
   async downloadExcelTemplate(): Promise<void> {

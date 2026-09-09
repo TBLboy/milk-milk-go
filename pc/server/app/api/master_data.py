@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.auth import require_admin
-from app.db.models import Material, MaterialImage, Product, Recipe, RecipeItem, User
+from app.db.models import Material, MaterialImage, Product, ProductImage, Recipe, RecipeItem, User
 from app.db.session import get_db
 
 router = APIRouter(prefix="/master-data", tags=["master-data"])
@@ -26,6 +26,7 @@ class ProductItemInput(BaseModel):
 class ProductInput(BaseModel):
     name: str = Field(min_length=1, max_length=128)
     items: list[ProductItemInput] = Field(min_length=1, max_length=100)
+    image_file_id: str | None = Field(default=None, max_length=64)
 
 
 def material_view(material: Material) -> dict:
@@ -42,10 +43,12 @@ def material_view(material: Material) -> dict:
 
 def product_view(product: Product) -> dict:
     recipe = product.recipe
+    images = sorted(product.images, key=lambda item: item.sort_order)
     return {
         "id": product.id,
         "name": product.name,
         "enabled": product.enabled,
+        "image_file_id": images[0].file_id if images else None,
         "recipe_version": recipe.version if recipe else None,
         "items": [{
             "material_id": item.material.material_id,
@@ -87,7 +90,7 @@ def disable_material(material_id: str, _: User = Depends(require_admin), db: Ses
 
 @router.get("/products")
 def list_products(_: User = Depends(require_admin), db: Session = Depends(get_db)) -> list[dict]:
-    products = db.scalars(select(Product).options(selectinload(Product.recipe).selectinload(Recipe.items).selectinload(RecipeItem.material)).order_by(Product.name)).all()
+    products = db.scalars(select(Product).options(selectinload(Product.images), selectinload(Product.recipe).selectinload(Recipe.items).selectinload(RecipeItem.material)).order_by(Product.name)).all()
     return [product_view(item) for item in products]
 
 
@@ -103,6 +106,8 @@ def create_product(body: ProductInput, _: User = Depends(require_admin), db: Ses
         raise HTTPException(status_code=422, detail={"code": "MATERIAL_NOT_AVAILABLE", "message": "配方只能引用已存在且启用的辅料"})
     product = Product(name=body.name)
     product.recipe = Recipe(items=[RecipeItem(material=materials[item.material_id], quantity_per_ton_kg=item.quantity_per_ton_kg, sort_order=index) for index, item in enumerate(body.items)])
+    if body.image_file_id:
+        product.images = [ProductImage(file_id=body.image_file_id, sort_order=0)]
     db.add(product)
     db.commit()
     db.refresh(product)

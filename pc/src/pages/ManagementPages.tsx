@@ -314,7 +314,7 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
           ) : pagedProducts.map((p) => (
             <div className="recipe-card" key={p.id}>
               <div className="recipe-head">
-                <span className="recipe-icon"><FileSpreadsheet size={18} /></span>
+                <span className="recipe-icon">{p.image_file_id ? <ProductImage fileId={p.image_file_id} /> : <FileSpreadsheet size={18} />}</span>
                 <span className="enabled-dot" />
                 <button className="icon-btn" onClick={() => setSelectedProduct(p)}><ChevronRight size={17} /></button>
               </div>
@@ -785,6 +785,22 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
 
 function DatabaseIcon() {
   return <FileSpreadsheet size={16} />
+}
+
+function ProductImage({ fileId }: { fileId: string }) {
+  const [src, setSrc] = useState<string | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    api.getFileUrl(fileId).then((url) => {
+      if (!cancelled) setSrc(url)
+    }).catch(() => {
+      if (!cancelled) setSrc(null)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [fileId])
+  return src ? <img className="recipe-logo" src={src} alt="产品图片" /> : <FileSpreadsheet size={18} />
 }
 
 function Setting({ title, description, value, onClick }: { title: string; description: string; value: string; onClick?: () => void }) {
