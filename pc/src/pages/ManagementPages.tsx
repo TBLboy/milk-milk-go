@@ -1,18 +1,24 @@
 import { useEffect, useRef, useState } from 'react'
 import { Check, ChevronRight, CircleAlert, Download, FileSpreadsheet, Filter, Image, Plus, Printer, Search, Settings2, X } from 'lucide-react'
-import { dashboardData } from '../data/mockData'
+import QRCode from 'qrcode'
 import { StatusBadge } from '../components/StatusBadge'
 import { api } from '../services/api'
-import { CreateMaterialModal, CreateOrderModal, CreateProductModal, CreateUserModal, OrderDetailModal } from '../components/Modals'
+import { CreateMaterialModal, CreateOrderModal, CreateProductModal, CreateUserModal, OrderDetailModal, RecipeDetailModal } from '../components/Modals'
 
 export function WorkOrdersPage({ approvals = false }: { approvals?: boolean }) {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const [selectedOrderNo, setSelectedOrderNo] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('全部状态')
+  const filterOptions = ['全部状态', '待审批', '已批准', '执行中', '已完成', '已撤销']
 
-  const handleExport = () => {
+  const handleExport = async () => {
+    const orders = await api.getWorkOrders().catch(() => [])
     const rows = [['工单号', '产品', '目标重量(kg)', '操作员', '状态']]
-    // OrdersTable handles its own state, so keep the export local and informative for MVP.
+    for (const order of orders) {
+      rows.push([order.order_no, order.product_name, String(order.target_weight_kg), order.operator_name || '待指派', order.status])
+    }
     const blob = new Blob([`\uFEFF${rows.map((row) => row.join(',')).join('\n')}`], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -36,12 +42,12 @@ export function WorkOrdersPage({ approvals = false }: { approvals?: boolean }) {
       />
       <div className="page-toolbar">
         <div className="search-box">
-          <Search size={16} /><input placeholder="搜索工单号、产品或操作员" />
+          <Search size={16} /><input placeholder="搜索工单号、产品或操作员" value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
-        <button className="filter-button"><Filter size={14} />全部状态 <ChevronRight size={14} /></button>
+        {!approvals && <button className="filter-button" onClick={() => setStatusFilter((current) => filterOptions[(filterOptions.indexOf(current) + 1) % filterOptions.length])}><Filter size={14} />{statusFilter} <ChevronRight size={14} /></button>}
         {!approvals && <button className="outline-button" onClick={handleExport}><Download size={15} />导出</button>}
       </div>
-      {approvals ? <ApprovalTable /> : <OrdersTable key={refreshKey} onOpen={setSelectedOrderNo} />}
+      {approvals ? <ApprovalTable /> : <OrdersTable key={refreshKey} onOpen={setSelectedOrderNo} query={query} statusFilter={statusFilter} />}
 
       {showCreateModal && (
         <CreateOrderModal
@@ -60,7 +66,7 @@ export function WorkOrdersPage({ approvals = false }: { approvals?: boolean }) {
   )
 }
 
-function OrdersTable({ onOpen }: { onOpen: (orderNo: string) => void }) {
+function OrdersTable({ onOpen, query, statusFilter }: { onOpen: (orderNo: string) => void; query?: string; statusFilter?: string }) {
   const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -78,6 +84,13 @@ function OrdersTable({ onOpen }: { onOpen: (orderNo: string) => void }) {
 
   if (loading) return <div className="loading">正在加载工单列表...</div>
 
+  const filteredOrders = (orders || []).filter((order) => {
+    const text = `${order.id}${order.product}${order.operator}`.toLowerCase()
+    const textMatch = !query || text.includes(query.toLowerCase())
+    const statusMatch = !statusFilter || statusFilter === '全部状态' || order.status === statusFilter
+    return textMatch && statusMatch
+  })
+
   return (
     <div className="panel full-panel">
       <div className="table-wrap">
@@ -94,7 +107,9 @@ function OrdersTable({ onOpen }: { onOpen: (orderNo: string) => void }) {
             </tr>
           </thead>
           <tbody>
-            {orders.map((order, index) => (
+            {filteredOrders.length === 0 ? (
+              <tr><td colSpan={7} className="muted" style={{ textAlign: 'center' }}>暂无工单，请先创建生产工单。</td></tr>
+            ) : filteredOrders.map((order, index) => (
               <tr key={`${order.id}-${index}`}>
                 <td>
                   <strong className="order-id">{order.id}</strong>
@@ -127,7 +142,6 @@ function OrdersTable({ onOpen }: { onOpen: (orderNo: string) => void }) {
 
 function ApprovalTable() {
   const [items, setItems] = useState<any[]>([])
-  const [actioned, setActioned] = useState<Record<string, 'approved' | 'rejected'>>({})
   const [loading, setLoading] = useState(true)
 
   const load = () => {
@@ -143,13 +157,21 @@ function ApprovalTable() {
   }, [])
 
   const handleApprove = async (id: string) => {
-    await api.approve(id)
-    setActioned((prev) => ({ ...prev, [id]: 'approved' }))
+    try {
+      await api.approve(id)
+      setItems((prev) => prev.filter((item) => item.id !== id))
+    } catch (e: any) {
+      window.alert(e.message)
+    }
   }
 
   const handleReject = async (id: string) => {
-    await api.reject(id)
-    setActioned((prev) => ({ ...prev, [id]: 'rejected' }))
+    try {
+      await api.reject(id)
+      setItems((prev) => prev.filter((item) => item.id !== id))
+    } catch (e: any) {
+      window.alert(e.message)
+    }
   }
 
   if (loading) return <div className="loading">正在加载待审批项目...</div>
@@ -162,9 +184,8 @@ function ApprovalTable() {
         </div>
       ) : (
         items.map((item) => {
-          const status = actioned[item.id]
           return (
-            <div className={`approval-card ${status ? 'actioned' : ''}`} key={item.id}>
+            <div className="approval-card" key={item.id}>
               <div className={`approval-icon ${item.type}`}><CircleAlert size={18} /></div>
               <div className="approval-copy">
                 <small>{item.id} · {item.time}</small>
@@ -172,20 +193,14 @@ function ApprovalTable() {
                 <span>{item.description}</span>
               </div>
               <div className="approval-actions">
-                {status === 'approved' ? (
-                  <span className="approved-tag"><Check size={14} /> 已批准</span>
-                ) : status === 'rejected' ? (
-                  <span className="rejected-tag"><X size={14} /> 已驳回</span>
-                ) : (
-                  <>
-                    <button className="reject-button" onClick={() => handleReject(item.id)}>
-                      <X size={15} />驳回
-                    </button>
-                    <button className="approve-button wide" onClick={() => handleApprove(item.id)}>
-                      <Check size={15} />批准
-                    </button>
-                  </>
-                )}
+                <>
+                  <button className="reject-button" onClick={() => handleReject(item.id)}>
+                    <X size={15} />驳回
+                  </button>
+                  <button className="approve-button wide" onClick={() => handleApprove(item.id)}>
+                    <Check size={15} />批准
+                  </button>
+                </>
               </div>
             </div>
           )
@@ -199,7 +214,9 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
   const [materials, setMaterials] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
   const [showModal, setShowModal] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [query, setQuery] = useState('')
   const [importMessage, setImportMessage] = useState<string | null>(null)
   const excelInputRef = useRef<HTMLInputElement>(null)
 
@@ -236,6 +253,10 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
     }
   }
 
+  const normalizedQuery = query.trim().toLowerCase()
+  const filteredProducts = products.filter((p) => !normalizedQuery || p.name.toLowerCase().includes(normalizedQuery))
+  const filteredMaterials = materials.filter((m) => !normalizedQuery || `${m.material_code} ${m.name_zh}`.toLowerCase().includes(normalizedQuery))
+
   return (
     <div className="page-wrap">
       <PageTitle
@@ -250,7 +271,7 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
       />
       <div className="page-toolbar">
         <div className="search-box">
-          <Search size={16} /><input placeholder={`搜索${recipesPage ? '产品名称' : '辅料代号、名称'}`} />
+          <Search size={16} /><input placeholder={`搜索${recipesPage ? '产品名称' : '辅料代号、名称'}`} value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
         <button className="outline-button" onClick={() => excelInputRef.current?.click()}><FileSpreadsheet size={15} />Excel 导入</button>
         <button className="outline-button" onClick={() => api.downloadExcelTemplate().catch(() => setImportMessage('导出模板失败，请先确认已登录账号'))}><Download size={15} />导出模板</button>
@@ -260,12 +281,14 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
 
       {recipesPage ? (
         <div className="recipe-grid">
-          {products.map((p) => (
+          {filteredProducts.length === 0 ? (
+            <div className="empty-panel" style={{ padding: '3rem', textAlign: 'center', color: '#64748b', gridColumn: '1 / -1' }}>暂无产品配方，请先维护辅料后再新增产品。</div>
+          ) : filteredProducts.map((p) => (
             <div className="recipe-card" key={p.id}>
               <div className="recipe-head">
                 <span className="recipe-icon"><FileSpreadsheet size={18} /></span>
                 <span className="enabled-dot" />
-                <button className="icon-btn"><ChevronRight size={17} /></button>
+                <button className="icon-btn" onClick={() => setSelectedProduct(p)}><ChevronRight size={17} /></button>
               </div>
               <h3>{p.name}</h3>
               <p>{(p.items || []).length} 种辅料 · 状态 正常</p>
@@ -292,7 +315,9 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
                 </tr>
               </thead>
               <tbody>
-                {materials.map((m) => (
+                {filteredMaterials.length === 0 ? (
+                  <tr><td colSpan={6} className="muted" style={{ textAlign: 'center' }}>暂无辅料，请新增辅料或通过 Excel 导入。</td></tr>
+                ) : filteredMaterials.map((m) => (
                   <tr key={m.material_id}>
                     <td>
                       <strong className="order-id">{m.material_id}</strong>
@@ -300,7 +325,7 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
                     </td>
                     <td><strong className="cell-primary">{m.name_zh}</strong></td>
                     <td className="muted">{m.shelf_life_months} 个月</td>
-                    <td><span className="image-count"><Image size={14} />{(m.image_ids || []).length} 张</span></td>
+                    <td><span className="image-count"><Image size={14} />{(m.images || []).length} 张</span></td>
                     <td><span className="status status-running"><i />{m.enabled ? '启用' : '停用'}</span></td>
                     <td>
                       {m.enabled && <button className="text-button" onClick={() => api.disableMaterial(m.material_id).then(loadData)}>停用</button>}
@@ -320,6 +345,7 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
           <CreateMaterialModal onClose={() => setShowModal(false)} onSuccess={() => loadData()} />
         )
       )}
+      {selectedProduct && <RecipeDetailModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />}
     </div>
   )
 }
@@ -331,6 +357,7 @@ export function LabelsPage() {
   const [quantity, setQuantity] = useState(10)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [successNotice, setSuccessNotice] = useState<string | null>(null)
+  const [qrSrc, setQrSrc] = useState<string | null>(null)
 
   const loadBatches = () => {
     api.getPrintBatches().then(setBatches).catch(() => setBatches([]))
@@ -345,6 +372,21 @@ export function LabelsPage() {
     })
     loadBatches()
   }, [])
+
+  useEffect(() => {
+    if (!selectedMat) return
+    const payload = {
+      v: 1,
+      labelId: 'PREVIEW',
+      materialId: selectedMat.material_id,
+      materialCode: selectedMat.material_code,
+      name: selectedMat.name_zh,
+      printedAt: new Date().toISOString(),
+    }
+    QRCode.toDataURL(JSON.stringify(payload), { width: 180, margin: 1, color: { dark: '#1f5742', light: '#ffffff' } })
+      .then(setQrSrc)
+      .catch(() => setQrSrc(null))
+  }, [selectedMat])
 
   const handlePrint = async () => {
     if (!selectedMat) return
@@ -424,7 +466,7 @@ export function LabelsPage() {
               <strong>牧衡 · 辅料标签</strong>
               <span>ACTIVE</span>
             </div>
-            <div className="fake-qr">▦</div>
+            {qrSrc ? <img className="qr-preview" src={qrSrc} alt="辅料二维码预览" /> : <div className="fake-qr">▦</div>}
             <strong className="preview-material">{selectedMat ? selectedMat.name_zh : '等待选择辅料'}</strong>
             <span className="preview-code">内部代号 {selectedMat ? selectedMat.material_code : '—'}　·　系统时间自动录入</span>
             <small>扫描此二维码确认辅料身份</small>
@@ -475,6 +517,7 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
   const [users, setUsers] = useState<any[]>([])
   const [settings, setSettings] = useState<Record<string, string>>({})
   const [backupMessage, setBackupMessage] = useState<string | null>(null)
+  const [backups, setBackups] = useState<any[]>([])
 
   const loadUsers = () => {
     api.listUsers().then((res) => setUsers(res || [])).catch(() => setUsers([]))
@@ -482,6 +525,7 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
 
   const loadSettings = () => {
     api.getSettings().then(setSettings).catch(() => setSettings({}))
+    api.getBackups().then(setBackups).catch(() => setBackups([]))
   }
 
   useEffect(() => {
@@ -494,8 +538,45 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
     try {
       const result = await api.createBackup()
       setBackupMessage(`备份成功：${result.file_name}`)
+      api.getBackups().then(setBackups).catch(() => setBackups([]))
     } catch (e: any) {
       setBackupMessage(`备份失败：${e.message}`)
+    }
+  }
+
+  const handleResetPassword = async (user: any) => {
+    const password = window.prompt(`请输入 ${user.display_name} 的新密码（至少 8 位）`)
+    if (!password) return
+    if (password.length < 8) {
+      window.alert('密码长度至少 8 位')
+      return
+    }
+    try {
+      await api.resetUserPassword(user.id, password)
+      loadUsers()
+    } catch (e: any) {
+      window.alert(e.message)
+    }
+  }
+
+  const handleToggleActive = async (user: any) => {
+    if (user.is_active && !window.confirm(`确认停用 ${user.display_name}？停用后该账号无法登录。`)) return
+    try {
+      await api.setUserActive(user.id, !user.is_active)
+      loadUsers()
+    } catch (e: any) {
+      window.alert(e.message)
+    }
+  }
+
+  const handleEditSetting = async (key: string, currentValue: string, label: string) => {
+    const value = window.prompt(`请输入${label}`, currentValue)
+    if (value === null) return
+    try {
+      await api.updateSettings({ [key]: value.trim() })
+      loadSettings()
+    } catch (e: any) {
+      window.alert(e.message)
     }
   }
 
@@ -538,7 +619,14 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
                     <td>{user.role === 'admin' ? '管理员' : '普通操作员'}</td>
                     <td className="muted">{user.created_at ? new Date(user.created_at).toLocaleDateString('zh-CN') : '—'}</td>
                     <td><span className="status status-running"><i />{user.is_active ? '正常' : '停用'}</span></td>
-                    <td><button className="icon-btn"><Settings2 size={16} /></button></td>
+                    <td>
+                      {user.role !== 'admin' && (
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button className="icon-btn" title="重置密码" onClick={() => handleResetPassword(user)}><Settings2 size={16} /></button>
+                          <button className="text-button" onClick={() => handleToggleActive(user)}>{user.is_active ? '停用' : '启用'}</button>
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -549,14 +637,35 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
         <>
           {backupMessage && <div className="info-note" style={{ margin: '0 0 18px' }}>{backupMessage}</div>}
           <div className="settings-grid">
-            <Setting title="默认称重允差" description="目标重量的相对比例" value={`${settings.default_tolerance_percent ?? '1.0'} %`} />
-            <Setting title="最小绝对允差" description="低于此重量时使用的下限" value={`${settings.min_absolute_tolerance_grams ?? '5'} g`} />
-            <Setting title="自动备份" description="数据库和证据文件的本地备份" value={settings.backup_enabled === 'true' ? '已启用' : '已停用'} />
-            <Setting title="服务端口" description="局域网访问端口" value={settings.server_port ?? '8011'} />
+            <Setting title="默认称重允差" description="目标重量的相对比例" value={`${settings.default_tolerance_percent ?? '1.0'} %`} onClick={() => handleEditSetting('default_tolerance_percent', settings.default_tolerance_percent ?? '1.0', '默认称重允差（%）')} />
+            <Setting title="最小绝对允差" description="低于此重量时使用的下限" value={`${settings.min_absolute_tolerance_grams ?? '5'} g`} onClick={() => handleEditSetting('min_absolute_tolerance_grams', settings.min_absolute_tolerance_grams ?? '5', '最小绝对允差（克）')} />
+            <Setting title="自动备份" description="数据库和证据文件的本地备份" value={settings.backup_enabled === 'true' ? '已启用' : '已停用'} onClick={() => handleEditSetting('backup_enabled', settings.backup_enabled ?? 'true', '自动备份（true/false）')} />
+            <Setting title="服务端口" description="局域网访问端口" value={settings.server_port ?? '8011'} onClick={() => handleEditSetting('server_port', settings.server_port ?? '8011', '服务端口')} />
           </div>
           <button className="primary-button" style={{ marginTop: 18 }} onClick={handleBackup}>
             <DatabaseIcon />立即备份数据库
           </button>
+          <div className="panel full-panel" style={{ marginTop: 24 }}>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>备份文件</th><th>大小</th><th>状态</th><th>时间</th></tr>
+                </thead>
+                <tbody>
+                  {backups.length === 0 ? (
+                    <tr><td colSpan={4} className="muted" style={{ textAlign: 'center' }}>暂无备份记录</td></tr>
+                  ) : backups.map((backup) => (
+                    <tr key={backup.file_path}>
+                      <td className="order-id">{backup.file_path.split('/').pop()}</td>
+                      <td>{backup.size_bytes ? `${(backup.size_bytes / 1024).toFixed(1)} KB` : '—'}</td>
+                      <td><span className="status status-running"><i />{backup.status === 'success' ? '成功' : '失败'}</span></td>
+                      <td>{new Date(backup.created_at).toLocaleString('zh-CN', { hour12: false })}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </>
       )}
 
@@ -576,7 +685,7 @@ function DatabaseIcon() {
   return <FileSpreadsheet size={16} />
 }
 
-function Setting({ title, description, value }: { title: string; description: string; value: string }) {
+function Setting({ title, description, value, onClick }: { title: string; description: string; value: string; onClick?: () => void }) {
   return (
     <div className="setting-row">
       <div className="setting-icon"><Settings2 size={17} /></div>
@@ -584,7 +693,7 @@ function Setting({ title, description, value }: { title: string; description: st
         <strong>{title}</strong>
         <span>{description}</span>
       </div>
-      <button className="setting-value">{value}<ChevronRight size={15} /></button>
+      <button className="setting-value" onClick={onClick}>{value}<ChevronRight size={15} /></button>
     </div>
   )
 }

@@ -513,9 +513,10 @@ tasks:
         - google-chrome --headless=new --dump-dom http://127.0.0.1:5173/
       evidence:
         - PC 前端生产构建通过
-        - 后端 20 项自动化测试通过
+        - 后端 21 项自动化测试通过
         - 登录页在浏览器 Headless 渲染验证通过
         - 用户列表、设置、Excel 导入、工单撤销/完成接口已补齐
+        - 审批中心移除 mock 回退数据；搜索筛选、工单详情、账号重置/停用、备份历史、二维码预览已接通
       limitations:
         - 尚未由用户在真实 Windows 浏览器中完成全流程验收
     result:
@@ -533,5 +534,6 @@ tasks:
       deviations: []
       follow_ups:
         - 等待用户在浏览器中完成 PC 端全流程验收
+        - 真实标签打印机驱动尚未接入
     created_at: "2026-09-09T09:00:00Z"
     updated_at: "2026-09-09T09:00:00Z"

@@ -1,4 +1,12 @@
 
+/* Dashboard empty state */
+.approval-empty {
+  padding: 2rem 1rem;
+  color: #8c9893;
+  font-size: 14px;
+  text-align: center;
+}
+
 /* Modal Dialog Styles */
 .modal-backdrop {
   position: fixed;
@@ -378,6 +386,13 @@
   object-fit: cover;
   border: 1px solid #dce6e1;
   border-radius: 6px;
+}
+.qr-preview {
+  width: 116px;
+  height: 116px;
+  margin: 14px auto 12px;
+  border: 5px solid #ffffff;
+  outline: 1px solid #dcebe4;
 }
 
 @media (max-width: 760px) {

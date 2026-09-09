@@ -22,6 +22,14 @@ class RegisterRequest(BaseModel):
     password: str = Field(min_length=8, max_length=128)
 
 
+class ResetPasswordRequest(BaseModel):
+    password: str = Field(min_length=8, max_length=128)
+
+
+class UserActiveRequest(BaseModel):
+    is_active: bool
+
+
 def _public_user(user: User) -> dict:
     return {"id": user.id, "username": user.username, "display_name": user.display_name, "role": user.role, "is_active": user.is_active, "must_change_password": user.must_change_password}
 
@@ -78,3 +86,28 @@ def admin_check(_user: User = Depends(require_admin)) -> dict[str, str]:
 def list_users(_user: User = Depends(require_admin), db: Session = Depends(get_db)) -> list[dict]:
     users = db.scalars(select(User).order_by(User.created_at.desc())).all()
     return [_public_user(user) for user in users]
+
+
+@router.post("/users/{user_id}/reset-password")
+def reset_user_password(user_id: int, body: ResetPasswordRequest, _user: User = Depends(require_admin), db: Session = Depends(get_db)) -> dict:
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail={"code": "USER_NOT_FOUND", "message": "用户不存在"})
+    if user.role == "admin":
+        raise HTTPException(status_code=422, detail={"code": "ADMIN_PASSWORD_BLOCKED", "message": "管理员密码不能通过此接口重置"})
+    user.password_hash = hash_password(body.password)
+    user.must_change_password = True
+    db.commit()
+    return {"user": _public_user(user)}
+
+
+@router.patch("/users/{user_id}/active")
+def set_user_active(user_id: int, body: UserActiveRequest, _user: User = Depends(require_admin), db: Session = Depends(get_db)) -> dict:
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail={"code": "USER_NOT_FOUND", "message": "用户不存在"})
+    if user.role == "admin":
+        raise HTTPException(status_code=422, detail={"code": "ADMIN_STATUS_BLOCKED", "message": "管理员账号不能停用"})
+    user.is_active = body.is_active
+    db.commit()
+    return {"user": _public_user(user)}

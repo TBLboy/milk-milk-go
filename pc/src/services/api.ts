@@ -1,5 +1,4 @@
 import type { DashboardData, WorkOrder } from '../types/domain'
-import { dashboardData as fallbackData } from '../data/mockData'
 
 const API_BASE = '/api/v1'
 
@@ -96,6 +95,20 @@ export const api = {
     return request('/auth/users')
   },
 
+  async resetUserPassword(userId: number, password: string): Promise<any> {
+    return request(`/auth/users/${userId}/reset-password`, {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    })
+  },
+
+  async setUserActive(userId: number, isActive: boolean): Promise<any> {
+    return request(`/auth/users/${userId}/active`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_active: isActive }),
+    })
+  },
+
   // 工作台数据
   async getDashboard(): Promise<DashboardData> {
     const ordersRes = await request<any[]>('/work-orders')
@@ -112,14 +125,14 @@ export const api = {
     const completedCount = workOrders.filter((w) => w.status === '已完成').length
 
     return {
-      workOrders: workOrders.length > 0 ? workOrders : fallbackData.workOrders,
+      workOrders,
       stats: [
-        { label: '今日工单', value: `${workOrders.length || fallbackData.workOrders.length}`, detail: '生产称量任务', tone: 'blue' },
-        { label: '执行中', value: `${inProgressCount || 2}`, detail: '现场正在称重', tone: 'orange' },
+        { label: '今日工单', value: `${workOrders.length}`, detail: '生产称量任务', tone: 'blue' },
+        { label: '执行中', value: `${inProgressCount}`, detail: '现场正在称重', tone: 'orange' },
         { label: '待审批', value: `${pendingApprovals.length}`, detail: '照片与工单申请', tone: pendingApprovals.length > 0 ? 'orange' : 'slate' },
-        { label: '已完成', value: `${completedCount || 1}`, detail: '无称错记录', tone: 'green' },
+        { label: '已完成', value: `${completedCount}`, detail: '无称错记录', tone: 'green' },
       ],
-      pendingApprovals: pendingApprovals.length > 0 ? pendingApprovals : fallbackData.pendingApprovals,
+      pendingApprovals,
     }
   },
 

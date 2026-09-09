@@ -20,6 +20,23 @@ def test_admin_can_list_created_users(client):
     assert any(item["username"] == "operator99" for item in users)
 
 
+def test_admin_can_reset_password_and_toggle_operator_active(client):
+    headers = admin_headers(client)
+    user = client.post(
+        "/api/v1/auth/register",
+        headers=headers,
+        json={"username": "operator98", "display_name": "重置测试", "password": "password123"},
+    ).json()["user"]
+    reset = client.post(f"/api/v1/auth/users/{user['id']}/reset-password", headers=headers, json={"password": "newpassword123"})
+    assert reset.status_code == 200
+    login = client.post("/api/v1/auth/login", json={"username": "operator98", "password": "newpassword123"})
+    assert login.status_code == 200
+    deactivate = client.patch(f"/api/v1/auth/users/{user['id']}/active", headers=headers, json={"is_active": False})
+    assert deactivate.status_code == 200
+    assert deactivate.json()["user"]["is_active"] is False
+    assert client.post("/api/v1/auth/login", json={"username": "operator98", "password": "newpassword123"}).status_code == 401
+
+
 def test_settings_defaults_can_be_updated(client):
     headers = admin_headers(client)
     defaults = client.get("/api/v1/settings", headers=headers)
