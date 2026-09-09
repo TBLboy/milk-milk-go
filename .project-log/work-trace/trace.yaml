@@ -1,2 +1,283 @@
 version: "0.2"
-entries: []
+entries:
+  - id: WT-20260909-017
+    task_id: architecture-input-confirmed-and-arch-draft
+    context: 用户确认了架构设计前的所有默认规则，并补充最新 Android、Windows 11、支持安装应用、自动备份数据库；解决方案研究已收敛，应进入架构设计。
+    hypothesis: 将确认规则固化到 REQ-001 v4 和 DEC-027，并创建 ARCH-001 草稿，可以为任务拆解提供稳定输入。
+    action: 新增 DEC-027，更新 REQ-001 为 v4，将 solution-research 标记完成，启动 architecture-decision，并写入 ARCH-001 草稿。
+    expected_result: 技术方案阶段结束，架构阶段有明确的模块、接口、数据流和失败路径起点。
+    observation: 用户答复“平板默认我用的是最新的安卓平板系统就可以了，其他的我都同意你说的，没问题”。
+    actual_result: REQ-001 v4、DEC-027、ARCH-001 已创建，生命周期切换到 architecture-decision。
+    delta: 从技术方案研究进入架构设计。
+    lesson: 当用户确认所有剩余默认项时，应一次完成基线更新、决策记录和架构阶段切换，避免把已确认内容继续留在“待确认”状态。
+    next_adjustment: 评审 ARCH-001，细化数据库表、API、Android 页面/状态和 Windows 部署细节后进入任务拆解。
+    evidence:
+      - .project-log/requirements/baseline.yaml#REQ-001
+      - .project-log/decisions/decision-log.yaml#DEC-027
+      - .project-log/architecture/architecture.yaml#ARCH-001
+    knowledge_candidate: false
+  - id: WT-20260909-016
+    task_id: architecture-input-questions-collection
+    context: 用户询问进入下一阶段前还有哪些需要细化确认的点；基础技术栈、手动称重照片证据和安装包策略已经确认，剩下主要是业务口径、主数据、工单和现场部署细节。
+    hypothesis: 按“可给默认值的业务规则”和“必须现场确认的环境事实”两组整理，可以减少用户逐项理解的负担，并让架构设计有明确输入。
+    action: 新增 `.project-log/docs/solution-research-input-questions.md`，同步会话和进度。
+    expected_result: 架构设计前待确认点集中、分类、可逐项确认。
+    observation: 用户进入 solution-research 后需要看到明确的剩余输入清单。
+    actual_result: 待确认文档已建立并同步项目日志。
+    delta: 技术研究从“已选型”进入“可四处收敛仍开放的输入细节”环节。
+    lesson: 技术方案阶段不仅要记录已决定项，也要显式列出用户需要确认的默认值和现场事实，避免架构阶段重新猜测。
+    next_adjustment: 按文档逐项确认后，标记确认为新的 DEC 或更新 REQ-001，再进入架构设计。
+    evidence:
+      - .project-log/docs/solution-research-input-questions.md
+    knowledge_candidate: false
+  - id: WT-20260909-015
+    task_id: windows-installer-strategy-confirmed
+    context: 用户明确同意安装包策略，需要把 DEC-025 从 proposed 固化为生效决策。
+    hypothesis: Windows 安装包 + 后台服务作为已确认部署方式，后续架构设计可按安装目录、数据目录和更新包机制展开。
+    action: 更新 DEC-025 为 active/approved，并同步会话、进度和 RES-002。
+    expected_result: 第一版部署方式不再停留在待确认状态。
+    observation: 用户答复“我也同意安装包策略”。
+    actual_result: DEC-025 已标记为 active/approved。
+    delta: Windows 部署从候选讨论变成已确认技术决策。
+    lesson: 技术候选给出建议后，用户一旦明确同意，应同步更新决策状态，避免架构设计仍按“待确认”处理。
+    next_adjustment: 进入架构设计时细化 Windows 安装目录、数据目录、服务自启动、更新和备份策略。
+    evidence:
+      - .project-log/decisions/decision-log.yaml#DEC-025
+    knowledge_candidate: false
+  - id: WT-20260909-014
+    task_id: manual-weight-scale-photo-evidence
+    context: 用户认为只让操作员手动输入电子秤读数不够保险，要求同时拍照电子秤读数图片，并把两个信息一起记录。
+    hypothesis: 把电子秤读数照片设为手动称重的强制证据，可以在不接入电子秤的第一版提高重量可追溯性和防错可信度。
+    action: 更新 BL-WEIGH-003、BL-WEIGH-006、REQ-001 为 v3，新增 DEC-026，并同步操作员工作流文档和项目摘要。
+    expected_result: 手动称重记录必须包含数字重量、读数照片、操作员和时间。
+    observation: 用户明确要求“操作员还要拍照电子秤的读数图片，两个信息一起记录下来”。
+    actual_result: REQ-001 v3 和 DEC-026 已记录，业务原子和工作流文档已同步。
+    delta: 重量证据从“手动数字”提升为“数字 + 电子秤读数照片”的强制组合。
+    lesson: 手动输入类关键业务字段，应默认与图片/视频等旁证绑定，避免系统防错只依赖自报数字。
+    next_adjustment: 架构设计时定义称重记录模型包含 weight_value、weight_source=manual、scale_photo_file 和 operator/time。
+    evidence:
+      - .project-log/requirements/baseline.yaml#REQ-001
+      - .project-log/decisions/decision-log.yaml#DEC-026
+      - .project-log/business-logic/atoms.yaml#BL-WEIGH-006
+    knowledge_candidate: false
+  - id: WT-20260909-013
+    task_id: operator-weighing-workflow-documentation
+    context: 用户要求梳理一次真实产品制作中，操作员称量辅料要做的所有事情；当前已进入 solution-research，需要把用户路径作为后续接口和任务拆解的输入。
+    hypothesis: 把操作员端完整路径写成独立文档，可以明确正常流程、无码异常、手动称重、工单完成和辅助操作，减少后续架构设计中的流程歧义。
+    action: 新增 `.project-log/docs/operator-weighing-workflow.md`，并更新会话、进度和工作留痕。
+    expected_result: 操作员从登录到提交完成工单的每一步都有明确记录，且与第一版手动称重、自制二维码、拍照审批范围和工单绑定规则一致。
+    observation: 用户只需描述，不需要写代码；文档应区分正常路径和异常路径。
+    actual_result: 操作员工作流文档已创建，项目日志校验通过。
+    delta: 将零散业务规则串联成可被技术方案直接引用的端到端用户路径。
+    lesson: 用户旅程文档应在架构设计前整理，尤其要明确“扫码匹配不匹配走禁止、无码/标签异常走拍照审批、重量手动输入”三个关键分支。
+    next_adjustment: 架构设计时据此定义平板端页面、API、工单状态和称重步骤数据模型。
+    evidence:
+      - .project-log/docs/operator-weighing-workflow.md
+    knowledge_candidate: false
+  - id: WT-20260909-012
+    task_id: windows-deployment-packaging-discussion
+    context: 用户接受 React + Vite 浏览器管理端，并询问 Windows 电脑端软件更适合 Docker 还是安装包部署，关注后期更新维护。
+    hypothesis: 单机局域网系统的维护难点不在环境一致性，而在现场启动、本机设备访问和离线更新；Windows 安装包加后台服务比 Docker 更适合第一版。
+    action: 新增 DEC-025 作为 proposed，并在 RES-002 增加 Docker/安装包部署候选和推荐方向。
+    expected_result: 部署方式进入技术讨论记录，待用户确认后固化。
+    observation: 用户明确询问部署形式，说明现场维护便利性是关键约束。
+    actual_result: RES-002 已更新部署候选，DEC-025 已登记为 proposed。
+    delta: 技术方案讨论新增“Windows 打包和服务化”研究项。
+    lesson: 部署方案选择应优先看现场运维能力和本机设备访问，而不是环境一致性；Docker 更适合有 Docker 基础、多机或云端场景。
+    next_adjustment: 用户确认安装包方案后，将 DEC-025 标记为 active/approved，并细化安装目录、数据目录、服务自启动和更新策略。
+    evidence:
+      - .project-log/decisions/decision-log.yaml#DEC-025
+      - .project-log/research/solution-research.yaml#RES-002
+    knowledge_candidate: false
+  - id: WT-20260909-011
+    task_id: first-version-technical-scope-confirmation
+    context: 用户补充第一版不连接电子秤、后端按 Windows 10/11、平板为 Android、电脑端使用浏览器前端；这些信息会改变 REQ-001 和 RES-001/RES-002。
+    hypothesis: 把电子秤从第一版范围移出，并固定 FastAPI + SQLite + Android 原生 + 浏览器管理端，可避免不可验证的硬件阻塞测试版交付。
+    action: 将 Q-004 标记 answered，新增 DEC-023/DEC-024，更新 REQ-001 为 v2，更新相关业务原子、RES-001/RES-002 和项目摘要。
+    expected_result: 第一版基线明确不接电子秤，技术栈收敛到 FastAPI + SQLite + Android Kotlin + 浏览器管理端。
+    observation: 用户明确“称重部分第一版本暂时不考虑连接电子称”“系统按照windows10/11来写”“平板是android版本”“前端我打算是开发浏览器版本的”。
+    actual_result: REQ-001 v2 已更新，DEC-023/DEC-024 已记录，RES-001 标记 superseded，RES-002 标记 active。
+    delta: 第一版范围从“串口自动读秤 + 手动兜底”收窄为“手动称重录入为主”，技术方案从候选讨论进入确定方向。
+    lesson: 技术方案研究必须动态跟随用户新增的验证边界；未经验证的硬件不进入第一版，避免交付被真实设备不确定因素阻塞。
+    next_adjustment: 继续细化浏览器管理端、Android App、API、数据库、二维码和标签打印的技术边界，然后进入架构设计。
+    evidence:
+      - .project-log/decisions/decision-log.yaml#DEC-023
+      - .project-log/decisions/decision-log.yaml#DEC-024
+      - .project-log/requirements/baseline.yaml#REQ-001
+      - .project-log/research/solution-research.yaml#RES-002
+    knowledge_candidate: false
+  - id: WT-20260909-010
+    task_id: REQ-001-approval-and-solution-research-entry
+    context: 用户确认第一版按照 REQ-001 基线执行，并要求进入技术方案讨论。
+    hypothesis: 将 REQ-001 标记为 active/approved，并把生命周期切换到 solution-research，可以形成“业务契约已冻结、技术方案尚未选型”的清晰边界。
+    action: 更新 REQ-001 状态和审批证据，更新 workflow/摘要/会话/进度，再启动 solution-research Run。
+    expected_result: 项目日志进入 solution-research，REQ-001 不再处于 draft/pending。
+    observation: 用户明确答复“可以，第一版本就按照这个基线来。接下来我们进入技术方案讨论”。
+    actual_result: REQ-001 已标记为 active/approved，工作流切换为 solution-research，校验通过。
+    delta: 从需求基线过渡到技术方案研究阶段。
+    lesson: 基线批准是一项生命周期边界操作，应同步更新机器可读状态和人的摘要，避免技术讨论还在以“待批准需求”为前提。
+    next_adjustment: 开始技术候选比较，重点覆盖后端、数据库、平板 App、二维码、串口读秤、标签打印和部署方式；硬件不足项采用 spike-first。
+    evidence:
+      - .project-log/requirements/baseline.yaml#REQ-001
+      - .project-log/workflow.yaml#solution-research
+    knowledge_candidate: false
+  - id: WT-20260909-009
+    task_id: REQ-001-baseline-draft
+    context: 用户要求暂时结束继续澄清，先整理一版需求基线；独立系统、主数据、自制二维码、标签打印、权限和部署边界均已确认，Q-004 等硬件和后续策略问题非阻塞。
+    hypothesis: 将已确认业务原子、决策和开放问题收敛为 REQ-001 草稿，可形成暂定第一版业务合同，并在用户批准后再进入技术方案。
+    action: 创建 `.project-log/requirements/baseline.yaml` 中的 REQ-001 v1，整理 in-scope/out-of-scope、约束、质量属性、假设、未决问题和审批证据，并更新项目摘要、会话和进度。
+    expected_result: 项目日志出现机器可读的首版需求基线，状态为 draft/pending，不提前进入技术选型。
+    observation: validate_project.py 与 loopctl validate 均通过；业务澄清门可标记为 passed，工作流切到 requirement-baseline。
+    actual_result: REQ-001 v1 已创建并验证通过，状态保持 draft/pending，等待用户审阅批准。
+    delta: 从持续业务澄清切换到“冻结一版需求基线供用户批准”的过渡点。
+    lesson: 需求基线的“已整理”和“已批准”必须分开；在用户明确批准前，状态应保持 draft/pending，避免未经确认就进入技术方案。
+    next_adjustment: 请用户确认批准 REQ-001 或补充修改；批准后标记为 active/approved 再进入 solution-research。
+    evidence:
+      - .project-log/requirements/baseline.yaml#REQ-001
+      - .project-log/business-logic/clarification.yaml#gate
+      - .project-log/workflow.yaml#requirement-baseline
+    knowledge_candidate: false
+  - id: WT-20260909-008
+    task_id: Q-022-label-date-policy-confirmation
+    context: 用户确认第一版不管理实际生产日期，二维码标签日期以打印日期为准，和此前按实际生产日期计算到期日期的方案冲突。
+    hypothesis: 以打印日期作为标签日期可以降低第一版录入成本，且不会影响当前核心的辅料类型和重量防错；到期校验延后可行。
+    action: 将 Q-022 标记为 answered，新增 DEC-022 并取代 DEC-016 的日期规则，更新 BL-LABEL-001、BL-LABEL-002 和需求摘要。
+    expected_result: 第一版标签打印不录入生产日期，二维码标签日期使用 printedAt。
+    observation: 用户答复“不管实际生产日期，暂时只管标签打印日期就行”。
+    actual_result: Q-022 已 answered，DEC-016 标记为 superseded，DEC-022 已新增。
+    delta: 标签日期规则从“实际生产日期 + 保质期计算到期日期”简化为“以标签打印日期为准，到期校验延后”。
+    lesson: 用户新确认可能覆盖旧决策，不能只追加记录，需要显式标记旧决策被取代，避免后续方案仍按旧规则设计。
+    next_adjustment: 整理已确认业务逻辑并准备需求基线。
+    evidence:
+      - .project-log/business-logic/open-questions.yaml#Q-022
+      - .project-log/decisions/decision-log.yaml#DEC-022
+      - .project-log/business-logic/atoms.yaml#BL-LABEL-001
+    knowledge_candidate: false
+  - id: WT-20260909-007
+    task_id: Q-021-label-printer-workflow-confirmation
+    context: 用户确认标签打印在后台完成，需要新购打印机配合系统接入，并描述了选择辅料、打印张数、点击打印的流程。
+    hypothesis: 把打印操作抽象为独立的标签打印原子，并将打印机型号选型延后，可以避免硬件选型阻塞业务主流程。
+    action: 将 Q-021 标记为 answered，新增 DEC-021 和 BL-LABEL-002，并新增 Q-022 确认打印时生产日期如何录入。
+    expected_result: 后台批量打印流程进入第一版业务基线，打印机选型作为延后硬件决策。
+    observation: 用户明确打印机需要新购，功能需要与系统配合；打印时系统自动读取当前时间并发送打印指令。
+    actual_result: Q-021 已 answered，DEC-021 已记录，BL-LABEL-002 已新增。
+    delta: 标签打印从“由后台管理员打印”细化为具体打印界面、张数和打印机接入计划。
+    lesson: 设备是否现成和具体型号可以分离决策，只要业务操作流程明确，设备选型可延后到技术方案阶段。
+    next_adjustment: 确认 Q-022 实际生产日期在打印界面如何录入。
+    evidence:
+      - .project-log/business-logic/open-questions.yaml#Q-021
+      - .project-log/decisions/decision-log.yaml#DEC-021
+      - .project-log/business-logic/atoms.yaml#BL-LABEL-002
+    knowledge_candidate: false
+  - id: WT-20260909-006
+    task_id: Q-019-deployment-boundary-confirmation
+    context: 后端电脑与 WiFi 可用性已由用户确认，需要更新部署边界并保留标签打印机待确认。
+    hypothesis: 后端使用现场电脑 + 现有 WiFi 局域网，系统不依赖互联网，是适合第一版的最简稳定方案。
+    action: 将 Q-019 标记为 answered，新增 DEC-020 和 BL-DEVICE-002，并新增 Q-021 确认标签打印设备。
+    expected_result: 部署主机和网络边界进入需求基线，标签设备作为剩余开放项继续澄清。
+    observation: 用户答复“可以没问题，现场有后端电脑，有可用wifi”。
+    actual_result: Q-019 已 answered，DEC-020 已记录，BL-DEVICE-002 已新增。
+    delta: 现场部署从“待确认”细化为“现场电脑 + WiFi 局域网 + 标签设备待确认”。
+    lesson: 一个边界问题可能包含多个硬件子项，不能因为主项确认就关闭全部，剩余设备能力应单独继续确认。
+    next_adjustment: 确认 Q-021 现场标签打印设备。
+    evidence:
+      - .project-log/business-logic/open-questions.yaml#Q-019
+      - .project-log/decisions/decision-log.yaml#DEC-020
+      - .project-log/business-logic/atoms.yaml#BL-DEVICE-002
+    knowledge_candidate: false
+  - id: WT-20260909-005
+    task_id: Q-020-material-field-confirmation
+    context: 需要把辅料字段清单和英文名称必填规则固化为第一版数据契约。
+    hypothesis: materialCode、中文名称、默认保质期必填，英文名称选填，可以兼顾身份稳定和现场录入顺畅。
+    action: 将 Q-020 标记为 answered，新增 DEC-019，并更新 BL-DATA-003 字段规则。
+    expected_result: 辅料字段方案进入需求基线，后续 Excel 模板和平板录入沿用相同规则。
+    observation: 用户答复“可以没问题，就按照你说的来”。
+    actual_result: Q-020 已 answered，DEC-019 已记录，BL-DATA-003 已更新。
+    delta: 辅料主数据从概念字段细化为确认的数据契约和必填规则。
+    lesson: 主数据字段在进入技术方案前应先确定必填性，避免后续 Excel 模板、电脑端和平板端各自定义字段。
+    next_adjustment: 继续确认 Q-019 后端主机、局域网和标签打印设备边界。
+    evidence:
+      - .project-log/business-logic/open-questions.yaml#Q-020
+      - .project-log/decisions/decision-log.yaml#DEC-019
+      - .project-log/business-logic/atoms.yaml#BL-DATA-003
+    knowledge_candidate: false
+  - id: WT-20260909-004
+    task_id: master-data-entry-rules-detail
+    context: 用户补充辅料和产品配方录入细节，要求双端录入、图片管理和管理员权限。
+    hypothesis: 将辅料录入拆分为包含图片的独立主数据流程，将产品配方限定为从现有辅料库选择，并在平板端区分管理员/操作员，可以完整承接用户意图。
+    action: 新增 BL-DATA-003、BL-DATA-004 和 DEC-018，更新需求摘要与业务澄清。
+    expected_result: 记录辅料字段、图片双端来源、管理员权限、产品配方选择现有辅料和每吨用量规则。
+    observation: 用户明确辅料录入门槛为管理员，并希望平板直接拍摄包装图片；产品配方不涉及图片且必须引用辅料库。
+    actual_result: 辅料和产品配方录入规则已纳入第一版业务逻辑，Q-020 待确认字段必填细节。
+    delta: 主数据能力从笼统的“手工 + Excel 维护”细化为辅料图片主数据和产品配方从库选择两类业务原子。
+    lesson: 主数据录入不是单一功能，需要分别考虑字段、图片来源、操作端、权限和配方引用关系，才能形成可落地需求。
+    next_adjustment: 向用户确认 Q-020 辅料字段范围和英文名称必填规则。
+    evidence:
+      - .project-log/business-logic/atoms.yaml#BL-DATA-003
+      - .project-log/business-logic/atoms.yaml#BL-DATA-004
+      - .project-log/decisions/decision-log.yaml#DEC-018
+    knowledge_candidate: false
+  - id: WT-20260909-003
+    task_id: Q-018-master-data-init-confirmation
+    context: 已确认独立系统内由用户维护主数据，但第一版是否支持 Excel 批量导入/导出尚未明确。
+    hypothesis: 后台手工录入用于日常维护，Excel 模板导入/导出用于初始化和批量操作，两者结合最符合客户数据管理习惯。
+    action: 根据用户确认更新 Q-018、新增 DEC-017，并将 BL-DATA-001 更新为手工 + Excel 双通道维护。
+    expected_result: 第一版主数据初始化与维护方式进入需求基线。
+    observation: 用户答复“支持手工手动录入，也支持直接excel导入导出”。
+    actual_result: Q-018 已 answered，DEC-017 已记录，BL-DATA-001 已更新。
+    delta: 主数据能力从“用户自行维护”细化为“后台手工录入 + Excel 模板导入/导出”。
+    lesson: 对主数据能力应区分“是否允许维护”和“怎么初始化/批量维护”，后者的交付成本和工作量会明显不同。
+    next_adjustment: 继续确认 Q-019 后端主机、局域网和标签打印设备边界。
+    evidence:
+      - .project-log/business-logic/open-questions.yaml#Q-018
+      - .project-log/decisions/decision-log.yaml#DEC-017
+      - .project-log/business-logic/atoms.yaml#BL-DATA-001
+    knowledge_candidate: false
+  - id: WT-20260909-002
+    task_id: Q-017-label-flow-confirmation
+    context: Q-017 已向用户提出自制二维码标签生成、打印、粘贴复核流程，需要把推荐流程固化为第一版业务逻辑。
+    hypothesis: 后台管理员统一打印、录入生产日期、独立 labelId、粘贴后扫码复核，可以形成可控且可追溯的标签流程。
+    action: 根据用户确认更新 Q-017、新增 DEC-016，并将 BL-LABEL-001 从候选方案改为用户确认业务原子。
+    expected_result: 标签生成、打印、粘贴、复核和异常兜底流程进入需求基线。
+    observation: 用户答复“这个就按照你说的来”，推荐流程全部通过。
+    actual_result: Q-017 已 answered，DEC-016 已记录，BL-LABEL-001 已更新为用户确认。
+    delta: 自制二维码标签流程从候选设计转为第一版已确认业务逻辑。
+    lesson: 操作流程一旦给出明确推荐并获用户确认，应立即从“候选细节”升级为需求基线，避免后续技术选型时反复猜测。
+    next_adjustment: 继续确认 Q-018 主数据初始化与维护方式。
+    evidence:
+      - .project-log/business-logic/open-questions.yaml#Q-017
+      - .project-log/decisions/decision-log.yaml#DEC-016
+      - .project-log/business-logic/atoms.yaml#BL-LABEL-001
+    knowledge_candidate: false
+  - id: WT-20260909-001
+    task_id: Q-016-external-qr-design-evaluation
+    context: 用户提供《辅料自制二维码方案设计说明》，要求判断是否适合项目；当前第一版已从混合识别调整为公司自制二维码为主。
+    hypothesis: 外部方案中不依赖供应商原码、以不可变 materialId 连接辅料实物与后台主数据的核心设计适合本项目；JSON 字段、打印权限、标签状态和粘贴复核等细节需客户确认后才成为需求。
+    action: 核对外部文档与已确认业务逻辑，把适合部分纳入业务原子，未确认细节列入 Q-017。
+    expected_result: 形成“核心适合、细节待确认”的评估结论，并同步项目日志。
+    observation: 外部文档的核心匹配、标签快照、后台标签记录与当前防错方向一致；打印流程和标签状态属于候选设计。
+    actual_result: Q-016/DEC-015 已确认自制二维码为主；BL-LABEL-001 标记为 evidence-derived；新增 Q-017 待确认标签流程。
+    delta: 第一版识别方向从混合方案收敛为自制二维码为主，并区分已确认方向与未确认操作细节。
+    lesson: 外部方案适合不等于细节已确认；核心方向可纳入基线，操作细节应单独成 C 级问题，避免把文档默认成需求。
+    next_adjustment: 向用户确认 Q-017 的标签生成、打印、粘贴复核流程。
+    evidence:
+      - external-document/辅料自制二维码方案设计说明
+      - .project-log/business-logic/open-questions.yaml#Q-016
+      - .project-log/business-logic/open-questions.yaml#Q-017
+      - .project-log/business-logic/atoms.yaml#BL-LABEL-001
+    knowledge_candidate: false
+  - id: WT-20260908-001
+    task_id: Q-004-hardware-check
+    context: 客户提供电子秤为 ENTOAM 映拓 Qy-C126，配套收款机 Q1S（主板 Gm-J6412D16-V2E），需要判断是否可外部读取实时重量。
+    hypothesis: 映拓收银/计价秤系列通常支持串口实时重量输出，Qy-C126 很可能可被外部软件读取。
+    action: 检索映拓计价秤对接文档、第三方收银软件配置文档和 QY-A126 串口协议抓包资料。
+    expected_result: 找到支持外部串口连接的直接证据，或确认证据不足。
+    observation: 映拓计价秤公开文档默认 COM2 并支持主动通讯协议；QY-A126 第三方抓包成功；未找到 Qy-C126 官方手册和主板公开规格。
+    actual_result: 形成 candidate 证据：疑似支持串口实时取重，但 Qy-C126 实物端口、协议版本和 COM 端口必须现场/厂商确认。
+    delta: 将从“完全未知”推进到“疑似支持串口实时取重，待实物确认”。
+    lesson: 同系列和品牌文档不能直接替代具体型号的物理接口确认，必须区分 evidence-candidate 与 confirmed。
+    next_adjustment: 向客户提交端口照片和 COM 端口查证要求，同时保持 Q-004 为未回答。
+    evidence:
+      - .project-log/research/solution-research.yaml#RES-001
+      - .project-log/business-logic/clarification.yaml
+    knowledge_candidate: false

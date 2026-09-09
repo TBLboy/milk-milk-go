@@ -1,2 +1,23 @@
 schema_version: 1
-evidence: []
+evidence:
+- id: EV-RES-001
+  kind: research
+  subject: 映拓计价秤疑似支持串口实时取重，Qy-C126 实物端口待确认
+  status: stale
+  command: curl + web search
+  result_ref: tddoc/td365 + paidui + cnblogs + csdn
+  covers:
+    files:
+    - .project-log/research/solution-research.yaml
+    - .project-log/business-logic/clarification.yaml
+    requirements: []
+    tasks: []
+  version_binding:
+    git_commit: ccd02bd387921f52d3a28e3ec978ddd12526791e
+    diff_hash: b2efa6c8dd8e209dc6e5bf436255b290ad4542e1018eb3b151fd1fa5205709e5
+    file_hashes:
+      .project-log/research/solution-research.yaml: 5f62b02617b90f59786f0029ce2340090596a2ad560d617e39b9be793681e92c
+      .project-log/business-logic/clarification.yaml: c7c1489ed1933c7c9c8b2f50aea404f48423ce50c9c52ff9ecc77e99645f02e6
+  recorded_at: '2026-09-08T08:37:21Z'
+  invalidated_at: '2026-09-08T08:53:29Z'
+  invalidation_reason: PostToolUse:apply_patch

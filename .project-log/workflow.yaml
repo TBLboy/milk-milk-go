@@ -1,6 +1,6 @@
 version: "0.4"
 mode: standard
-current_phase: business-clarification
+current_phase: architecture-decision
 active_goal: null
 phase_order:
   - business-intent
@@ -25,8 +25,8 @@ phases:
     evidence:
       - .project-log/current-session.md
   business-clarification:
-    status: active
-    gate_status: open
+    status: completed
+    gate_status: passed
     required_artifacts:
       - .project-log/business-logic/atoms.yaml
       - .project-log/business-logic/clarification.yaml
@@ -39,30 +39,34 @@ phases:
     evidence:
       - .project-log/business-logic/clarification.yaml
   requirement-baseline:
-    status: pending
-    gate_status: not-evaluated
+    status: completed
+    gate_status: passed
     required_artifacts:
       - .project-log/requirements/baseline.yaml
     exit_conditions:
       - scope and exclusions are explicit
       - active atoms have acceptance criteria
-    evidence: []
+    evidence:
+      - .project-log/requirements/baseline.yaml#REQ-001
   solution-research:
-    status: pending
-    gate_status: not-evaluated
+    status: completed
+    gate_status: passed
     required_artifacts:
       - .project-log/research/solution-research.yaml
     exit_conditions:
       - material technical choices have evidence or are explicitly not required
-    evidence: []
+    evidence:
+      - .project-log/research/solution-research.yaml#RES-001
+      - .project-log/research/solution-research.yaml#RES-002
   architecture-decision:
-    status: pending
-    gate_status: not-evaluated
+    status: active
+    gate_status: open
     required_artifacts:
       - .project-log/architecture/architecture.yaml
     exit_conditions:
       - ownership interfaces data and failure boundaries are sufficient for decomposition
-    evidence: []
+    evidence:
+      - .project-log/architecture/architecture.yaml#ARCH-001
   task-decomposition:
     status: pending
     gate_status: not-evaluated
@@ -120,8 +124,7 @@ phases:
     exit_conditions:
       - lessons are classified without silently becoming permanent rules
     evidence: []
-open_gates:
-  - business-clarification
+open_gates: []
 return_edges:
   - from: implementation
     to: business-clarification
@@ -135,4 +138,4 @@ return_edges:
   - from: alignment
     to: implementation
     reason: implementation or test drift
-last_updated: '2026-09-08T07:02:18Z'
+last_updated: '2026-09-09T07:10:00Z'

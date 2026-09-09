@@ -1,2 +1,103 @@
 version: "0.2"
-studies: []
+studies:
+  - id: RES-001
+    status: superseded
+    problem: 客户现有 ENTOAM 映拓 Qy-C126 电子秤和 Q1S 收款机是否能被外部软件实时读取重量
+    related_business_logic:
+      - BL-DEVICE-001
+      - BL-WEIGH-003
+    related_tasks: []
+    constraints:
+      - 未找到 Qy-C126 官方产品手册
+      - 未拿到设备实物接口照片
+      - 未拿到制造商协议文档
+      - Q1S 主板 Gm-J6412D16-V2E 未找到公开规格
+    candidates:
+      - "串口/COM 实时读取：映拓计价秤公开文档默认 COM2，映拓主动通讯协议；同系列 QY-A126 第三方抓包成功"
+      - "USB 转串口读取：若设备只暴露专用端口或隐藏串口，则需要现场确认转接方式"
+      - "换支持连接的新电子秤：若本机无数据口或协议不开放，作为备选"
+    strategy: spike-first
+    recommendation: 现阶段按“疑似支持串口实时取重”继续澄清，但必须在实物上确认数据端口、COM 号、协议版本和固件是否启用主动通讯协议后，才能作为系统自动取重的接口依据。
+    decision_ref: DEC-023
+    conditions:
+      - 客户拍摄电子秤和收款机背面/侧面端口照片
+      - 在 Q1S 设备管理器中确认 COM 端口
+      - 联系映拓/巨隆厂商索要 Qy-C126 主动通讯协议和上位机工具
+    contrary_evidence:
+      - Qy-C126 未出现在公开支持型号列表中
+      - 主板型号 Gm-J6412D16-V2E 无公开规格页面
+    confidence: 0.55
+    sources:
+      - "https://tddoc.td365.com.cn/docs/tdgj/yingt"
+      - "https://tddoc.td365.com.cn/docs/tdgj/cpzcxh"
+      - "https://help-jsh.paidui.com/008c/e14f"
+      - "https://www.cnblogs.com/minuhy/p/20078724"
+      - "https://blog.csdn.net/XiaoYuHaoAiMin/article/details/161214244"
+    retrieved_at: "2026-09-08T08:40:00Z"
+    updated_at: "2026-09-09T06:10:00Z"
+  - id: RES-002
+    status: complete
+    problem: 第一版总体技术栈和交付形态：后端、数据库、浏览器管理端、Android 平板 App、二维码、称重录入、标签打印与现场部署
+    related_business_logic:
+      - BL-WEIGH-001
+      - BL-WEIGH-003
+      - BL-RECOG-001
+      - BL-LABEL-001
+      - BL-LABEL-002
+      - BL-DATA-001
+      - BL-DATA-002
+      - BL-DATA-003
+      - BL-DATA-004
+      - BL-AUTH-001
+      - BL-WO-001
+      - BL-SCOPE-001
+      - BL-DEVICE-001
+      - BL-DEVICE-002
+      - BL-SETTINGS-001
+    related_tasks: []
+    constraints:
+      - 电脑后端和数据库部署在现场电脑
+      - 平板 App 通过局域网访问后端，核心业务不依赖互联网
+      - 平板暂按 Android 安装包交付
+      - 后端运行在 Windows 10/11
+      - 电脑端管理界面使用浏览器访问
+      - 同一后端支持多台平板并发处理不同工单
+      - 第一版不连接电子秤，称重结果由操作员手动输入并标记 manual
+      - 手动称重记录必须同时包含数字重量和电子秤读数照片
+      - 标签打印机型号未知，第一版打印流程不依赖具体驱动
+      - 现场需要简单启动、关闭、备份和升级
+      - 现场可能断网，更新包应可直接拷贝到本机安装
+      - 未来打印机或电子秤可能通过 Windows 主机本机设备接口访问
+      - 主数据支持 Excel 导入/导出
+      - 扫码、拍照、称重、审批和打印记录长期保存
+    candidates:
+      - "后端：Python FastAPI（轻量、串口/Excel/二维码库生态好）"
+      - "后端：Java Spring Boot（企业级但较重）"
+      - "后端：Node.js NestJS（Web 生态成熟，串口和本地上位机能力较弱）"
+      - "数据库：SQLite（单机局域网简单，第一版运维成本低）"
+      - "数据库：PostgreSQL（并发和长期数据更强，但现场安装维护更重）"
+      - "平板 App：Android 原生 Kotlin（直接使用摄像头和 APK 安装）"
+      - "平板 App：Flutter（跨平台且 UI 开发快，增加 Dart/插件层）"
+      - "二维码：后端生成结构化 JSON 二维码和一页多标签 PDF"
+      - "扫码：平板摄像头扫码并解析本系统标签格式"
+      - "称重：第一版平板输入 + 后端标记 manual，不接电子秤"
+      - "电子秤：作为后续版本候选，不做第一版实现"
+      - "标签打印：第一版先生成 PDF 用系统打印，具体型号确认后再接专用驱动/指令"
+      - "部署：Windows 安装包 + 后台服务（启动、更新、本机设备访问都简单）"
+      - "部署：Docker（环境一致性好，但 Docker Desktop/WSL、离线镜像、后续本机设备映射和维护复杂度更高）"
+    strategy: spike-first
+    recommendation: 第一版采用 Python FastAPI + SQLite + Android 原生 Kotlin APK + React/Vite 浏览器管理端；部署优先采用 Windows 安装包 + 后台服务，称重以平板手动输入为主，PDF 标签打印先用系统打印，真实标签打印机后续 spike 接入。
+    conditions:
+      - 后端电脑为 Windows 10/11 且能长期运行
+      - 用户已确认采用 Windows 安装包部署方式
+      - 确认客户平板型号和 Android 版本
+      - 确定标签打印机型号或接受先使用系统打印对话框
+    contrary_evidence:
+      - Android 摄像头、相机和 APK 安装体验依赖具体平板型号
+      - 标签打印机驱动和指令接口未知
+      - SQLite 在多客户端并发和长期大数据量下的边界需在测试阶段验证
+    confidence: 0.75
+    sources: []
+    retrieved_at: null
+    decision_ref: DEC-024
+    updated_at: "2026-09-09T07:10:00Z"
