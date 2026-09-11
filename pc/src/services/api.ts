@@ -207,6 +207,19 @@ export const api = {
     })
   },
 
+  async updateMaterial(materialId: string, payload: { material_code: string; name_zh: string; name_en?: string; shelf_life_months: number; image_file_ids?: string[] }): Promise<any> {
+    return request(`/master-data/materials/${materialId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    })
+  },
+
+  async deleteMaterial(materialId: string): Promise<any> {
+    return request(`/master-data/materials/${materialId}`, {
+      method: 'DELETE',
+    })
+  },
+
   async disableMaterial(materialId: string): Promise<any> {
     return request(`/master-data/materials/${materialId}/disable`, { method: 'PATCH' })
   },

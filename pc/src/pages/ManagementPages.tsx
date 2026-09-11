@@ -3,7 +3,7 @@ import { Check, ChevronRight, CircleAlert, Download, Edit, FileSpreadsheet, Imag
 import QRCode from 'qrcode'
 import { StatusBadge } from '../components/StatusBadge'
 import { api } from '../services/api'
-import { CreateMaterialModal, CreateOrderModal, CreateProductModal, CreateUserModal, Modal, OrderDetailModal, RecipeDetailModal } from '../components/Modals'
+import { CreateMaterialModal, CreateOrderModal, CreateProductModal, CreateUserModal, MaterialImageModal, Modal, OrderDetailModal, RecipeDetailModal } from '../components/Modals'
 import { StatusFilter } from '../components/StatusFilter'
 import { Pagination } from '../components/Pagination'
 
@@ -234,6 +234,8 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
   const [showModal, setShowModal] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<any>(null)
   const [editingProduct, setEditingProduct] = useState<any>(null)
+  const [editingMaterial, setEditingMaterial] = useState<any>(null)
+  const [selectedMaterialImages, setSelectedMaterialImages] = useState<any>(null)
   const [statusMenuProductId, setStatusMenuProductId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
@@ -281,6 +283,16 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
     if (!isActive && !window.confirm(`确认停用配方「${p.name}」？停用后该配方不能用于新建工单。`)) return
     try {
       await api.setProductActive(p.id, isActive)
+      loadData()
+    } catch (e: any) {
+      window.alert(e.message)
+    }
+  }
+
+  const handleDeleteMaterial = async (m: any) => {
+    if (!window.confirm(`确认删除辅料「${m.name_zh}」？删除后不可恢复。`)) return
+    try {
+      await api.deleteMaterial(m.material_id)
       loadData()
     } catch (e: any) {
       window.alert(e.message)
@@ -385,13 +397,12 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
                   <th>中文名称</th>
                   <th>保质期</th>
                   <th>包装图片</th>
-                  <th>状态</th>
                   <th />
                 </tr>
               </thead>
               <tbody>
                 {pagedMaterials.length === 0 ? (
-                  <tr><td colSpan={6} className="muted" style={{ textAlign: 'center' }}>暂无辅料，请新增辅料或通过 Excel 导入。</td></tr>
+                  <tr><td colSpan={5} className="muted" style={{ textAlign: 'center' }}>暂无辅料，请新增辅料或通过 Excel 导入。</td></tr>
                 ) : pagedMaterials.map((m) => (
                   <tr key={m.material_id}>
                     <td>
@@ -400,10 +411,14 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
                     </td>
                     <td><strong className="cell-primary">{m.name_zh}</strong></td>
                     <td className="muted">{m.shelf_life_months} 个月</td>
-                    <td><span className="image-count"><Image size={14} />{(m.images || []).length} 张</span></td>
-                    <td><span className="status status-running"><i />{m.enabled ? '启用' : '停用'}</span></td>
                     <td>
-                      {m.enabled && <button className="text-button" onClick={() => api.disableMaterial(m.material_id).then(loadData)}>停用</button>}
+                      <button className="image-count material-image-button" title="查看包装图片" onClick={() => setSelectedMaterialImages(m)}>
+                        <Image size={14} />{(m.images || []).length} 张
+                      </button>
+                    </td>
+                    <td className="material-actions">
+                      <button className="text-button" onClick={() => setEditingMaterial(m)}><Edit size={14} />编辑</button>
+                      <button className="text-button danger" onClick={() => handleDeleteMaterial(m)}>删除</button>
                     </td>
                   </tr>
                 ))}
@@ -423,6 +438,8 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
       )}
       {editingProduct && <CreateProductModal product={editingProduct} onClose={() => setEditingProduct(null)} onSuccess={() => { setEditingProduct(null); loadData() }} />}
       {selectedProduct && <RecipeDetailModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />}
+      {editingMaterial && <CreateMaterialModal material={editingMaterial} onClose={() => setEditingMaterial(null)} onSuccess={() => { setEditingMaterial(null); loadData() }} />}
+      {selectedMaterialImages && <MaterialImageModal material={selectedMaterialImages} onClose={() => setSelectedMaterialImages(null)} />}
     </div>
   )
 }

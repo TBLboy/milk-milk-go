@@ -5,3 +5,16 @@
 .recipe-actions{display:flex;align-items:center;gap:6px;margin-left:auto}.recipe-edit-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;color:#238b66;font-size:14px;font-weight:600;line-height:1;background:#eaf6f0;border:1px solid #cfe8dd;border-radius:5px}.recipe-edit-btn:hover{color:#176b4e;background:#dff1e8;border-color:#aedac6}.recipe-head .recipe-actions .icon-btn{margin-left:0}
 
 .enabled-dot.disabled{background:#d46a5a}.recipe-foot b.disabled{color:#c7473c}.recipe-status-menu{position:relative;margin-left:auto}.recipe-status-menu .recipe-status-arrow{margin-left:0}.recipe-status-arrow{display:grid;place-items:center;width:26px;height:26px;margin-left:auto;padding:0;color:#82909b;background:transparent;border:0;border-radius:5px;cursor:pointer}.recipe-status-arrow:hover{color:#16805a;background:#eef7f3}.recipe-status-arrow.open{color:#16805a;background:#eef7f3}.recipe-status-arrow svg{margin-left:0;color:currentColor;transition:transform .15s}.recipe-status-arrow.open svg{transform:rotate(90deg)}.recipe-status-menu .filter-menu{right:0;left:auto;min-width:100px}.recipe-status-menu-list button.stop{color:#c7473c}.recipe-status-menu-list button.stop.active{color:#a52f2a;background:#fff1f1}
+
+.material-image-button{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;color:#688a7a;background:#f7fbf9;border:1px solid #e2eee8;border-radius:5px;cursor:pointer}
+.material-image-button:hover{color:#16805a;background:#eef7f3;border-color:#acd6c2}
+.material-actions{display:flex;align-items:center;gap:10px}
+.text-button.danger{color:#c7473c}
+.text-button.danger:hover{color:#a52f2a}
+.image-preview-item{position:relative}
+.image-preview-item img{display:block}
+.image-remove-btn{position:absolute;top:4px;right:4px;display:grid;place-items:center;width:20px;height:20px;padding:0;color:#fff;background:#c7473c;border:0;border-radius:50%;cursor:pointer}
+.image-remove-btn:hover{background:#a52f2a}
+.material-image-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.material-image-grid img{width:100%;aspect-ratio:1/1;object-fit:cover;border:1px solid #e0e8e4;border-radius:8px;background:#f7f9f8}
+@media(max-width:620px){.material-image-grid{grid-template-columns:1fr}}

@@ -108,3 +108,58 @@ def test_product_recipe_can_be_deleted(client):
     assert all(item["id"] != created["id"] for item in listed)
     missing = client.delete(f"/api/v1/master-data/products/{created['id']}", headers=headers)
     assert missing.status_code == 404
+
+
+def test_material_can_be_edited_and_images_replaced(client):
+    headers = admin_headers(client)
+    created = client.post("/api/v1/master-data/materials", headers=headers, json={
+        "material_code": "EDIT_MAT",
+        "name_zh": "旧名称",
+        "name_en": "Old Name",
+        "shelf_life_months": 24,
+        "image_file_ids": ["old-one", "old-two"],
+    }).json()
+    updated = client.put(f"/api/v1/master-data/materials/{created['material_id']}", headers=headers, json={
+        "material_code": "EDIT_MAT2",
+        "name_zh": "新名称",
+        "name_en": "New Name",
+        "shelf_life_months": 36,
+        "image_file_ids": ["new-one"],
+    })
+    assert updated.status_code == 200
+    body = updated.json()
+    assert body["material_code"] == "EDIT_MAT2"
+    assert body["name_zh"] == "新名称"
+    assert body["name_en"] == "New Name"
+    assert body["shelf_life_months"] == 36
+    assert [item["file_id"] for item in body["images"]] == ["new-one"]
+
+    duplicate = client.put(f"/api/v1/master-data/materials/{created['material_id']}", headers=headers, json={
+        "material_code": "EDIT_MAT2",
+        "name_zh": "重名",
+        "shelf_life_months": 12,
+    })
+    assert duplicate.status_code == 409
+
+
+def test_unreferenced_material_can_be_deleted(client):
+    headers = admin_headers(client)
+    created = client.post("/api/v1/master-data/materials", headers=headers, json={"material_code": "DELETE_MAT", "name_zh": "待删除", "shelf_life_months": 12}).json()
+    deleted = client.delete(f"/api/v1/master-data/materials/{created['material_id']}", headers=headers)
+    assert deleted.status_code == 200
+    assert deleted.json()["deleted"] is True
+    listed = client.get("/api/v1/master-data/materials", headers=headers).json()
+    assert all(item["material_id"] != created["material_id"] for item in listed)
+    assert client.delete(f"/api/v1/master-data/materials/{created['material_id']}", headers=headers).status_code == 404
+
+
+def test_material_in_recipe_cannot_be_deleted(client):
+    headers = admin_headers(client)
+    material = client.post("/api/v1/master-data/materials", headers=headers, json={"material_code": "INUSE_MAT", "name_zh": "配方引用", "shelf_life_months": 12}).json()
+    client.post("/api/v1/master-data/products", headers=headers, json={
+        "name": "引用辅料配方",
+        "items": [{"material_id": material["material_id"], "quantity_per_ton_kg": 2}],
+    })
+    deleted = client.delete(f"/api/v1/master-data/materials/{material['material_id']}", headers=headers)
+    assert deleted.status_code == 409
+    assert deleted.json()["detail"]["code"] == "MATERIAL_IN_USE"
