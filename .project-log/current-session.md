@@ -43,6 +43,13 @@
   2. 继续保持 PC 前端 mock adapter，待核心后端接口稳定后执行 TASK-011 联调
   3. 后端业务开发过程发现语义变化时回到需求/架构记录，不静默修改基线
 
+## 2026-09-11 SQLite readonly 数据库修复
+
+- 用户反馈：配方停用操作报 `Internal Server Error`
+- 根因：在准备提交时通过 `git restore` 还原了已跟踪的 `pc/data/milk_weigh.sqlite3`，但当时后端服务仍持有旧 SQLAlchemy/SQLite 连接，后续写入报 `attempt to write a readonly database`
+- 修复：重启后端服务，让 SQLAlchemy 重新打开数据库；通过写锁和 `PATCH /api/v1/master-data/products/6/active` 同状态写入验证，数据库恢复正常可写
+- 注意：后续不要在运行后端的期间还原/替换 SQLite 数据库文件；如确需还原，先停止后端服务
+
 ## 2026-09-11 配方状态切换下拉列表
 
 - 用户反馈：点击配方状态右侧小箭头不应直接切换，应先弹出包含“启用/停用”的下拉列表，选中状态后再执行切换
