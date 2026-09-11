@@ -242,16 +242,26 @@ export function RecipeDetailModal({ product, onClose }: { product: any; onClose:
   )
 }
 
-// 2. 新增辅料弹窗
-export function CreateMaterialModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
-  const [code, setCode] = useState('')
-  const [name, setName] = useState('')
-  const [nameEn, setNameEn] = useState('')
-  const [shelfLife, setShelfLife] = useState(24)
-  const [imageFileIds, setImageFileIds] = useState<string[]>([])
+// 2. 新增/编辑辅料弹窗
+export function CreateMaterialModal({ onClose, onSuccess, material }: { onClose: () => void; onSuccess: () => void; material?: any }) {
+  const isEdit = Boolean(material)
+  const [code, setCode] = useState(material?.material_code || '')
+  const [name, setName] = useState(material?.name_zh || '')
+  const [nameEn, setNameEn] = useState(material?.name_en || '')
+  const [shelfLife, setShelfLife] = useState(material?.shelf_life_months ?? 24)
+  const [imageFileIds, setImageFileIds] = useState<string[]>((material?.images || []).map((image: any) => image.file_id))
   const [previews, setPreviews] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const images = material?.images || []
+    if (images.length === 0) return
+    Promise.all(images.map((image: any) => api.getFileUrl(image.file_id).catch(() => '')))
+      .then(setPreviews)
+      .catch(() => setPreviews([]))
+  }, [])
 
   const handleFiles = async (files: FileList | null) => {
     if (!files) return
@@ -270,29 +280,54 @@ export function CreateMaterialModal({ onClose, onSuccess }: { onClose: () => voi
     }
   }
 
+  const removeImage = (index: number) => {
+    setImageFileIds((ids) => ids.filter((_, imageIndex) => imageIndex !== index))
+    setPreviews((urls) => urls.filter((_, imageIndex) => imageIndex !== index))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
+    const payload = {
+      material_code: code.trim().toUpperCase(),
+      name_zh: name.trim(),
+      name_en: nameEn.trim() || undefined,
+      shelf_life_months: Number(shelfLife),
+      image_file_ids: imageFileIds,
+    }
     try {
-      await api.createMaterial({
-        material_code: code.trim().toUpperCase(),
-        name_zh: name.trim(),
-        name_en: nameEn.trim() || undefined,
-        shelf_life_months: Number(shelfLife),
-        image_file_ids: imageFileIds,
-      })
+      if (isEdit && material) {
+        await api.updateMaterial(material.material_id, payload)
+      } else {
+        await api.createMaterial(payload)
+      }
       onSuccess()
       onClose()
     } catch (err: any) {
-      setError(err.message || '新增辅料失败')
+      setError(err.message || (isEdit ? '编辑辅料失败' : '新增辅料失败'))
     } finally {
       setLoading(false)
     }
   }
 
+  const handleDelete = async () => {
+    if (!isEdit || !material) return
+    if (!window.confirm(`确认删除辅料「${material.name_zh}」？删除后不可恢复。`)) return
+    setDeleting(true)
+    setError(null)
+    try {
+      await api.deleteMaterial(material.material_id)
+      onSuccess()
+      onClose()
+    } catch (err: any) {
+      setError(err.message || '删除辅料失败')
+      setDeleting(false)
+    }
+  }
+
   return (
-    <Modal title="新增辅料物料" onClose={onClose}>
+    <Modal title={isEdit ? `编辑辅料 · ${material?.material_code}` : '新增辅料物料'} onClose={onClose}>
       <form onSubmit={handleSubmit} className="modal-form">
         {error && <div className="modal-error">{error}</div>}
         <label>
@@ -342,17 +377,61 @@ export function CreateMaterialModal({ onClose, onSuccess }: { onClose: () => voi
           </label>
         </div>
         {previews.length > 0 && (
-          <div className="image-preview-row">
-            {previews.map((url, index) => <img key={`${url}-${index}`} src={url} alt={`包装图片 ${index + 1}`} />)}
+          <div className="image-preview-row material-image-edit">
+            {previews.map((url, index) => (
+              <div className="image-preview-item" key={`${url}-${index}`}>
+                <img src={url} alt={`包装图片 ${index + 1}`} />
+                <button type="button" className="image-remove-btn" onClick={() => removeImage(index)} aria-label="移除图片">
+                  <X size={13} />
+                </button>
+              </div>
+            ))}
           </div>
         )}
         <div className="modal-footer">
+          {isEdit && (
+            <button type="button" className="danger-button" onClick={handleDelete} disabled={deleting || loading}>
+              <Trash2 size={15} />{deleting ? '删除中...' : '删除辅料'}
+            </button>
+          )}
           <button type="button" className="outline-button" onClick={onClose}>取消</button>
-          <button type="submit" className="primary-button" disabled={loading}>
+          <button type="submit" className="primary-button" disabled={loading || deleting}>
             {loading ? '保存中...' : '保存辅料'}
           </button>
         </div>
       </form>
+    </Modal>
+  )
+}
+
+export function MaterialImageModal({ material, onClose }: { material: any; onClose: () => void }) {
+  const [urls, setUrls] = useState<string[]>([])
+
+  useEffect(() => {
+    const images = material?.images || []
+    if (images.length === 0) {
+      setUrls([])
+      return
+    }
+    Promise.all(images.map((image: any) => api.getFileUrl(image.file_id).catch(() => '')))
+      .then(setUrls)
+      .catch(() => setUrls([]))
+  }, [material])
+
+  return (
+    <Modal title={`包装图片 · ${material?.name_zh} (${material?.material_code})`} onClose={onClose}>
+      {urls.length === 0 ? (
+        <div className="empty-panel" style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>暂无包装图片</div>
+      ) : (
+        <div className="material-image-grid">
+          {urls.map((url, index) => url ? (
+            <img key={`${url}-${index}`} src={url} alt={`${material?.name_zh} 包装图片 ${index + 1}`} />
+          ) : null)}
+        </div>
+      )}
+      <div className="modal-footer">
+        <button type="button" className="outline-button" onClick={onClose}>关闭</button>
+      </div>
     </Modal>
   )
 }

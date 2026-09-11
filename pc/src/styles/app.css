@@ -396,6 +396,10 @@
   color: #23332c;
   font-size: 14px;
 }
+.detail-summary strong .status {
+  padding: 0;
+  background: transparent;
+}
 .detail-progress {
   padding: 10px 12px;
   background: #ffffff;

@@ -83,6 +83,26 @@ def create_material(body: MaterialInput, _: User = Depends(require_admin), db: S
     return material_view(material)
 
 
+@router.put("/materials/{material_id}", status_code=status.HTTP_200_OK)
+def update_material(material_id: str, body: MaterialInput, _: User = Depends(require_admin), db: Session = Depends(get_db)) -> dict:
+    material = db.scalar(select(Material).options(selectinload(Material.images)).where(Material.material_id == material_id))
+    if material is None:
+        raise HTTPException(status_code=404, detail={"code": "MATERIAL_NOT_FOUND", "message": "辅料不存在"})
+    if db.scalar(select(Material).where(Material.material_code == body.material_code, Material.material_id != material_id)):
+        raise HTTPException(status_code=409, detail={"code": "MATERIAL_CODE_EXISTS", "message": "辅料代号已存在"})
+    material.material_code = body.material_code
+    material.name_zh = body.name_zh
+    material.name_en = body.name_en
+    material.shelf_life_months = body.shelf_life_months
+    material.images.clear()
+    db.flush()
+    material.images = [MaterialImage(file_id=file_id, sort_order=index) for index, file_id in enumerate(body.image_file_ids)]
+    db.add(material)
+    db.commit()
+    db.refresh(material)
+    return material_view(material)
+
+
 @router.patch("/materials/{material_id}/disable")
 def disable_material(material_id: str, _: User = Depends(require_admin), db: Session = Depends(get_db)) -> dict:
     material = db.scalar(select(Material).where(Material.material_id == material_id))
@@ -91,6 +111,18 @@ def disable_material(material_id: str, _: User = Depends(require_admin), db: Ses
     material.enabled = False
     db.commit()
     return material_view(material)
+
+
+@router.delete("/materials/{material_id}", status_code=status.HTTP_200_OK)
+def delete_material(material_id: str, _: User = Depends(require_admin), db: Session = Depends(get_db)) -> dict:
+    material = db.scalar(select(Material).where(Material.material_id == material_id))
+    if material is None:
+        raise HTTPException(status_code=404, detail={"code": "MATERIAL_NOT_FOUND", "message": "辅料不存在"})
+    if db.scalar(select(RecipeItem.id).where(RecipeItem.material_id == material.id)):
+        raise HTTPException(status_code=409, detail={"code": "MATERIAL_IN_USE", "message": "辅料已被产品配方引用，不能删除；可先编辑配方移除该辅料，或直接停用"})
+    db.delete(material)
+    db.commit()
+    return {"deleted": True, "material_id": material_id}
 
 
 @router.get("/products")
