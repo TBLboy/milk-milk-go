@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import case, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.auth import current_user, require_admin
@@ -58,7 +58,8 @@ def create_work_order(body: WorkOrderInput, user: User = Depends(current_user), 
 
 @router.get("")
 def list_work_orders(user: User = Depends(current_user), db: Session = Depends(get_db)) -> list[dict]:
-    query = select(WorkOrder).options(selectinload(WorkOrder.steps)).order_by(WorkOrder.created_at.desc())
+    cancelled_last = case((WorkOrder.status == "cancelled", 1), else_=0)
+    query = select(WorkOrder).options(selectinload(WorkOrder.steps)).order_by(cancelled_last.asc(), WorkOrder.created_at.desc())
     if user.role != "admin":
         query = query.where((WorkOrder.operator_id == user.id) | (WorkOrder.created_by == user.id))
     orders = db.scalars(query).all()

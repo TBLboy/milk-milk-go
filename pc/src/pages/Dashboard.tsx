@@ -6,7 +6,7 @@ import { CreateOrderModal, OrderDetailModal } from '../components/Modals'
 import { StatusFilter } from '../components/StatusFilter'
 import type { DashboardData } from '../types/domain'
 
-const filterOptions = ['全部状态', '待审批', '已批准', '执行中', '已完成', '已撤销']
+const filterOptions = ['全部状态', '待审批', '已批准', '执行中', '已完成']
 
 export function Dashboard({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const [data, setData] = useState<DashboardData | null>(null)
@@ -27,6 +27,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (page: string) => void 
   if (!data) return <div className="loading">正在加载工作台<span /></div>
 
   const visibleOrders = data.workOrders.filter((order) => {
+    if (order.status === '已撤销') return false
     const textMatch = `${order.id}${order.product}`.toLowerCase().includes(query.toLowerCase())
     const statusMatch = statusFilter === '全部状态' || order.status === statusFilter
     return textMatch && statusMatch
