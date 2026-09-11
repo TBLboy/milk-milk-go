@@ -92,3 +92,19 @@ def test_product_recipe_can_be_enabled_and_disabled(client):
     assert enabled.status_code == 200
     assert enabled.json()["enabled"] is True
     assert enabled.json()["recipe_enabled"] is True
+
+
+def test_product_recipe_can_be_deleted(client):
+    headers = admin_headers(client)
+    material = client.post("/api/v1/master-data/materials", headers=headers, json={"material_code": "DELETE01", "name_zh": "删除辅料", "shelf_life_months": 12}).json()
+    created = client.post("/api/v1/master-data/products", headers=headers, json={
+        "name": "待删除配方",
+        "items": [{"material_id": material["material_id"], "quantity_per_ton_kg": 3}],
+    }).json()
+    deleted = client.delete(f"/api/v1/master-data/products/{created['id']}", headers=headers)
+    assert deleted.status_code == 200
+    assert deleted.json()["deleted"] is True
+    listed = client.get("/api/v1/master-data/products", headers=headers).json()
+    assert all(item["id"] != created["id"] for item in listed)
+    missing = client.delete(f"/api/v1/master-data/products/{created['id']}", headers=headers)
+    assert missing.status_code == 404

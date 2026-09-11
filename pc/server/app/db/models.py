@@ -66,7 +66,7 @@ class Product(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
-    recipe: Mapped["Recipe | None"] = relationship(back_populates="product", uselist=False)
+    recipe: Mapped["Recipe | None"] = relationship(back_populates="product", uselist=False, cascade="all, delete-orphan")
     images: Mapped[list["ProductImage"]] = relationship(back_populates="product", cascade="all, delete-orphan")
 
 

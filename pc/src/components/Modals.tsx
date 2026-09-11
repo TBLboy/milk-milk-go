@@ -212,6 +212,7 @@ export function OrderDetailModal({ orderNo, onClose, onSuccess }: { orderNo: str
 }
 
 export function RecipeDetailModal({ product, onClose }: { product: any; onClose: () => void }) {
+  const enabled = product.recipe_enabled !== false
   return (
     <Modal title={`产品配方 · ${product.name}`} onClose={onClose}>
       <div className="order-detail">
@@ -219,7 +220,7 @@ export function RecipeDetailModal({ product, onClose }: { product: any; onClose:
           <div><span>产品名称</span><strong>{product.name}</strong></div>
           <div><span>配方版本</span><strong>{product.recipe_version || 1}</strong></div>
           <div><span>辅料种类</span><strong>{(product.items || []).length} 种</strong></div>
-          <div><span>配方状态</span><strong><span className="status status-running"><i />启用</span></strong></div>
+          <div><span>配方状态</span><strong><span className={enabled ? 'status status-running' : 'status status-cancelled'}><i />{enabled ? '启用' : '停用'}</span></strong></div>
         </div>
         <div className="step-list">
           {(product.items || []).map((item: any) => (
@@ -365,6 +366,7 @@ export function CreateProductModal({ onClose, onSuccess, product }: { onClose: (
   const [imageFileId, setImageFileId] = useState<string | null>(product?.image_file_id || null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -441,6 +443,21 @@ export function CreateProductModal({ onClose, onSuccess, product }: { onClose: (
     }
   }
 
+  const handleDelete = async () => {
+    if (!isEdit || !product) return
+    if (!window.confirm(`确认删除配方「${product.name}」？删除后不可恢复。`)) return
+    setDeleting(true)
+    setError(null)
+    try {
+      await api.deleteProduct(product.id)
+      onSuccess()
+      onClose()
+    } catch (err: any) {
+      setError(err.message || '删除配方失败')
+      setDeleting(false)
+    }
+  }
+
   return (
     <Modal title={isEdit ? '编辑产品及辅料配方' : '新增产品及辅料配方'} onClose={onClose}>
       <form onSubmit={handleSubmit} className="modal-form">
@@ -499,8 +516,13 @@ export function CreateProductModal({ onClose, onSuccess, product }: { onClose: (
           ))}
         </div>
         <div className="modal-footer">
+          {isEdit && (
+            <button type="button" className="danger-button" onClick={handleDelete} disabled={deleting || loading}>
+              <Trash2 size={15} />{deleting ? '删除中...' : '删除配方'}
+            </button>
+          )}
           <button type="button" className="outline-button" onClick={onClose}>取消</button>
-          <button type="submit" className="primary-button" disabled={loading}>
+          <button type="submit" className="primary-button" disabled={loading || deleting}>
             {loading ? '保存中...' : '保存配方'}
           </button>
         </div>

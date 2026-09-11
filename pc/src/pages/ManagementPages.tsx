@@ -265,9 +265,9 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
   }, [query, recipesPage])
 
   const handleToggleProduct = async (p: any) => {
-    if (p.enabled && !window.confirm(`确认停用配方「${p.name}」？停用后该配方不能用于新建工单。`)) return
+    if (p.recipe_enabled && !window.confirm(`确认停用配方「${p.name}」？停用后该配方不能用于新建工单。`)) return
     try {
-      await api.setProductActive(p.id, !p.enabled)
+      await api.setProductActive(p.id, !p.recipe_enabled)
       loadData()
     } catch (e: any) {
       window.alert(e.message)
@@ -337,8 +337,9 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
               <div className="recipe-foot">
                 <span>配方状态</span>
                 <b className={p.recipe_enabled ? '' : 'disabled'}>{p.recipe_enabled ? '启用' : '停用'}</b>
-                <button className="status-toggle" onClick={() => handleToggleProduct(p)}>{p.recipe_enabled ? '停用' : '启用'}</button>
-                <ChevronRight size={14} />
+                <button className="recipe-status-arrow" title={p.recipe_enabled ? '停用配方' : '启用配方'} onClick={() => handleToggleProduct(p)}>
+                  <ChevronRight size={15} />
+                </button>
               </div>
             </div>
           ))}

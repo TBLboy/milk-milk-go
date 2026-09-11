@@ -154,6 +154,16 @@ def set_product_active(product_id: int, body: ProductActiveRequest, _: User = De
     return product_view(product)
 
 
+@router.delete("/products/{product_id}", status_code=status.HTTP_200_OK)
+def delete_product(product_id: int, _: User = Depends(require_admin), db: Session = Depends(get_db)) -> dict:
+    product = db.scalar(select(Product).where(Product.id == product_id))
+    if product is None:
+        raise HTTPException(status_code=404, detail={"code": "PRODUCT_NOT_FOUND", "message": "产品不存在"})
+    db.delete(product)
+    db.commit()
+    return {"deleted": True, "id": product_id}
+
+
 def _resolve_recipe_materials(db: Session, body: ProductInput) -> dict[str, Material]:
     material_ids = [item.material_id for item in body.items]
     if len(set(material_ids)) != len(material_ids):

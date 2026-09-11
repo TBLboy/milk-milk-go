@@ -229,6 +229,12 @@ export const api = {
     })
   },
 
+  async deleteProduct(productId: number): Promise<any> {
+    return request(`/master-data/products/${productId}`, {
+      method: 'DELETE',
+    })
+  },
+
   async setProductActive(productId: number, isActive: boolean): Promise<any> {
     return request(`/master-data/products/${productId}/active`, {
       method: 'PATCH',
