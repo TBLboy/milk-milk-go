@@ -265,6 +265,42 @@ tasks:
         - 执行 TASK-005 认证与角色权限
     created_at: "2026-09-09T09:00:00Z"
     updated_at: "2026-09-09T09:00:00Z"
+  - id: TASK-015
+    title: 配方删除与状态切换交互优化
+    kind: task
+    parent_id: TASK-011
+    phase: implementation
+    goal: 产品配方可在编辑弹窗中删除；配方卡片状态栏只显示启用/停用状态，通过右侧箭头切换状态。
+    status: implemented-verified
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [pc, recipes, interactions]
+    related_business_logic: [BL-DATA-003]
+    acceptance_refs: []
+    related_decisions: [DEC-028]
+    depends_on: [TASK-014]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [用户反馈配方不能删除、状态栏按钮暴露且希望使用右侧箭头切换]
+    outputs: [配方删除接口, 编辑弹窗删除按钮, 配方卡片状态颜色与箭头切换]
+    plan: [新增 DELETE 产品接口, 编辑弹窗加入删除按钮, 状态栏去掉暴露按钮并改为箭头切换]
+    done_when: [编辑弹窗可删除配方并刷新列表, 状态栏只显示启用/停用, 停用红色、启用绿色, 右侧箭头可切换状态]
+    verification:
+      status: passed
+      commands: ["PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 PYTHONPATH=. /home/tbl/miniforge3/envs/milk/bin/python -m pytest tests/ -q", "npm run build"]
+      evidence: ["后端全部测试通过，含配方删除用例", "PC 前端生产构建通过", "后端已重启，健康检查与前端返回 200"]
+      limitations: []
+    result:
+      summary: 配方支持从编辑弹窗删除；卡片状态栏只显示状态，右侧箭头负责启用/停用切换。
+      changed_files: [pc/server/app/api/master_data.py, pc/server/app/db/models.py, pc/server/tests/test_master_data.py, pc/src/components/Modals.tsx, pc/src/pages/ManagementPages.tsx, pc/src/services/api.ts, pc/src/styles/global.css]
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-11T02:30:00Z"
+    updated_at: "2026-09-11T02:30:00Z"
   - id: TASK-005
     title: 实现认证与角色权限
     kind: task
