@@ -611,3 +611,39 @@ tasks:
       follow_ups: []
     created_at: "2026-09-09T09:00:00Z"
     updated_at: "2026-09-09T09:00:00Z"
+  - id: TASK-014
+    title: 产品配方启用/停用与新增账号修复
+    kind: task
+    parent_id: TASK-011
+    phase: implementation
+    goal: 产品配方卡片可显示真实启用/停用状态并支持切换；新建操作员账号不再因默认密码过短显示“请求失败”。
+    status: implemented-verified
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [pc, recipes, accounts]
+    related_business_logic: [BL-DATA-003, BL-AUTH-001]
+    acceptance_refs: []
+    related_decisions: [DEC-028]
+    depends_on: [TASK-011, TASK-013]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [用户反馈配方状态无法修改、创建账号显示请求失败]
+    outputs: [配方启停接口, 配方卡片真实状态与切换按钮, 账号默认密码与错误解析修复]
+    plan: [新增配方启停接口, 前端展示真实状态并加切换按钮, 修复账号默认密码与错误解析]
+    done_when: [配方可启用/停用且状态持久化, 停用配方不能用于新建工单, 新建账号可成功创建]
+    verification:
+      status: passed
+      commands: ["PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 PYTHONPATH=. /home/tbl/miniforge3/envs/milk/bin/python -m pytest tests/ -q", "npm run build"]
+      evidence: ["后端 25 项测试通过，含配方启停用例", "PC 前端生产构建通过", "真实 HTTP 启停接口验证通过", "健康检查与前端返回 200"]
+      limitations: []
+    result:
+      summary: 配方状态支持启用/停用并持久化；账号默认密码改为 8 位并修复校验错误解析。
+      changed_files: [pc/server/app/api/master_data.py, pc/server/tests/test_master_data.py, pc/src/pages/ManagementPages.tsx, pc/src/components/Modals.tsx, pc/src/services/api.ts, pc/src/styles/global.css]
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-09T09:00:00Z"
+    updated_at: "2026-09-09T09:00:00Z"

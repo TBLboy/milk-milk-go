@@ -9,8 +9,17 @@ function getAuthHeader(): Record<string, string> {
 
 function parseError(body: any): string {
   if (!body) return '请求失败'
-  if (body.detail && typeof body.detail === 'object') return body.detail.message || body.detail.code || '请求失败'
-  if (typeof body.detail === 'string') return body.detail
+  const detail = body.detail
+  if (Array.isArray(detail)) {
+    const first = detail[0]
+    if (first && first.msg) {
+      const loc = Array.isArray(first.loc) ? first.loc.filter((x: any) => x !== 'body').join('.') : ''
+      return `${loc ? `${loc}：` : ''}${first.msg}`
+    }
+    return '请求参数不正确'
+  }
+  if (detail && typeof detail === 'object') return detail.message || detail.code || '请求失败'
+  if (typeof detail === 'string') return detail
   return body.message || body.error || '请求失败'
 }
 
@@ -217,6 +226,13 @@ export const api = {
     return request(`/master-data/products/${productId}`, {
       method: 'PUT',
       body: JSON.stringify(payload),
+    })
+  },
+
+  async setProductActive(productId: number, isActive: boolean): Promise<any> {
+    return request(`/master-data/products/${productId}/active`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_active: isActive }),
     })
   },
 

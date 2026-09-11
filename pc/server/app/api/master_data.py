@@ -29,6 +29,10 @@ class ProductInput(BaseModel):
     image_file_id: str | None = Field(default=None, max_length=64)
 
 
+class ProductActiveRequest(BaseModel):
+    is_active: bool
+
+
 def material_view(material: Material) -> dict:
     return {
         "material_id": material.material_id,
@@ -50,6 +54,7 @@ def product_view(product: Product) -> dict:
         "enabled": product.enabled,
         "image_file_id": images[0].file_id if images else None,
         "recipe_version": recipe.version if recipe else None,
+        "recipe_enabled": recipe.enabled if recipe else None,
         "items": [{
             "material_id": item.material.material_id,
             "material_code": item.material.material_code,
@@ -131,6 +136,19 @@ def update_product(product_id: int, body: ProductInput, _: User = Depends(requir
     if body.image_file_id:
         product.images = [ProductImage(file_id=body.image_file_id, sort_order=0)]
     db.add(product)
+    db.commit()
+    db.refresh(product)
+    return product_view(product)
+
+
+@router.patch("/products/{product_id}/active", status_code=status.HTTP_200_OK)
+def set_product_active(product_id: int, body: ProductActiveRequest, _: User = Depends(require_admin), db: Session = Depends(get_db)) -> dict:
+    product = db.scalar(select(Product).options(selectinload(Product.recipe)).where(Product.id == product_id))
+    if product is None:
+        raise HTTPException(status_code=404, detail={"code": "PRODUCT_NOT_FOUND", "message": "产品不存在"})
+    product.enabled = body.is_active
+    if product.recipe:
+        product.recipe.enabled = body.is_active
     db.commit()
     db.refresh(product)
     return product_view(product)
