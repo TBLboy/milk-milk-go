@@ -41,3 +41,16 @@ def test_admin_can_cancel_order_but_not_complete_incomplete_steps(client):
     assert cancel.status_code == 200
     assert cancel.json()["status"] == "cancelled"
     assert client.post(f"/api/v1/work-orders/{order['order_no']}/start", headers=headers).status_code == 409
+
+
+def test_cancelled_orders_are_sorted_last(client):
+    headers = admin_headers(client)
+    product_id = create_product(client, headers)
+    active = client.post("/api/v1/work-orders", headers=headers, json={"product_id": product_id, "target_weight_kg": 1000}).json()
+    cancelled = client.post("/api/v1/work-orders", headers=headers, json={"product_id": product_id, "target_weight_kg": 1500}).json()
+    assert client.post(f"/api/v1/work-orders/{cancelled['order_no']}/cancel", headers=headers).status_code == 200
+
+    listed = client.get("/api/v1/work-orders", headers=headers).json()
+    statuses = [item["status"] for item in listed]
+    assert statuses == ["approved", "cancelled"]
+    assert listed[0]["order_no"] == active["order_no"]
