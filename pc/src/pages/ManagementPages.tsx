@@ -264,6 +264,16 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
     setPage(1)
   }, [query, recipesPage])
 
+  const handleToggleProduct = async (p: any) => {
+    if (p.enabled && !window.confirm(`确认停用配方「${p.name}」？停用后该配方不能用于新建工单。`)) return
+    try {
+      await api.setProductActive(p.id, !p.enabled)
+      loadData()
+    } catch (e: any) {
+      window.alert(e.message)
+    }
+  }
+
   const handleExcelImport = async (file: File | undefined) => {
     if (!file) return
     setImportMessage('正在导入 Excel ...')
@@ -316,15 +326,18 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
             <div className="recipe-card" key={p.id}>
               <div className="recipe-head">
                 <span className="recipe-icon">{p.image_file_id ? <ProductImage fileId={p.image_file_id} /> : <FileSpreadsheet size={18} />}</span>
-                <span className="enabled-dot" />
-                <button className="icon-btn" title="编辑配方" onClick={() => setEditingProduct(p)}><Edit size={16} /></button>
-                <button className="icon-btn" onClick={() => setSelectedProduct(p)}><ChevronRight size={17} /></button>
+                <span className={p.recipe_enabled ? 'enabled-dot' : 'enabled-dot disabled'} />
+                <div className="recipe-actions">
+                  <button className="recipe-edit-btn" onClick={() => setEditingProduct(p)}><Edit size={15} />编辑</button>
+                  <button className="icon-btn" title="查看详情" onClick={() => setSelectedProduct(p)}><ChevronRight size={18} /></button>
+                </div>
               </div>
               <h3>{p.name}</h3>
-              <p>{(p.items || []).length} 种辅料 · 状态 正常</p>
+              <p>{(p.items || []).length} 种辅料</p>
               <div className="recipe-foot">
                 <span>配方状态</span>
-                <b>启用</b>
+                <b className={p.recipe_enabled ? '' : 'disabled'}>{p.recipe_enabled ? '启用' : '停用'}</b>
+                <button className="status-toggle" onClick={() => handleToggleProduct(p)}>{p.recipe_enabled ? '停用' : '启用'}</button>
                 <ChevronRight size={14} />
               </div>
             </div>

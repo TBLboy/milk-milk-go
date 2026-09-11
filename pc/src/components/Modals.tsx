@@ -513,7 +513,7 @@ export function CreateProductModal({ onClose, onSuccess, product }: { onClose: (
 export function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [username, setUsername] = useState('')
   const [displayName, setDisplayName] = useState('')
-  const [password, setPassword] = useState('123456')
+  const [password, setPassword] = useState('12345678')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -567,6 +567,7 @@ export function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; o
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            minLength={8}
             required
           />
         </label>

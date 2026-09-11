@@ -73,3 +73,22 @@ def test_product_recipe_can_be_edited(client):
     target = next(item for item in listed if item["id"] == product_id)
     assert target["name"] == "编辑后配方"
     assert len(target["items"]) == 2
+
+
+def test_product_recipe_can_be_enabled_and_disabled(client):
+    headers = admin_headers(client)
+    material = client.post("/api/v1/master-data/materials", headers=headers, json={"material_code": "ACTIVE01", "name_zh": "启停辅料", "shelf_life_months": 12}).json()
+    created = client.post("/api/v1/master-data/products", headers=headers, json={
+        "name": "启停配方",
+        "items": [{"material_id": material["material_id"], "quantity_per_ton_kg": 2}],
+    }).json()
+    assert created["enabled"] is True
+    assert created["recipe_enabled"] is True
+    disabled = client.patch(f"/api/v1/master-data/products/{created['id']}/active", headers=headers, json={"is_active": False})
+    assert disabled.status_code == 200
+    assert disabled.json()["enabled"] is False
+    assert disabled.json()["recipe_enabled"] is False
+    enabled = client.patch(f"/api/v1/master-data/products/{created['id']}/active", headers=headers, json={"is_active": True})
+    assert enabled.status_code == 200
+    assert enabled.json()["enabled"] is True
+    assert enabled.json()["recipe_enabled"] is True
