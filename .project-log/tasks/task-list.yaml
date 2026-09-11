@@ -301,6 +301,42 @@ tasks:
       follow_ups: []
     created_at: "2026-09-11T02:30:00Z"
     updated_at: "2026-09-11T02:30:00Z"
+  - id: TASK-016
+    title: 配方状态切换下拉列表
+    kind: task
+    parent_id: TASK-011
+    phase: implementation
+    goal: 配方卡片右侧箭头点击后先展开“启用/停用”下拉列表，用户选择状态后再执行切换。
+    status: implemented-verified
+    priority: high
+    risk: low
+    authority: B
+    owner: agent
+    tags: [pc, recipes, interactions]
+    related_business_logic: [BL-DATA-003]
+    acceptance_refs: []
+    related_decisions: [DEC-028]
+    depends_on: [TASK-015]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [用户反馈箭头不应直接切换，需要下拉选择启用/停用]
+    outputs: [配方状态下拉菜单, 状态选择后调用启停接口]
+    plan: [右侧箭头改为打开下拉, 菜单展示启用/停用, 选择后切换并保持确认流程]
+    done_when: [点击箭头出现启用/停用下拉列表, 选中状态后切换, 不点击不会直接修改状态]
+    verification:
+      status: passed
+      commands: ["npm run build"]
+      evidence: ["PC 前端生产构建通过", "前端开发服务返回 200"]
+      limitations: []
+    result:
+      summary: 配方状态切换改为先展开下拉列表再选择状态，避免误触直接修改状态。
+      changed_files: [pc/src/pages/ManagementPages.tsx, pc/src/styles/global.css, .project-log/current-session.md]
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-11T03:00:00Z"
+    updated_at: "2026-09-11T03:00:00Z"
   - id: TASK-005
     title: 实现认证与角色权限
     kind: task

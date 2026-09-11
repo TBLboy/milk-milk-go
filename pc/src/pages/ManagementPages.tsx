@@ -234,6 +234,7 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
   const [showModal, setShowModal] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<any>(null)
   const [editingProduct, setEditingProduct] = useState<any>(null)
+  const [statusMenuProductId, setStatusMenuProductId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [importMessage, setImportMessage] = useState<string | null>(null)
@@ -264,10 +265,22 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
     setPage(1)
   }, [query, recipesPage])
 
-  const handleToggleProduct = async (p: any) => {
-    if (p.recipe_enabled && !window.confirm(`确认停用配方「${p.name}」？停用后该配方不能用于新建工单。`)) return
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!(event.target as HTMLElement).closest?.('.recipe-status-menu')) {
+        setStatusMenuProductId(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleChangeProductStatus = async (p: any, isActive: boolean) => {
+    setStatusMenuProductId(null)
+    if (p.recipe_enabled === isActive) return
+    if (!isActive && !window.confirm(`确认停用配方「${p.name}」？停用后该配方不能用于新建工单。`)) return
     try {
-      await api.setProductActive(p.id, !p.recipe_enabled)
+      await api.setProductActive(p.id, isActive)
       loadData()
     } catch (e: any) {
       window.alert(e.message)
@@ -337,9 +350,25 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
               <div className="recipe-foot">
                 <span>配方状态</span>
                 <b className={p.recipe_enabled ? '' : 'disabled'}>{p.recipe_enabled ? '启用' : '停用'}</b>
-                <button className="recipe-status-arrow" title={p.recipe_enabled ? '停用配方' : '启用配方'} onClick={() => handleToggleProduct(p)}>
-                  <ChevronRight size={15} />
-                </button>
+                <div className="status-filter recipe-status-menu">
+                  <button
+                    type="button"
+                    className={statusMenuProductId === p.id ? 'recipe-status-arrow open' : 'recipe-status-arrow'}
+                    title="选择配方状态"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      setStatusMenuProductId(statusMenuProductId === p.id ? null : p.id)
+                    }}
+                  >
+                    <ChevronRight size={15} />
+                  </button>
+                  {statusMenuProductId === p.id && (
+                    <div className="filter-menu recipe-status-menu-list">
+                      <button type="button" className={p.recipe_enabled ? 'active' : ''} onClick={() => handleChangeProductStatus(p, true)}>启用</button>
+                      <button type="button" className={!p.recipe_enabled ? 'active stop' : 'stop'} onClick={() => handleChangeProductStatus(p, false)}>停用</button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ))}
