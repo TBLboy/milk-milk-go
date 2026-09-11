@@ -337,6 +337,42 @@ tasks:
       follow_ups: []
     created_at: "2026-09-11T03:00:00Z"
     updated_at: "2026-09-11T03:00:00Z"
+  - id: TASK-017
+    title: 今日工单统计排除已撤销
+    kind: task
+    parent_id: TASK-011
+    phase: implementation
+    goal: 工作台“今日工单”统计只计算未撤销工单，已撤销工单不改动列表展示。
+    status: implemented-verified
+    priority: high
+    risk: low
+    authority: B
+    owner: agent
+    tags: [pc, dashboard, work-order]
+    related_business_logic: [BL-WO-001, BL-WO-005]
+    acceptance_refs: []
+    related_decisions: [DEC-028]
+    depends_on: [TASK-011]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [用户反馈已撤销工单仍计入今日工单]
+    outputs: [今日工单统计过滤已撤销状态]
+    plan: [在 getDashboard 中计算未撤销工单数量, 使用该值渲染今日工单卡片]
+    done_when: [已撤销工单不计入今日工单, 工单列表仍保留已撤销记录]
+    verification:
+      status: passed
+      commands: ["npm run build"]
+      evidence: ["PC 前端生产构建通过", "前端开发服务返回 200"]
+      limitations: []
+    result:
+      summary: 工作台今日工单统计改为只统计未撤销工单，撤销记录仍可在列表中查看。
+      changed_files: [pc/src/services/api.ts, .project-log/current-session.md]
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-11T03:30:00Z"
+    updated_at: "2026-09-11T03:30:00Z"
   - id: TASK-005
     title: 实现认证与角色权限
     kind: task

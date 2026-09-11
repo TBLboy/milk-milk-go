@@ -132,11 +132,12 @@ export const api = {
     }))
     const inProgressCount = workOrders.filter((w) => w.status === '执行中').length
     const completedCount = workOrders.filter((w) => w.status === '已完成').length
+    const activeWorkOrderCount = workOrders.filter((w) => w.status !== '已撤销').length
 
     return {
       workOrders,
       stats: [
-        { label: '今日工单', value: `${workOrders.length}`, detail: '生产称量任务', tone: 'blue' },
+        { label: '今日工单', value: `${activeWorkOrderCount}`, detail: '生产称量任务', tone: 'blue' },
         { label: '执行中', value: `${inProgressCount}`, detail: '现场正在称重', tone: 'orange' },
         { label: '待审批', value: `${pendingApprovals.length}`, detail: '照片与工单申请', tone: pendingApprovals.length > 0 ? 'orange' : 'slate' },
         { label: '已完成', value: `${completedCount}`, detail: '无称错记录', tone: 'green' },
