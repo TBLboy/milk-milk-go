@@ -56,6 +56,17 @@ def order_view(order: WorkOrder, users: dict[int, User] | None = None) -> dict:
                 "created_at": item.created_at.isoformat() if item.created_at else None,
             } for item in step.weighing_attempts],
         } for step in order.steps],
+        "requests": [{
+            "id": request.id,
+            "request_type": request.request_type,
+            "reason": request.reason,
+            "status": request.status,
+            "requested_by": request.requested_by,
+            "requester_name": users.get(request.requested_by).display_name if request.requested_by and users.get(request.requested_by) else None,
+            "decided_by": request.decided_by,
+            "created_at": request.created_at.isoformat() if request.created_at else None,
+            "decided_at": request.decided_at.isoformat() if request.decided_at else None,
+        } for request in order.requests],
     }
 
 
@@ -71,6 +82,7 @@ def _load_step_evidence(query):
     return query.options(
         selectinload(WorkOrder.steps).selectinload(WorkOrderStep.confirmations),
         selectinload(WorkOrder.steps).selectinload(WorkOrderStep.weighing_attempts),
+        selectinload(WorkOrder.requests),
     )
 
 
@@ -100,16 +112,20 @@ def create_work_order(body: WorkOrderInput, user: User = Depends(current_user), 
 
 @router.get("")
 def list_work_orders(user: User = Depends(current_user), db: Session = Depends(get_db)) -> list[dict]:
-    cancelled_last = case((WorkOrder.status == "cancelled", 1), else_=0)
-    query = _load_step_evidence(select(WorkOrder)).order_by(cancelled_last.asc(), WorkOrder.created_at.desc())
+    closed_last = case((WorkOrder.status.in_(["cancelled", "deleted"]), 1), else_=0)
+    query = _load_step_evidence(select(WorkOrder)).order_by(closed_last.asc(), WorkOrder.created_at.desc())
     if user.role != "admin":
-        query = query.where((WorkOrder.operator_id == user.id) | (WorkOrder.created_by == user.id))
+        query = query.where(WorkOrder.status != "deleted")
     orders = db.scalars(query).all()
     user_ids: set[int] = set()
     for order in orders:
         user_ids.add(order.created_by)
         if order.operator_id:
             user_ids.add(order.operator_id)
+        for request in order.requests:
+            user_ids.add(request.requested_by)
+            if request.decided_by:
+                user_ids.add(request.decided_by)
     users = {item.id: item for item in db.scalars(select(User).where(User.id.in_(user_ids))).all()}
     return [order_view(order, users) for order in orders]
 
@@ -122,6 +138,10 @@ def get_work_order(order_no: str, user: User = Depends(current_user), db: Sessio
     user_ids = {order.created_by}
     if order.operator_id:
         user_ids.add(order.operator_id)
+    for request in order.requests:
+        user_ids.add(request.requested_by)
+        if request.decided_by:
+            user_ids.add(request.decided_by)
     users = {item.id: item for item in db.scalars(select(User).where(User.id.in_(user_ids))).all()}
     return order_view(order, users)
 
@@ -139,6 +159,10 @@ def approve_work_order(order_no: str, _: User = Depends(require_admin), db: Sess
     user_ids = {order.created_by}
     if order.operator_id:
         user_ids.add(order.operator_id)
+    for request in order.requests:
+        user_ids.add(request.requested_by)
+        if request.decided_by:
+            user_ids.add(request.decided_by)
     users = {item.id: item for item in db.scalars(select(User).where(User.id.in_(user_ids))).all()}
     return order_view(order, users)
 
@@ -155,6 +179,10 @@ def start_work_order(order_no: str, user: User = Depends(current_user), db: Sess
     user_ids = {order.created_by}
     if order.operator_id:
         user_ids.add(order.operator_id)
+    for request in order.requests:
+        user_ids.add(request.requested_by)
+        if request.decided_by:
+            user_ids.add(request.decided_by)
     users = {item.id: item for item in db.scalars(select(User).where(User.id.in_(user_ids))).all()}
     return order_view(order, users)
 
@@ -171,6 +199,10 @@ def cancel_work_order(order_no: str, _: User = Depends(require_admin), db: Sessi
     user_ids = {order.created_by}
     if order.operator_id:
         user_ids.add(order.operator_id)
+    for request in order.requests:
+        user_ids.add(request.requested_by)
+        if request.decided_by:
+            user_ids.add(request.decided_by)
     users = {item.id: item for item in db.scalars(select(User).where(User.id.in_(user_ids))).all()}
     return order_view(order, users)
 
@@ -189,5 +221,9 @@ def complete_work_order(order_no: str, user: User = Depends(current_user), db: S
     user_ids = {order.created_by}
     if order.operator_id:
         user_ids.add(order.operator_id)
+    for request in order.requests:
+        user_ids.add(request.requested_by)
+        if request.decided_by:
+            user_ids.add(request.decided_by)
     users = {item.id: item for item in db.scalars(select(User).where(User.id.in_(user_ids))).all()}
     return order_view(order, users)

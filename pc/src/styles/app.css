@@ -507,6 +507,38 @@
   height: 64px;
   margin-top: 8px;
 }
+.approval-icon.delete {
+  color: #a5534c;
+  background: #fbeceb;
+}
+.request-list {
+  margin-top: 14px;
+}
+.detail-section-title {
+  margin-bottom: 8px;
+  color: #53636e;
+  font-size: 14px;
+  font-weight: 700;
+}
+.request-row {
+  min-height: 52px;
+}
+.request-status {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  color: #8a6a45;
+  font-size: 13px;
+  background: #fff4e5;
+  border-radius: 4px;
+}
+.request-status.approved {
+  color: #2f7d5b;
+  background: #e8f6ef;
+}
+.request-status.rejected {
+  color: #9a5a56;
+  background: #f8eceb;
+}
 
 /* Image and file controls */
 .file-upload-button {

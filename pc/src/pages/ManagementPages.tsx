@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronRight, CircleAlert, Download, Edit, FileSpreadsheet, Image, Plus, Printer, Search, Settings2, X } from 'lucide-react'
+import { Check, ChevronRight, CircleAlert, Download, Edit, FileSpreadsheet, Image, Plus, Printer, Search, Settings2, Trash2, X } from 'lucide-react'
 import QRCode from 'qrcode'
 import { StatusBadge } from '../components/StatusBadge'
 import { api } from '../services/api'
@@ -13,7 +13,7 @@ export function WorkOrdersPage({ approvals = false }: { approvals?: boolean }) {
   const [selectedOrderNo, setSelectedOrderNo] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('全部状态')
-  const filterOptions = ['全部状态', '待审批', '已批准', '执行中', '已完成', '已撤销']
+  const filterOptions = ['全部状态', '待审批', '已批准', '执行中', '已完成', '已撤销', '已删除']
 
   const handleExport = async () => {
     const orders = await api.getWorkOrders().catch(() => [])
@@ -202,7 +202,7 @@ function ApprovalTable({ onOpen }: { onOpen?: (orderNo: string) => void }) {
         pagedItems.map((item) => {
           return (
             <div className="approval-card" key={item.id}>
-              <div className={`approval-icon ${item.type}`}><CircleAlert size={18} /></div>
+              <div className={`approval-icon ${item.type}`}>{item.type === 'delete' ? <Trash2 size={18} /> : <CircleAlert size={18} />}</div>
               <div className="approval-copy">
                 <small>{item.id} · {item.time}</small>
                 <strong>{item.title}</strong>
@@ -215,7 +215,7 @@ function ApprovalTable({ onOpen }: { onOpen?: (orderNo: string) => void }) {
               <div className="approval-actions">
                 <>
                   <button className="reject-button" onClick={() => handleReject(item.id)}>
-                    <X size={15} />驳回
+                    <X size={15} />{item.type === 'delete' ? '拒绝' : '驳回'}
                   </button>
                   <button className="approve-button wide" onClick={() => handleApprove(item.id)}>
                     <Check size={15} />批准

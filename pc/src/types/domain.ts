@@ -1,4 +1,4 @@
-export type WorkOrderStatus = '待审批' | '已批准' | '执行中' | '待接管' | '已完成' | '已撤销'
+export type WorkOrderStatus = '待审批' | '已批准' | '执行中' | '待接管' | '已完成' | '已撤销' | '已删除'
 
 export type WorkOrder = {
   id: string
@@ -21,7 +21,7 @@ export type DashboardData = {
     title: string
     description: string
     time: string
-    type: 'photo' | 'takeover' | 'cancel'
+    type: 'photo' | 'takeover' | 'cancel' | 'delete'
     fileId?: string | null
     orderNo?: string | null
     stepNo?: number | null

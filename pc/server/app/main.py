@@ -7,6 +7,7 @@ from app.api.health import router as health_router
 from app.api.auth import router as auth_router
 from app.api.master_data import router as master_data_router
 from app.api.work_orders import router as work_orders_router
+from app.api.work_order_requests import router as work_order_requests_router
 from app.api.evidence import router as evidence_router
 from app.api.labels import router as labels_router
 from app.api.operations import router as operations_router
@@ -36,6 +37,7 @@ app.include_router(health_router, prefix=settings.api_prefix)
 app.include_router(auth_router, prefix=settings.api_prefix)
 app.include_router(master_data_router, prefix=settings.api_prefix)
 app.include_router(work_orders_router, prefix=settings.api_prefix)
+app.include_router(work_order_requests_router, prefix=settings.api_prefix)
 app.include_router(evidence_router, prefix=settings.api_prefix)
 app.include_router(labels_router, prefix=settings.api_prefix)
 app.include_router(operations_router, prefix=settings.api_prefix)
