@@ -29,6 +29,8 @@ def test_takeover_request_updates_operator_after_admin_approval(client):
 
     listed = client.get("/api/v1/work-orders", headers=operator).json()
     assert any(item["order_no"] == order["order_no"] for item in listed)
+    assert client.get(f"/api/v1/work-orders/{order['order_no']}", headers=operator).status_code == 200
+    assert client.get("/api/v1/master-data/products", headers=operator).status_code == 200
 
     request = client.post(
         f"/api/v1/work-orders/{order['order_no']}/requests",

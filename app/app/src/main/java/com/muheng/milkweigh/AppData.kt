@@ -18,6 +18,7 @@ enum class WorkOrderStatus(val label: String) {
     IN_PROGRESS("执行中"),
     COMPLETED("已完成"),
     CANCELLED("已撤销"),
+    DELETED("已删除"),
 }
 
 data class WorkOrder(
@@ -67,6 +68,7 @@ data class Product(
     val materialCount: Int = 0,
     val items: List<RecipeItem> = emptyList(),
     val enabled: Boolean = true,
+    val imageFileId: String? = null,
 )
 
 data class Material(
@@ -76,6 +78,7 @@ data class Material(
     val nameEn: String = "",
     val shelfLifeMonths: Int = 24,
     val imageNames: List<String> = emptyList(),
+    val existingImageFileIds: List<String> = emptyList(),
 )
 
 data class ProductRecipe(
@@ -83,6 +86,7 @@ data class ProductRecipe(
     val name: String,
     val enabled: Boolean = true,
     val items: List<RecipeItem> = emptyList(),
+    val imageFileId: String? = null,
 )
 
 interface MilkRepository {
@@ -94,6 +98,7 @@ interface MilkRepository {
     suspend fun saveMaterial(material: Material): Material
     suspend fun listRecipes(): List<ProductRecipe>
     suspend fun saveProductRecipe(recipe: ProductRecipe): ProductRecipe
+    suspend fun setProductActive(productId: Int, enabled: Boolean): ProductRecipe
     suspend fun createWorkOrder(productId: Int, targetWeightKg: Double): WorkOrder
     suspend fun startWorkOrder(orderNo: String): WorkOrder
     suspend fun confirmStepQr(orderNo: String, stepNo: Int, materialId: String): WorkOrder
@@ -108,6 +113,12 @@ interface MilkRepository {
 
 class SessionStore(context: Context) {
     private val prefs = context.getSharedPreferences("milk_session", Context.MODE_PRIVATE)
+
+    fun serverUrl(): String = prefs.getString("server_url", BuildConfig.BASE_URL) ?: BuildConfig.BASE_URL
+
+    fun saveServerUrl(url: String) {
+        prefs.edit().putString("server_url", url.trim().ifBlank { BuildConfig.BASE_URL }).apply()
+    }
 
     fun save(user: AppUser) {
         val json = JSONObject()
@@ -307,6 +318,14 @@ class MockMilkRepository : MilkRepository {
         val product = Product(id, saved.name.trim(), saved.items.size, saved.items, saved.enabled)
         if (existing >= 0) products[existing] = product else products.add(product)
         return saved
+    }
+
+    override suspend fun setProductActive(productId: Int, enabled: Boolean): ProductRecipe {
+        val index = products.indexOfFirst { it.id == productId }
+        if (index < 0) error("产品不存在")
+        val updated = products[index].copy(enabled = enabled)
+        products[index] = updated
+        return ProductRecipe(updated.id, updated.name, enabled, updated.items)
     }
 
     override suspend fun createWorkOrder(productId: Int, targetWeightKg: Double): WorkOrder {

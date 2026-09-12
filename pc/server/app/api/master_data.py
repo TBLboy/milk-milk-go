@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.api.auth import require_admin
+from app.api.auth import current_user, require_admin
 from app.db.models import Material, MaterialImage, Product, ProductImage, Recipe, RecipeItem, User
 from app.db.session import get_db
 
@@ -126,7 +126,7 @@ def delete_material(material_id: str, _: User = Depends(require_admin), db: Sess
 
 
 @router.get("/products")
-def list_products(_: User = Depends(require_admin), db: Session = Depends(get_db)) -> list[dict]:
+def list_products(_: User = Depends(current_user), db: Session = Depends(get_db)) -> list[dict]:
     products = db.scalars(select(Product).options(selectinload(Product.images), selectinload(Product.recipe).selectinload(Recipe.items).selectinload(RecipeItem.material)).order_by(Product.name)).all()
     return [product_view(item) for item in products]
 
