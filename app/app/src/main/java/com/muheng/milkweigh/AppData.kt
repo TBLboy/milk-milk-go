@@ -10,6 +10,17 @@ data class AppUser(
     val username: String,
     val role: UserRole,
     val token: String = "",
+    val avatarFileId: String? = null,
+    val phone: String = "",
+    val idCard: String = "",
+    val accountStatus: String = "active",
+    val mustChangePassword: Boolean = false,
+)
+
+data class RegistrationResult(
+    val username: String,
+    val status: String,
+    val message: String,
 )
 
 enum class WorkOrderStatus(val label: String) {
@@ -91,7 +102,12 @@ data class ProductRecipe(
 
 interface MilkRepository {
     suspend fun login(username: String, password: String): AppUser
-    suspend fun register(username: String, displayName: String, password: String): AppUser
+    suspend fun register(username: String, displayName: String, password: String): RegistrationResult
+    suspend fun refreshUser(): AppUser
+    suspend fun uploadAvatar(uri: String): String
+    suspend fun updateProfile(displayName: String, phone: String, avatarFileId: String?): AppUser
+    suspend fun changePassword(currentPassword: String, newPassword: String)
+    suspend fun loadFileBytes(fileId: String): ByteArray
     suspend fun listWorkOrders(): List<WorkOrder>
     suspend fun listProducts(): List<Product>
     suspend fun listMaterials(): List<Material>
@@ -133,6 +149,11 @@ class SessionStore(context: Context) {
             .put("username", user.username)
             .put("role", user.role.name)
             .put("token", user.token)
+            .put("avatar_file_id", user.avatarFileId ?: JSONObject.NULL)
+            .put("phone", user.phone)
+            .put("id_card", user.idCard)
+            .put("account_status", user.accountStatus)
+            .put("must_change_password", user.mustChangePassword)
         prefs.edit().putString("user", json.toString()).apply()
     }
 
@@ -145,6 +166,11 @@ class SessionStore(context: Context) {
                 username = json.getString("username"),
                 role = UserRole.valueOf(json.getString("role")),
                 token = json.optString("token"),
+                avatarFileId = if (json.isNull("avatar_file_id")) null else json.optString("avatar_file_id").ifBlank { null },
+                phone = json.optString("phone"),
+                idCard = json.optString("id_card"),
+                accountStatus = json.optString("account_status", "active"),
+                mustChangePassword = json.optBoolean("must_change_password"),
             )
         }.getOrNull()
     }
@@ -159,6 +185,7 @@ class SessionStore(context: Context) {
 }
 
 class MockMilkRepository : MilkRepository {
+    private var mockUser: AppUser? = null
     private val orderStore = mutableListOf(
         WorkOrder(
             orderNo = "WO-20260911-018",
@@ -265,13 +292,35 @@ class MockMilkRepository : MilkRepository {
     override suspend fun login(username: String, password: String): AppUser {
         if (username.isBlank() || password.isBlank()) error("请输入账号和密码")
         val role = if (username == "admin") UserRole.ADMIN else UserRole.OPERATOR
-        return AppUser(if (username == "admin") "系统管理员" else "现场操作员", username, role, "mock-${username}-${System.currentTimeMillis()}")
+        return AppUser(
+            displayName = if (username == "admin") "系统管理员" else "现场操作员",
+            username = username,
+            role = role,
+            token = "mock-${username}-${System.currentTimeMillis()}",
+        ).also { mockUser = it }
     }
 
-    override suspend fun register(username: String, displayName: String, password: String): AppUser {
+    override suspend fun register(username: String, displayName: String, password: String): RegistrationResult {
         if (username.length < 3 || displayName.isBlank() || password.length < 8) error("请检查注册信息")
-        return AppUser(displayName, username, UserRole.OPERATOR, "mock-${username}-${System.currentTimeMillis()}")
+        return RegistrationResult(username, "pending", "注册申请已提交，等待管理员审批")
     }
+
+    override suspend fun refreshUser(): AppUser {
+        return mockUser ?: AppUser("现场操作员", "operator", UserRole.OPERATOR, "mock-${System.currentTimeMillis()}")
+    }
+
+    override suspend fun uploadAvatar(uri: String): String = uri
+
+    override suspend fun updateProfile(displayName: String, phone: String, avatarFileId: String?): AppUser {
+        val current = mockUser ?: AppUser(displayName, "operator", UserRole.OPERATOR, "mock-${System.currentTimeMillis()}")
+        return current.copy(displayName = displayName, phone = phone, avatarFileId = avatarFileId).also { mockUser = it }
+    }
+
+    override suspend fun changePassword(currentPassword: String, newPassword: String) {
+        if (newPassword.length < 8) error("新密码至少 8 位")
+    }
+
+    override suspend fun loadFileBytes(fileId: String): ByteArray = ByteArray(0)
 
     override suspend fun listWorkOrders(): List<WorkOrder> = orderStore.toList()
 

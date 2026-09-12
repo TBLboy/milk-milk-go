@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { CheckCircle2, CircleDashed, Clock3, ImagePlus, PackageCheck, PlayCircle, X, Plus, Trash2 } from 'lucide-react'
 import { api } from '../services/api'
 
@@ -665,38 +665,91 @@ export function CreateProductModal({ onClose, onSuccess, product }: { onClose: (
   )
 }
 
-// 4. 新建账号弹窗
-export function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
-  const [username, setUsername] = useState('')
-  const [displayName, setDisplayName] = useState('')
-  const [password, setPassword] = useState('12345678')
+// 4. 新建/编辑账号弹窗
+export function CreateUserModal({ onClose, onSuccess, existing }: { onClose: () => void; onSuccess: () => void; existing?: any }) {
+  const [username, setUsername] = useState(existing?.username || '')
+  const [displayName, setDisplayName] = useState(existing?.display_name || '')
+  const [password, setPassword] = useState('')
+  const [phone, setPhone] = useState(existing?.phone || '')
+  const [idCard, setIdCard] = useState(existing?.id_card || '')
+  const [avatarFileId, setAvatarFileId] = useState(existing?.avatar_file_id || '')
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarUrl, setAvatarUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!existing?.avatar_file_id) return
+    let url = ''
+    api.getFileUrl(existing.avatar_file_id).then((value) => {
+      url = value
+      setAvatarUrl(value)
+    }).catch(() => setAvatarUrl(''))
+    return () => { if (url) URL.revokeObjectURL(url) }
+  }, [existing?.avatar_file_id])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
     try {
-      await api.registerUser({
-        username: username.trim(),
+      let avatarId = avatarFileId
+      if (avatarFile) {
+        const uploaded = await api.uploadFile(avatarFile)
+        avatarId = uploaded.file_id
+      }
+      const payload = {
         display_name: displayName.trim(),
-        password: password.trim(),
-        role: 'operator',
-      })
+        phone: phone.trim(),
+        id_card: idCard.trim(),
+        avatar_file_id: avatarId || null,
+      }
+      if (existing) {
+        await api.updateUserProfile(existing.id, payload)
+      } else {
+        await api.registerUser({
+          ...payload,
+          username: username.trim(),
+          password: password.trim(),
+        })
+      }
       onSuccess()
       onClose()
     } catch (err: any) {
-      setError(err.message || '创建账号失败')
+      setError(err.message || (existing ? '保存账号资料失败' : '创建账号失败'))
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <Modal title="新建操作员账号" onClose={onClose}>
+    <Modal title={existing ? '编辑操作员资料' : '新建操作员账号'} onClose={onClose}>
       <form onSubmit={handleSubmit} className="modal-form">
         {error && <div className="modal-error">{error}</div>}
+        <label>
+          头像
+          <div className="avatar-edit-row">
+            <div className="avatar-edit-preview">
+              {avatarUrl ? <img src={avatarUrl} alt="头像" /> : <span className="operator-dot">{displayName.slice(0, 1) || '牧'}</span>}
+            </div>
+            <button type="button" className="outline-button" onClick={() => fileInputRef.current?.click()}>
+              {avatarFileId || avatarFile ? '更换头像' : '选择头像'}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (!file) return
+                setAvatarFile(file)
+                setAvatarUrl(URL.createObjectURL(file))
+              }}
+            />
+          </div>
+        </label>
         <label>
           登录工号 / 用户名
           <input
@@ -704,6 +757,7 @@ export function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; o
             placeholder="例如: operator05"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
+            disabled={Boolean(existing)}
             required
           />
         </label>
@@ -717,20 +771,30 @@ export function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; o
             required
           />
         </label>
+        {!existing && (
+          <label>
+            初始密码
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              minLength={8}
+              required
+            />
+          </label>
+        )}
         <label>
-          初始密码
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            minLength={8}
-            required
-          />
+          电话
+          <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="选填" />
+        </label>
+        <label>
+          身份证
+          <input type="text" value={idCard} onChange={(e) => setIdCard(e.target.value)} placeholder="管理员维护，列表脱敏显示" />
         </label>
         <div className="modal-footer">
           <button type="button" className="outline-button" onClick={onClose}>取消</button>
           <button type="submit" className="primary-button" disabled={loading}>
-            {loading ? '创建中...' : '确认创建'}
+            {loading ? (existing ? '保存中...' : '创建中...') : existing ? '保存资料' : '确认创建'}
           </button>
         </div>
       </form>

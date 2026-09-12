@@ -14,6 +14,20 @@ router = APIRouter(prefix="/approvals", tags=["approvals"])
 def list_pending_approvals(user: User = Depends(current_user), db: Session = Depends(get_db)) -> list[dict]:
     # Returns pending photo approvals and any takeover/cancellation requests
     items = []
+    user_query = select(User).where(User.status == "pending").order_by(User.id.desc())
+    for pending_user in db.scalars(user_query).all():
+        items.append({
+            "id": f"AP-USER-{pending_user.id}",
+            "user_id": pending_user.id,
+            "type": "register",
+            "title": f"新账号注册申请 · {pending_user.display_name}",
+            "description": f"账号 {pending_user.username} · 等待管理员审批",
+            "order_no": None,
+            "step_no": None,
+            "file_id": None,
+            "time": pending_user.created_at.strftime("%H:%M") if pending_user.created_at else "刚刚",
+            "status": "pending",
+        })
     # 1. Photo confirmations pending
     photo_query = (
         select(TypeConfirmation, WorkOrderStep, WorkOrder)

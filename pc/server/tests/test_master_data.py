@@ -4,7 +4,14 @@ def admin_headers(client):
 
 
 def test_operator_cannot_read_master_data(client):
-    client.post("/api/v1/auth/register", json={"username": "operator01", "display_name": "李师傅", "password": "operator123"})
+    admin_headers(client)
+    token_resp = client.post("/api/v1/auth/login", json={"username": "admin", "password": "admin123"})
+    admin = token_resp.json()["access_token"]
+    client.post(
+        "/api/v1/auth/users",
+        headers={"Authorization": f"Bearer {admin}"},
+        json={"username": "operator01", "display_name": "李师傅", "password": "operator123"},
+    )
     token = client.post("/api/v1/auth/login", json={"username": "operator01", "password": "operator123"}).json()["access_token"]
     assert client.get("/api/v1/master-data/materials", headers={"Authorization": f"Bearer {token}"}).status_code == 403
 

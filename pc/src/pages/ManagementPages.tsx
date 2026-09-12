@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronRight, CircleAlert, Download, Edit, FileSpreadsheet, Image, Plus, Printer, Search, Settings2, Trash2, X } from 'lucide-react'
+import { Check, ChevronRight, CircleAlert, Copy, Download, Edit, FileSpreadsheet, Image, Plus, Printer, Search, Settings2, Trash2, X } from 'lucide-react'
 import QRCode from 'qrcode'
 import { StatusBadge } from '../components/StatusBadge'
 import { api } from '../services/api'
@@ -196,7 +196,7 @@ function ApprovalTable({ onOpen }: { onOpen?: (orderNo: string) => void }) {
       <div className="approval-grid">
         {pagedItems.length === 0 ? (
         <div className="empty-panel" style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-          目前暂无需要审批的放行申请
+          目前暂无待审批申请
         </div>
       ) : (
         pagedItems.map((item) => {
@@ -669,8 +669,25 @@ function buildQrDataUrl(material: any, size: number): Promise<string> {
     })
 }
 
+function UserAvatar({ user }: { user: any }) {
+  const [url, setUrl] = useState('')
+  useEffect(() => {
+    if (!user.avatar_file_id) return
+    let active = true
+    api.getFileUrl(user.avatar_file_id).then((value) => {
+      if (active) setUrl(value)
+    }).catch(() => {})
+    return () => { active = false }
+  }, [user.avatar_file_id])
+  if (url) return <img src={url} alt="" className="operator-avatar" />
+  return <span className="operator-dot">{user.display_name.slice(0, 1)}</span>
+}
+
 export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
   const [showModal, setShowModal] = useState(false)
+  const [editUser, setEditUser] = useState<any | null>(null)
+  const [resetResult, setResetResult] = useState<any | null>(null)
+  const [copied, setCopied] = useState(false)
   const [users, setUsers] = useState<any[]>([])
   const [settings, setSettings] = useState<Record<string, string>>({})
   const [backupMessage, setBackupMessage] = useState<string | null>(null)
@@ -707,17 +724,47 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
   }
 
   const handleResetPassword = async (user: any) => {
-    const password = window.prompt(`请输入 ${user.display_name} 的新密码（至少 8 位）`)
-    if (!password) return
-    if (password.length < 8) {
-      window.alert('密码长度至少 8 位')
-      return
-    }
     try {
-      await api.resetUserPassword(user.id, password)
+      const result = await api.resetUserPassword(user.id)
+      setCopied(false)
+      setResetResult(result)
+    } catch (e: any) {
+      window.alert(e.message)
+    }
+  }
+
+  const handleEditUser = async (user: any) => {
+    try {
+      setEditUser(await api.getUser(user.id))
+    } catch (e: any) {
+      window.alert(e.message)
+    }
+  }
+
+  const handleUserApproval = async (user: any, approved: boolean) => {
+    try {
+      if (approved) await api.approve(`AP-USER-${user.id}`)
+      else await api.reject(`AP-USER-${user.id}`)
       loadUsers()
     } catch (e: any) {
       window.alert(e.message)
+    }
+  }
+
+  const copyResetPassword = async () => {
+    const text = resetResult?.temporary_password
+    if (!text) return
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+    } catch {
+      const area = document.createElement('textarea')
+      area.value = text
+      document.body.appendChild(area)
+      area.select()
+      document.execCommand('copy')
+      document.body.removeChild(area)
+      setCopied(true)
     }
   }
 
@@ -765,10 +812,10 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
                 <tr>
                   <th>账号</th>
                   <th>姓名</th>
-                  <th>角色</th>
-                  <th>最近登录</th>
+                  <th>电话</th>
+                  <th>身份证</th>
                   <th>状态</th>
-                  <th />
+                  <th>操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -776,21 +823,44 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
                   <tr><td colSpan={6} className="muted" style={{ textAlign: 'center' }}>暂无账号</td></tr>
                 ) : pagedUsers.map((user) => (
                   <tr key={user.id}>
-                    <td className="order-id">{user.username}</td>
                     <td>
                       <span className="operator">
-                        <span className="operator-dot">{user.display_name.slice(0, 1)}</span>
-                        {user.display_name}
+                        {user.avatar_file_id ? (
+                          <UserAvatar user={user} />
+                        ) : (
+                          <span className="operator-dot">{user.display_name.slice(0, 1)}</span>
+                        )}
+                        <span>
+                          <span className="order-id">{user.username}</span>
+                          <small className="muted">{user.role === 'admin' ? '管理员' : '普通操作员'}</small>
+                        </span>
                       </span>
                     </td>
-                    <td>{user.role === 'admin' ? '管理员' : '普通操作员'}</td>
-                    <td className="muted">{user.created_at ? new Date(user.created_at).toLocaleDateString('zh-CN') : '—'}</td>
-                    <td><span className="status status-running"><i />{user.is_active ? '正常' : '停用'}</span></td>
+                    <td>{user.display_name}</td>
+                    <td>{user.phone || '—'}</td>
+                    <td>{user.id_card || '—'}</td>
+                    <td>
+                      {user.status === 'pending' && <span className="status status-pending"><i />待审批</span>}
+                      {user.status === 'rejected' && <span className="status status-cancelled"><i />已驳回</span>}
+                      {user.status !== 'pending' && user.status !== 'rejected' && (
+                        <span className={`status ${user.is_active ? 'status-running' : 'status-cancelled'}`}><i />{user.is_active ? '正常' : '停用'}</span>
+                      )}
+                    </td>
                     <td>
                       {user.role !== 'admin' && (
                         <div style={{ display: 'flex', gap: 6 }}>
-                          <button className="icon-btn" title="重置密码" onClick={() => handleResetPassword(user)}><Settings2 size={16} /></button>
-                          <button className="text-button" onClick={() => handleToggleActive(user)}>{user.is_active ? '停用' : '启用'}</button>
+                          <button className="icon-btn" title="编辑资料" onClick={() => handleEditUser(user)}><Edit size={16} /></button>
+                          {user.status === 'pending' ? (
+                            <>
+                              <button className="text-button" onClick={() => handleUserApproval(user, false)}>驳回</button>
+                              <button className="text-button" onClick={() => handleUserApproval(user, true)}>批准</button>
+                            </>
+                          ) : (
+                            <>
+                              <button className="icon-btn" title="重置密码" onClick={() => handleResetPassword(user)}><Settings2 size={16} /></button>
+                              <button className="text-button" onClick={() => handleToggleActive(user)}>{user.is_active ? '停用' : '启用'}</button>
+                            </>
+                          )}
                         </div>
                       )}
                     </td>
@@ -845,6 +915,45 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
             loadUsers()
           }}
         />
+      )}
+      {editUser && (
+        <CreateUserModal
+          existing={editUser}
+          onClose={() => setEditUser(null)}
+          onSuccess={() => {
+            loadUsers()
+          }}
+        />
+      )}
+      {resetResult && (
+        <Modal title="密码已重置" onClose={() => setResetResult(null)}>
+          <div className="modal-form">
+            <label>
+              账号
+              <strong className="reset-password-field">{resetResult.username}</strong>
+            </label>
+            <label>
+              操作员
+              <strong className="reset-password-field">{resetResult.display_name}</strong>
+            </label>
+            <label>
+              一次初始密码
+              <div className="reset-password-line">
+                <code>{resetResult.temporary_password}</code>
+                <button type="button" className="outline-button" onClick={copyResetPassword}>
+                  {copied ? <Check size={15} /> : <Copy size={15} />}
+                  {copied ? '已复制' : '复制'}
+                </button>
+              </div>
+            </label>
+            <p className="muted" style={{ margin: 0 }}>
+              关闭窗口后管理员将无法再次查看该初始密码。
+            </p>
+            <div className="modal-footer">
+              <button className="primary-button" onClick={() => setResetResult(null)}>我已复制并关闭</button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   )

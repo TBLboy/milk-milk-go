@@ -11,7 +11,7 @@ def admin_headers(client):
 def test_admin_can_list_created_users(client):
     headers = admin_headers(client)
     create = client.post(
-        "/api/v1/auth/register",
+        "/api/v1/auth/users",
         headers=headers,
         json={"username": "operator99", "display_name": "测试操作员", "password": "password123"},
     )
@@ -23,18 +23,19 @@ def test_admin_can_list_created_users(client):
 def test_admin_can_reset_password_and_toggle_operator_active(client):
     headers = admin_headers(client)
     user = client.post(
-        "/api/v1/auth/register",
+        "/api/v1/auth/users",
         headers=headers,
         json={"username": "operator98", "display_name": "重置测试", "password": "password123"},
     ).json()["user"]
-    reset = client.post(f"/api/v1/auth/users/{user['id']}/reset-password", headers=headers, json={"password": "newpassword123"})
+    reset = client.post(f"/api/v1/auth/users/{user['id']}/reset-password", headers=headers)
     assert reset.status_code == 200
-    login = client.post("/api/v1/auth/login", json={"username": "operator98", "password": "newpassword123"})
+    reset_password = reset.json()["temporary_password"]
+    login = client.post("/api/v1/auth/login", json={"username": "operator98", "password": reset_password})
     assert login.status_code == 200
     deactivate = client.patch(f"/api/v1/auth/users/{user['id']}/active", headers=headers, json={"is_active": False})
     assert deactivate.status_code == 200
     assert deactivate.json()["user"]["is_active"] is False
-    assert client.post("/api/v1/auth/login", json={"username": "operator98", "password": "newpassword123"}).status_code == 401
+    assert client.post("/api/v1/auth/login", json={"username": "operator98", "password": reset_password}).status_code == 403
 
 
 def test_settings_defaults_can_be_updated(client):

@@ -34,7 +34,12 @@ def test_work_order_uses_configured_tolerance(client):
 def test_operator_order_requires_admin_approval(client):
     headers = admin_headers(client)
     product_id = create_product(client, headers)
-    client.post("/api/v1/auth/register", json={"username": "operator01", "display_name": "李师傅", "password": "operator123"})
+    created = client.post(
+        "/api/v1/auth/users",
+        headers=headers,
+        json={"username": "operator01", "display_name": "李师傅", "password": "operator123"},
+    ).json()["user"]
+    assert created["status"] == "active"
     token = client.post("/api/v1/auth/login", json={"username": "operator01", "password": "operator123"}).json()["access_token"]
     response = client.post("/api/v1/work-orders", headers={"Authorization": f"Bearer {token}"}, json={"product_id": product_id, "target_weight_kg": 1000})
     assert response.status_code == 201
