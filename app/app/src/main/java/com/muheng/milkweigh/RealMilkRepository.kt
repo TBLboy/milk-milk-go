@@ -49,6 +49,8 @@ class RealMilkRepository(
 
     override suspend fun uploadAvatar(uri: String): String = uploadImage(uri)
 
+    override suspend fun uploadImage(uri: String): String = uploadFile(uri)
+
     override suspend fun updateProfile(displayName: String, phone: String, avatarFileId: String?): AppUser {
         val body = JSONObject()
             .put("display_name", displayName)
@@ -106,7 +108,7 @@ class RealMilkRepository(
     override suspend fun saveMaterial(material: Material): Material {
         val imageIds = material.existingImageFileIds.toMutableList()
         material.imageNames.filter { isImageUri(it) }.forEach { uri ->
-            imageIds.add(uploadImage(uri))
+            imageIds.add(uploadFile(uri))
         }
         val payload = JSONObject()
             .put("material_code", material.materialCode.uppercase())
@@ -301,7 +303,7 @@ class RealMilkRepository(
         }
     }
 
-    private suspend fun uploadImage(uri: String): String {
+    private suspend fun uploadFile(uri: String): String {
         if (!isImageUri(uri)) error("请选择真实图片")
         return withContext(Dispatchers.IO) {
             val bytes = context.contentResolver.openInputStream(Uri.parse(uri))
@@ -486,7 +488,7 @@ class RealMilkRepository(
             materialId = json.optString("material_id"),
             materialCode = json.optString("material_code"),
             nameZh = json.optString("name_zh"),
-            nameEn = json.optString("name_en"),
+            nameEn = json.optString("name_en").takeUnless { it.isBlank() || it == "null" }.orEmpty(),
             shelfLifeMonths = json.optInt("shelf_life_months", 24),
             imageNames = fileIds.mapIndexed { index, _ -> "包装图片 ${index + 1}" },
             existingImageFileIds = fileIds,

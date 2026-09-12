@@ -27,8 +27,14 @@ def verify_password(password: str, encoded: str) -> bool:
         return False
 
 
-def create_token(user_id: int, role: str) -> str:
-    payload = {"sub": user_id, "role": role, "exp": int(time.time()) + TOKEN_TTL_SECONDS, "nonce": secrets.token_hex(8)}
+def create_token(user_id: int, role: str, auth_version: int = 1) -> str:
+    payload = {
+        "sub": user_id,
+        "role": role,
+        "auth_version": auth_version,
+        "exp": int(time.time()) + TOKEN_TTL_SECONDS,
+        "nonce": secrets.token_hex(8),
+    }
     body = base64.urlsafe_b64encode(json.dumps(payload, separators=(",", ":")).encode()).decode().rstrip("=")
     signature = hmac.new(_secret(), body.encode(), hashlib.sha256).digest()
     return f"{body}.{base64.urlsafe_b64encode(signature).decode().rstrip('=')}"

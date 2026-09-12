@@ -23,6 +23,105 @@ def test_operator_registration_and_admin_protection(client):
     assert client.get("/api/v1/auth/admin-check", headers={"Authorization": f"Bearer {token}"}).status_code == 403
 
 
+def test_operator_cannot_login_to_admin_portal(client):
+    admin_login = client.post("/api/v1/auth/login", json={"username": "admin", "password": "admin123"})
+    admin_token = admin_login.json()["access_token"]
+    client.post(
+        "/api/v1/auth/users",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={"username": "desktop_operator", "display_name": "普通操作员", "password": "operator123"},
+    )
+
+    assert client.post(
+        "/api/v1/auth/login",
+        json={"username": "desktop_operator", "password": "operator123"},
+    ).status_code == 200
+    response = client.post(
+        "/api/v1/auth/admin/login",
+        json={"username": "desktop_operator", "password": "operator123"},
+    )
+    assert response.status_code == 403
+    assert response.json()["detail"]["code"] == "ADMIN_PORTAL_REQUIRED"
+
+    admin_response = client.post(
+        "/api/v1/auth/admin/login",
+        json={"username": "admin", "password": "admin123"},
+    )
+    assert admin_response.status_code == 200
+    assert admin_response.json()["user"]["role"] == "admin"
+
+
+def test_admin_recovery_resets_password_and_invalidates_old_session(client, monkeypatch):
+    from app.core.config import get_settings
+    from app.core.security import hash_password
+
+    recovery_password = "recovery-test-password"
+    monkeypatch.setenv("MILK_ADMIN_RECOVERY_SECRET_HASH", hash_password(recovery_password))
+    get_settings.cache_clear()
+
+    old_login = client.post("/api/v1/auth/admin/login", json={"username": "admin", "password": "admin123"})
+    old_token = old_login.json()["access_token"]
+
+    recovered = client.post(
+        "/api/v1/auth/admin/recover",
+        json={"recovery_password": recovery_password},
+    )
+    assert recovered.status_code == 200
+    result = recovered.json()
+    assert result["username"] == "admin"
+    assert result["must_change_password"] is True
+    assert len(result["temporary_password"]) == 10
+
+    assert client.get(
+        "/api/v1/auth/me",
+        headers={"Authorization": f"Bearer {old_token}"},
+    ).status_code == 401
+    assert client.post(
+        "/api/v1/auth/admin/login",
+        json={"username": "admin", "password": "admin123"},
+    ).status_code == 401
+
+    new_login = client.post(
+        "/api/v1/auth/admin/login",
+        json={"username": "admin", "password": result["temporary_password"]},
+    )
+    assert new_login.status_code == 200
+    new_token = new_login.json()["access_token"]
+    logs = client.get(
+        "/api/v1/operations/audit-logs",
+        headers={"Authorization": f"Bearer {new_token}"},
+    ).json()
+    assert any(item["action"] == "admin_password.recovered" for item in logs)
+
+
+def test_admin_recovery_is_rate_limited(client, monkeypatch):
+    from app.core.config import get_settings
+    from app.core.security import hash_password
+
+    recovery_password = "recovery-test-password"
+    monkeypatch.setenv("MILK_ADMIN_RECOVERY_SECRET_HASH", hash_password(recovery_password))
+    get_settings.cache_clear()
+
+    for _ in range(4):
+        response = client.post(
+            "/api/v1/auth/admin/recover",
+            json={"recovery_password": "wrong-password"},
+        )
+        assert response.status_code == 401
+
+    locked = client.post(
+        "/api/v1/auth/admin/recover",
+        json={"recovery_password": "wrong-password"},
+    )
+    assert locked.status_code == 429
+    assert locked.json()["detail"]["code"] == "ADMIN_RECOVERY_LOCKED"
+
+    assert client.post(
+        "/api/v1/auth/admin/recover",
+        json={"recovery_password": recovery_password},
+    ).status_code == 429
+
+
 def test_duplicate_registration_is_rejected(client):
     body = {"username": "operator01", "display_name": "李师傅", "password": "operator123"}
     assert client.post("/api/v1/auth/register", json=body).status_code == 201

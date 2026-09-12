@@ -2552,3 +2552,527 @@ tasks:
       follow_ups: []
     created_at: "2026-09-12T10:49:00Z"
     updated_at: "2026-09-12T10:49:00Z"
+  - id: TASK-050
+    title: APP 主页面下拉刷新
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 在工作台和工单两个主页面支持下拉刷新，通过真实接口重新加载工单与产品数据。
+    status: done
+    priority: medium
+    risk: low
+    authority: B
+    owner: agent
+    tags: [app, refresh, gesture, work-order]
+    related_business_logic: []
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: [TASK-049]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户要求 APP 两个主界面均可在空白区域向下滑动刷新
+      - 工作台和工单页需要使用一致、常见且可感知的刷新手势
+    outputs:
+      - 工作台和工单页接入 Material 3 PullToRefreshBox
+      - 刷新时重新请求 work-orders 与 master-data/products
+      - 刷新失败时保留现有数据并显示网络提示
+      - 工单页改为整页 LazyColumn，使标题、筛选和列表区域都处于下拉刷新手势范围
+    plan:
+      - 在 MainShell 中集中维护刷新状态和真实数据刷新方法
+      - 工作台使用纵向滚动容器承载下拉刷新
+      - 工单页合并标题、筛选、列表和分页为单一 LazyColumn
+      - 在真实平板上验证两页手势、加载指示器和后端请求
+    done_when:
+      - 工作台任意空白区域下拉可以触发刷新
+      - 工单页任意空白区域下拉可以触发刷新
+      - 刷新过程中显示加载指示器并阻止重复触发
+      - 刷新完成后更新后端最新工单数据
+      - Android debug APK 构建和真实平板验证通过
+    verification:
+      status: passed
+      commands:
+        - cd /home/tbl/Project/辅料称重防错系统/app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
+      evidence:
+        - Android debug APK 构建成功
+        - 真实平板 a67adf5d 工作台下拉后显示刷新指示器
+        - 真实平板 a67adf5d 工单页下拉后显示刷新指示器
+        - 后端收到刷新产生的新 GET /work-orders 和 GET /master-data/products 请求并返回 200
+        - logcat 未发现 FATAL EXCEPTION
+      limitations:
+        - 下拉刷新覆盖工作台和工单两个主页面；工单详情及辅料配方管理页不在本次范围
+    result:
+      summary: 工作台和工单页已支持下拉刷新，手势触发真实接口重载，并在刷新过程中显示统一加载指示器。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12T11:08:00Z"
+    updated_at: "2026-09-12T11:08:00Z"
+  - id: TASK-051
+    title: PC 端业务数据自动同步
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 让 PC 端工作台、工单、审批、主数据、标签、账号设置和详情数据自动保持与后端一致，不再依赖切换页面或手动刷新。
+    status: done
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [pc, sync, refresh, polling, approvals]
+    related_business_logic: []
+    acceptance_refs: []
+    related_decisions: [DEC-030]
+    depends_on: [TASK-050]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 审批红点在工单页审批完成后必须切换页面才消失
+      - 用户要求整个 PC 端的服务状态自动刷新，不只是审批红点
+    outputs:
+      - 统一 5 秒数据同步事件和自动刷新 Hook
+      - 非 GET API 成功后立即触发同步事件
+      - 侧栏审批数量、工作台、工单、审批、辅料、配方、标签和设置数据自动刷新
+      - 工单详情弹窗自动刷新
+      - 页面隐藏时暂停、重新可见或获得焦点时立即同步
+    plan:
+      - 新增统一数据同步事件总线和非阻塞刷新 Hook
+      - 在 API 请求层为所有成功写操作发送同步事件
+      - AppShell 统一维护审批数量并在 5 秒周期内广播同步
+      - 接入各业务页面和工单详情，静默刷新时保留当前加载状态
+      - 使用浏览器自动化验证跨客户端变化自动出现及本机写操作即时更新
+    done_when:
+      - 审批红点在本机审批成功后立即消失
+      - 其他客户端引起的审批数量变化最多约 5 秒自动显示
+      - 当前页面的业务数据变化无需切换页面即可自动更新
+      - 自动刷新不显示全屏加载或清空已有数据
+      - PC 生产构建和浏览器回归通过
+    verification:
+      status: passed
+      commands:
+        - cd /home/tbl/Project/辅料称重防错系统/pc && npm run build
+        - python3 /tmp/verify_pc_auto_refresh.py
+      evidence:
+        - PC TypeScript 和 Vite 生产构建通过
+        - 浏览器模拟其他客户端处理审批后，红点和页面待办无需切页自动更新
+        - 浏览器本机点击批准后在 400ms 内清除红点，不等待 5 秒轮询
+        - 自动刷新使用静默模式，不重新进入页面加载状态
+      limitations:
+        - 跨客户端同步最大延迟约 5 秒，不属于强实时推送
+    result:
+      summary: PC 端已建立统一短轮询和写操作事件同步机制，当前页面业务数据及全局审批数量都会自动刷新。
+      changed_files:
+        - pc/src/services/dataSync.ts
+        - pc/src/hooks/useAutoRefresh.ts
+        - pc/src/services/api.ts
+        - pc/src/layouts/AppShell.tsx
+        - pc/src/pages/Dashboard.tsx
+        - pc/src/pages/ManagementPages.tsx
+        - pc/src/components/Modals.tsx
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12T11:35:00Z"
+    updated_at: "2026-09-12T11:35:00Z"
+  - id: TASK-052
+    title: 阻断普通操作员登录 PC 管理端
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 确保只有管理员账号能够登录 PC 管理端，普通操作员只能登录平板端，并在接口和前端会话恢复两层阻断越权。
+    status: done
+    priority: critical
+    risk: high
+    authority: B
+    owner: agent
+    tags:
+      - pc
+      - auth
+      - security
+      - authorization
+    related_business_logic:
+      - BL-AUTH-001
+    acceptance_refs:
+      - AC-AUTH-001
+    related_decisions:
+      - DEC-031
+    depends_on:
+      - TASK-051
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户实测普通操作员账号可以登录 PC 管理端
+      - 业务规则要求平板注册账号均为普通操作员且不能进入电脑后台
+    outputs:
+      - 新增管理员专用登录接口
+      - PC 登录 API 切换到管理员专用入口
+      - PC 持久化会话恢复时强制校验管理员角色
+      - 操作员越权登录回归测试
+    plan:
+      - 提取通用账号认证和登录响应逻辑
+      - 新增 `/auth/admin/login` 并拒绝非管理员角色
+      - 将 PC 登录切换为管理员专用接口
+      - 恢复本地会话及 `/auth/me` 校验时仅接受管理员
+      - 运行后端测试、PC 构建和真实浏览器端到端验证
+    done_when:
+      - 普通操作员调用 PC 管理员登录接口返回 403
+      - 平板端普通操作员使用原登录接口仍可登录
+      - 普通操作员在 PC 登录页无法进入管理界面并看到明确提示
+      - 非管理员旧本地会话会被清理
+      - 后端测试、PC 构建和浏览器验证通过
+    verification:
+      status: passed
+      commands:
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - npm run build
+        - /usr/bin/python3 /tmp/verify_pc_operator_guard.py
+      evidence:
+        - 后端 41 项测试通过
+        - PC TypeScript 和 Vite 生产构建通过
+        - 普通操作员调用 `/auth/login` 返回 200，调用 `/auth/admin/login` 返回 403 ADMIN_PORTAL_REQUIRED
+        - 浏览器使用普通操作员账号登录后仍停留在“管理员登录”并显示拒绝提示
+        - 浏览器截图 `/tmp/pc-operator-guard.png` 已留存人工复核
+        - 测试创建的普通操作员账号已从真实数据库清理
+      limitations:
+        - 平板端登录行为未在本任务中重复做真机 UI 回归，但通用登录接口的后端回归测试通过
+    result:
+      summary: PC 管理端已切换为管理员专用登录入口，并在前端会话恢复时再次校验角色；普通操作员无法进入电脑管理界面。
+      changed_files:
+        - pc/server/app/api/auth.py
+        - pc/server/tests/test_auth.py
+        - pc/src/services/api.ts
+        - pc/src/main.tsx
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12T12:05:00Z"
+    updated_at: "2026-09-12T12:05:00Z"
+  - id: TASK-053
+    title: PC 顶栏用户菜单与本人账号管理
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 在 PC 管理端右上角头像处提供用户信息、密码管理和退出登录菜单，并接通现有本人资料与密码自助接口。
+    status: done
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags:
+      - pc
+      - account
+      - profile
+      - password
+      - user-menu
+    related_business_logic:
+      - BL-AUTH-002
+      - BL-AUTH-005
+    acceptance_refs:
+      - AC-AUTH-005
+    related_decisions:
+      - DEC-032
+    depends_on:
+      - TASK-052
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户要求 PC 右上角头像拥有和平板一致的用户菜单
+      - 菜单需要包含用户信息、密码管理和退出登录
+    outputs:
+      - 可点击的头像和向下箭头菜单
+      - 本人用户信息弹窗
+      - 密码管理弹窗
+      - PC 本人资料和改密 API 适配
+      - 顶栏头像及姓名即时刷新
+    plan:
+      - 在 AppShell 增加用户菜单状态、点击外部关闭和 Escape 关闭
+      - 增加用户信息弹窗并复用 `/auth/me`
+      - 增加密码管理弹窗并复用 `/auth/me/change-password`
+      - 保存用户信息后同步更新主界面用户状态和本地会话
+      - 使用临时管理员执行资料修改、改密、旧密码失效和新密码登录验证
+    done_when:
+      - 点击头像或箭头可以打开下拉菜单
+      - 菜单包含用户信息、密码管理和退出登录
+      - 用户可查看只读账号、角色和身份证信息
+      - 用户可修改姓名、电话和头像并立即更新顶栏
+      - 用户可凭正确当前密码成功修改密码
+      - 退出登录返回管理员登录页
+      - PC 构建、后端测试和浏览器端到端验证通过
+    verification:
+      status: passed
+      commands:
+        - cd /home/tbl/Project/辅料称重防错系统/pc && npm run build
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - /usr/bin/python3 /tmp/verify_pc_user_menu.py
+        - PYTHONPATH=. /home/tbl/miniforge3/envs/milk/bin/python /tmp/manage_pc_menu_verify_admin.py create
+        - /usr/bin/python3 /tmp/verify_pc_user_menu_success.py
+        - PYTHONPATH=. /home/tbl/miniforge3/envs/milk/bin/python /tmp/manage_pc_menu_verify_admin.py delete
+      evidence:
+        - PC TypeScript 和 Vite 生产构建通过
+        - 后端 41 项测试通过
+        - 浏览器确认用户信息和密码管理菜单均可打开，退出登录可返回管理员登录页
+        - 密码管理填写错误当前密码时页面显示“当前密码不正确”
+        - 临时管理员成功将姓名和电话保存到后台，顶栏姓名立即更新
+        - 临时管理员成功修改密码，随后旧密码被拒绝、新密码可重新登录
+        - 临时验证账号已从数据库删除
+      limitations:
+        - 本次端到端验证未替换正式管理员头像；头像加载、选择文件和上传逻辑复用了现有账号资料上传链路
+    result:
+      summary: PC 顶栏已增加用户菜单，用户信息、密码管理和退出登录均可用，资料保存会即时刷新顶栏，密码修改成功后新密码立即生效。
+      changed_files:
+        - pc/src/layouts/AppShell.tsx
+        - pc/src/components/Modals.tsx
+        - pc/src/services/api.ts
+        - pc/src/main.tsx
+        - pc/src/styles/app.css
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12T12:35:00Z"
+    updated_at: "2026-09-12T12:35:00Z"
+  - id: TASK-054
+    title: PC 管理员紧急密码恢复
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 在 PC 登录页提供隐藏管理员恢复入口，通过后端哈希口令校验重置管理员密码，并限制暴力尝试和保留审计。
+    status: done
+    priority: critical
+    risk: high
+    authority: C
+    owner: agent
+    tags:
+      - pc
+      - security
+      - recovery
+      - auth
+      - audit
+    related_business_logic:
+      - BL-AUTH-006
+    acceptance_refs:
+      - AC-AUTH-006
+    related_decisions:
+      - DEC-033
+    depends_on:
+      - TASK-053
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户要求在 PC 登录框右上角增加连续点击 10 次触发的隐藏恢复入口
+      - 用户要求恢复口令只在后端保存哈希
+      - 用户要求恢复后显示随机密码并支持复制
+    outputs:
+      - 10 次连续点击热点
+      - 管理员恢复输入及结果弹窗
+      - 后端恢复接口和 PBKDF2 哈希配置
+      - 5 次失败、15 分钟锁定
+      - 管理员认证版本和旧令牌失效
+      - 恢复审计日志与一次性随机临时密码
+    plan:
+      - 在登录页增加 3 秒内连续 10 次点击的隐藏热点
+      - 新增恢复弹窗，提交恢复口令并显示一次性临时密码
+      - 在配置中读取后端恢复口令哈希，未配置时关闭恢复接口
+      - 对失败次数、锁定时间、成功恢复和旧令牌失效进行后端处理
+      - 增加数据库迁移和认证版本校验
+      - 使用测试数据库和真实浏览器验证成功及限流路径
+    done_when:
+      - 连续点击 10 次能够打开恢复窗口
+      - 恢复口令只在后端哈希校验，不出现在前端或仓库
+      - 正确恢复后显示随机临时密码并支持复制
+      - 旧管理员登录令牌立即失效
+      - 新临时密码可以登录且要求修改密码
+      - 连续输错达到阈值后临时锁定
+      - 失败、锁定和成功恢复均写入审计日志
+    verification:
+      status: passed
+      commands:
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - cd /home/tbl/Project/辅料称重防错系统/pc && npm run build
+        - /usr/bin/python3 /tmp/manage_admin_recovery_verify.py snapshot
+        - /usr/bin/python3 /tmp/verify_admin_recovery_ui.py
+        - /usr/bin/python3 /tmp/manage_admin_recovery_verify.py restore
+      evidence:
+        - 后端 43 项测试通过
+        - PC TypeScript 和 Vite 生产构建通过
+        - 后端测试验证正确恢复口令会生成临时密码、旧令牌失效、旧密码失败和新密码登录成功
+        - 后端测试验证连续 5 次错误后进入锁定，锁定期间正确口令也不能恢复
+        - 浏览器连续点击 10 次成功打开恢复窗口，正确口令返回 10 位临时密码并显示复制成功
+        - 浏览器恢复验证截图 `/tmp/pc-admin-recovery.png` 已留存人工复核
+        - 真实验证前对管理员密码哈希、认证版本和审计序号做快照，验证后已完整恢复
+        - 恢复口令只以 PBKDF2 哈希存放在被 `pc/server/.env` 忽略规则排除的本地后端配置中
+      limitations:
+        - 恢复口令明文曾通过当前对话传递；正式投产前建议重新生成并只写入后端配置
+        - Windows 安装包尚未实现将本机恢复配置随安装数据保留的自动化流程
+    result:
+      summary: PC 管理员紧急恢复已实现，隐藏入口、后端哈希校验、限流、审计、随机临时密码和旧会话失效均通过验证。
+      changed_files:
+        - .gitignore
+        - pc/server/app/api/auth.py
+        - pc/server/app/core/config.py
+        - pc/server/app/core/security.py
+        - pc/server/app/db/models.py
+        - pc/server/tests/test_auth.py
+        - pc/src/components/Login.tsx
+        - pc/src/components/Modals.tsx
+        - pc/src/services/api.ts
+        - pc/src/styles/app.css
+      deviations: []
+      follow_ups:
+        - Windows 安装包阶段保存并保护本机恢复配置，避免升级时丢失
+    created_at: "2026-09-12T13:05:00Z"
+    updated_at: "2026-09-12T13:05:00Z"
+  - id: TASK-055
+    title: PC 管理员恢复弹窗移除密码显示控件
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 移除 PC 管理员紧急恢复弹窗中的密码显示控件，使恢复口令始终保持遮蔽状态。
+    status: done
+    priority: medium
+    risk: low
+    authority: A
+    owner: agent
+    tags:
+      - pc
+      - security
+      - recovery
+      - ui
+    related_business_logic:
+      - BL-AUTH-006
+    acceptance_refs:
+      - AC-AUTH-006
+    related_decisions:
+      - DEC-033
+    depends_on:
+      - TASK-054
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户要求管理员紧急恢复界面不显示“显示密码”的眼睛控件
+    outputs:
+      - 恢复密码输入框专用的密码装饰控件隐藏规则
+      - 浏览器截图验证记录
+    plan:
+      - 为恢复密码输入框增加独立样式类
+      - 隐藏浏览器原生密码显示、清除和自动填充装饰控件
+      - 用生产构建和真实浏览器截图验证输入框保持 password 类型且无眼睛图标
+    done_when:
+      - 管理员紧急恢复弹窗不再显示密码眼睛控件
+      - 恢复密码继续以 password 类型输入且保持遮蔽
+      - PC 生产构建通过
+    verification:
+      status: passed
+      commands:
+        - cd /home/tbl/Project/辅料称重防错系统/pc && npm run build
+        - /usr/bin/python3 /tmp/verify_admin_recovery_ui.py
+        - git diff --check
+      evidence:
+        - PC TypeScript 和 Vite 生产构建通过
+        - 浏览器打开管理员紧急恢复弹窗并聚焦恢复密码输入框后截图，输入框内及右侧没有眼睛控件
+        - 浏览器读取恢复密码输入框类型仍为 password
+      limitations:
+        - 第三方浏览器扩展若自行注入密码按钮，页面样式无法完全控制；本次验证覆盖 Chrome 原生 password 输入框
+    result:
+      summary: PC 管理员紧急恢复弹窗已移除密码显示控件，恢复口令继续按密码类型遮蔽输入。
+      changed_files:
+        - pc/src/components/Modals.tsx
+        - pc/src/styles/app.css
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12T12:18:49Z"
+    updated_at: "2026-09-12T12:18:49Z"
+  - id: TASK-056
+    title: APP 辅料配方表单滚动与图片管理完善
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 完善平板管理员端辅料和配方的编辑体验，使长表单可滚动，辅料包装图片可查看、增删和放大，配方支持可选产品图片。
+    status: done
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags:
+      - app
+      - master-data
+      - material
+      - recipe
+      - image
+    related_business_logic:
+      - BL-DATA-003
+      - BL-DATA-004
+    acceptance_refs:
+      - AC-DATA-003
+      - AC-DATA-004
+    related_decisions:
+      - DEC-018
+      - DEC-019
+    depends_on:
+      - TASK-022
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户反馈平板端辅料和配方编辑弹窗内容较多时无法上下滑动
+      - 用户反馈配方新增和编辑不能选择产品图片
+      - 用户反馈辅料列表需要查看包装图片，编辑时也可查看、增加、删除和放大图片
+    outputs:
+      - 可滚动的辅料编辑与配方编辑表单
+      - 辅料包装图片查看、缩略图、删除和放大预览
+      - 配方可选图片选择、预览、更换和删除
+      - 通用文件图片加载与放大预览组件
+    plan:
+      - 为两个 AlertDialog 内容区增加受限高度和纵向滚动
+      - 区分辅料已有远程图片与本次选择的本地图片，编辑时支持增删
+      - 在辅料列表增加包装图查看入口，并在编辑弹窗中展示缩略图
+      - 为配方编辑接入图片选择和上传，列表展示产品图片
+      - 增加统一的远程/本地图片加载和放大预览弹窗
+      - 执行 Android debug 构建并回填验证证据
+    done_when:
+      - 辅料和配方新增/编辑表单可上下滑动并访问全部字段和按钮
+      - 管理员可在辅料编辑弹窗查看已有包装图、新增图片、删除图片和放大单张图片
+      - 辅料列表可打开包装图查看弹窗
+      - 管理员可在配方新增/编辑时选择、预览、更换和删除产品图片
+      - 配方列表能显示已保存的产品图片
+      - Android debug 构建通过
+    verification:
+      status: passed
+      commands:
+        - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
+        - adb install -r app/app/build/outputs/apk/debug/app-debug.apk
+        - adb shell input swipe 1200 1220 1200 520 500
+        - adb logcat -d -t 800
+      evidence:
+        - Android debug APK 构建通过
+        - Android 平板模拟器打开辅料列表，每个辅料显示包装图片数量、查看图片和编辑入口
+        - 两张包装图片的辅料可在查看弹窗中横向展示，点击单张图片可打开图片预览
+        - 辅料编辑弹窗显示已有包装缩略图，并提供单图删除入口
+        - 辅料编辑表单已使用受限高度纵向滚动容器
+        - 配方列表已显示已保存产品图片，没有图片时显示默认占位图
+        - 三辅料配方编辑弹窗存在纵向滚动区域，滑动后可完整访问第三个辅料、添加辅料和保存按钮
+        - 配方编辑弹窗支持选择、更换和删除产品图片，并在保存前上传新图片
+        - 模拟器运行期间未发现 FATAL EXCEPTION
+        - 验证后已恢复真实管理员密码、认证版本、恢复限流设置和审计记录，测试模拟器已关闭
+      limitations:
+        - 本次真实界面回归重点验证已有图片展示、预览和长表单滚动；新增图片的选择器选择及保存链路已完成编译和代码检查，但未在真实后端主数据上执行最终保存，以避免验证过程写入客户数据
+    result:
+      summary: 平板端辅料和配方表单已支持纵向滚动；辅料支持包装图片查看、增删和放大预览；配方支持可选产品图片的选择、预览、更换、删除、上传与列表展示。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12T12:25:28Z"
+    updated_at: "2026-09-12T12:25:28Z"

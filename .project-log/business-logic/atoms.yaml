@@ -1032,21 +1032,23 @@ atoms:
         given: 用户从平板端注册一个新账号
         when: 该账号登录平板 App
         then: 账号为普通操作员权限，不能进入电脑后台
-        method: null
-        evidence: null
-        status: not-verified
+        method: 后端角色回归测试 + PC 浏览器端到端验证
+        evidence: EV-TASK-052-ADMIN-GUARD
+        status: passed
     dependencies:
       - BL-WO-001
     baseline_refs: []
     decision_refs:
       - DEC-011
-    implementation_refs: []
-    test_refs: []
+    implementation_refs:
+      - TASK-052
+    test_refs:
+      - pc/server/tests/test_auth.py::test_operator_cannot_login_to_admin_portal
     supersedes: []
     notes: null
     created_at: "2026-09-08T10:32:39Z"
     updated_at: "2026-09-08T10:32:39Z"
-    last_verified_at: null
+    last_verified_at: "2026-09-12T12:05:00Z"
   - id: BL-AUTH-002
     title: 账号资料、头像与维护权限
     kind: constraint
@@ -1226,7 +1228,7 @@ atoms:
     updated_at: "2026-09-12"
     last_verified_at: null
   - id: BL-AUTH-005
-    title: 用户使用当前密码自助修改密码
+    title: 用户在平板或 PC 端使用当前密码自助修改密码
     kind: flow
     domain: account
     status: active
@@ -1236,10 +1238,11 @@ atoms:
     source:
       type: user-statement
       reference: "2026-09-12 密码自助修改澄清"
-    description: 用户可在平板端用户资料中的密码管理里修改自己的密码；必须输入正确当前密码、新密码和确认密码，验证通过后直接更新，不需要管理员审批。
+    description: 用户可在平板端或电脑管理端用户菜单的密码管理中修改自己的密码；必须输入正确当前密码、新密码和确认密码，验证通过后直接更新，不需要管理员审批。
     actors:
       - 平板端用户
-    trigger: 用户进入密码管理并提交修改
+      - 电脑管理端管理员
+    trigger: 用户在任一登录端进入密码管理并提交修改
     preconditions:
       - 用户已登录
       - 当前密码正确
@@ -1269,20 +1272,96 @@ atoms:
         given: 用户输入正确当前密码和新密码
         when: 提交密码修改
         then: 系统保存新密码并提示成功
-        method: null
-        evidence: null
-        status: not-verified
+        method: PC 浏览器端到端验证 + 后端回归测试
+        evidence: EV-TASK-053-USER-MENU
+        status: passed
     dependencies:
       - BL-AUTH-004
     baseline_refs: []
-    decision_refs: []
-    implementation_refs: []
-    test_refs: []
+    decision_refs:
+      - DEC-032
+    implementation_refs:
+      - TASK-053
+    test_refs:
+      - /tmp/verify_pc_user_menu_success.py
     supersedes: []
     notes: null
     created_at: "2026-09-12"
     updated_at: "2026-09-12"
-    last_verified_at: null
+    last_verified_at: "2026-09-12T12:35:00Z"
+  - id: BL-AUTH-006
+    title: 管理员通过后端哈希口令执行紧急密码恢复
+    kind: flow
+    domain: account
+    status: active
+    priority: critical
+    risk: high
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-12 管理员紧急恢复方案确认"
+    description: PC 登录框右上角隐藏热点在短时间内连续点击 10 次后打开管理员紧急恢复窗口；用户输入恢复口令，由后端比对 PBKDF2 哈希；恢复成功后系统生成随机临时密码，使旧管理员令牌失效，并要求使用临时密码登录后立即改密。
+    actors:
+      - 系统所有者或授权维护人员
+      - 预置管理员账号
+    trigger: 管理员密码遗忘且无法正常登录 PC 管理端
+    preconditions:
+      - 后端服务可访问
+      - 本机后端配置中存在有效的恢复口令哈希
+      - 恢复入口未被临时锁定
+    inputs:
+      - 恢复口令
+    rule:
+      statement: 恢复口令只提交到后端校验，前端和接口响应不返回恢复口令或哈希；校验成功时随机生成临时密码、设置强制首次改密并递增管理员认证版本；旧令牌立即失效；校验失败达到阈值时临时锁定账号恢复入口；失败、锁定和成功结果写审计日志且不得记录候选口令。
+    outputs:
+      - 一次性随机临时密码
+      - 管理员密码更新结果
+      - 旧会话失效结果
+      - 恢复审计记录
+    side_effects:
+      - 管理员必须使用临时密码重新登录
+      - 管理员首次登录后必须修改临时密码
+    exceptions:
+      - 后端未配置恢复口令哈希
+      - 恢复口令错误
+      - 连续错误达到锁定阈值
+      - 预置管理员账号不存在
+    failure_handling:
+      - 未配置时禁用恢复
+      - 错误时提示恢复口令不正确和剩余尝试次数
+      - 达到阈值后按配置时间锁定
+      - 数据库操作失败时不得返回临时密码
+    invariants:
+      - 恢复口令明文不得写入前端代码、仓库或审计日志
+      - 隐藏点击次数不是安全凭证
+      - 成功恢复后旧管理员令牌不得继续使用
+      - 临时密码只显示一次并必须首次改密
+      - 管理员恢复接口必须限流并审计
+    acceptance:
+      - id: AC-AUTH-006
+        given: 管理员忘记密码且后端已配置有效恢复口令哈希
+        when: 授权人员通过隐藏入口提交正确恢复口令
+        then: 系统显示一次性临时密码，旧令牌失效，并允许使用临时密码登录后强制改密
+        method: 后端回归测试 + PC 浏览器端到端验证
+        evidence: EV-TASK-054-RECOVERY
+        status: passed
+    dependencies:
+      - BL-AUTH-001
+    baseline_refs:
+      - REQ-001
+    decision_refs:
+      - DEC-033
+    implementation_refs:
+      - TASK-054
+    test_refs:
+      - pc/server/tests/test_auth.py::test_admin_recovery_resets_password_and_invalidates_old_session
+      - pc/server/tests/test_auth.py::test_admin_recovery_is_rate_limited
+      - /tmp/verify_admin_recovery_ui.py
+    supersedes: []
+    notes: 当前本地部署按用户指定恢复口令生成 PBKDF2 哈希；口令曾通过对话传递，正式投产前建议更换后只写入后端配置。
+    created_at: "2026-09-12T13:05:00Z"
+    updated_at: "2026-09-12T13:05:00Z"
+    last_verified_at: "2026-09-12T13:05:00Z"
   - id: BL-SCOPE-001
     title: 系统独立运行且不连接金蝶
     kind: constraint
@@ -1520,7 +1599,7 @@ atoms:
     source:
       type: user-statement
       reference: "2026-09-09 辅料与产品配方录入细节"
-    description: 管理员在电脑后台或平板端创建和维护产品信息及配方；配方行只能从现有辅料库选择辅料，并填写每吨成品所需用量；产品录入不涉及图片。
+    description: 管理员在电脑后台或平板端创建和维护产品信息及配方；配方行只能从现有辅料库选择辅料，并填写每吨成品所需用量；产品图片为可选资料，可在电脑端或平板端选择、预览、更换和删除。
     actors:
       - 电脑后台管理员
       - 平板端管理员
@@ -1530,10 +1609,11 @@ atoms:
       - 配方所需的辅料已存在于辅料库
     inputs:
       - 产品名称
+      - 产品图片（选填）
       - 所选辅料
       - 每吨成品所需辅料用量
     rule:
-      statement: 产品信息包含产品名称和配方；配方只能引用现有辅料库中的辅料并填写每吨用量；辅料尚未录入时，操作人员应先录入辅料再创建产品配方。
+      statement: 产品信息包含产品名称、可选产品图片和配方；配方只能引用现有辅料库中的辅料并填写每吨用量；辅料尚未录入时，操作人员应先录入辅料再创建产品配方。
     outputs:
       - 可用于生成称量清单的产品配方
     side_effects: []
@@ -1545,11 +1625,12 @@ atoms:
     invariants:
       - 配方引用的每个辅料都必须存在于辅料库
       - 配方中的用量按每吨成品保存，后续按目标生产重量等比换算
+      - 产品图片为可选资料，不参与配方数量计算
     acceptance:
       - id: AC-DATA-004
         given: 管理员创建产品并从辅料库选中三种辅料
         when: 管理员填写每种辅料每吨用量并保存
-        then: 系统保存产品配方，并可在生成工单称量清单时使用
+        then: 系统保存产品配方和可选产品图片，并可在生成工单称量清单时使用
         method: null
         evidence: null
         status: not-verified
@@ -1563,9 +1644,9 @@ atoms:
     implementation_refs: []
     test_refs: []
     supersedes: []
-    notes: 产品配方录入支持电脑和平板端，但仅管理员可操作。
+    notes: 产品配方及可选产品图片录入支持电脑和平板端，但仅管理员可操作。
     created_at: "2026-09-09T03:55:00Z"
-    updated_at: "2026-09-09T03:55:00Z"
+    updated_at: "2026-09-12T12:25:28Z"
     last_verified_at: null
   - id: BL-DEVICE-001
     title: 平板优先作为现场操作与辅料识别设备

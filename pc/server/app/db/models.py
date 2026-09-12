@@ -35,6 +35,7 @@ class User(Base):
     id_card: Mapped[str | None] = mapped_column(String(64))
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
     must_change_password: Mapped[bool] = mapped_column(default=False, nullable=False)
+    auth_version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
 
@@ -282,3 +283,5 @@ def _migrate_user_account_columns(engine) -> None:
             connection.exec_driver_sql("ALTER TABLE users ADD COLUMN phone VARCHAR(32)")
         if "id_card" not in columns:
             connection.exec_driver_sql("ALTER TABLE users ADD COLUMN id_card VARCHAR(64)")
+        if "auth_version" not in columns:
+            connection.exec_driver_sql("ALTER TABLE users ADD COLUMN auth_version INTEGER NOT NULL DEFAULT 1")

@@ -1,13 +1,16 @@
+import json
 import secrets
 import string
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.security import create_token, decode_token, hash_password, verify_password
-from app.db.models import EvidenceFile, User
+from app.db.models import AuditLog, EvidenceFile, SystemSetting, User
 from app.db.session import get_db
 
 
@@ -54,6 +57,14 @@ class ChangePasswordRequest(BaseModel):
     new_password: str = Field(min_length=8, max_length=128)
 
 
+class AdminRecoveryRequest(BaseModel):
+    recovery_password: str = Field(min_length=1, max_length=256)
+
+
+RECOVERY_ATTEMPTS_KEY = "admin_recovery_failed_attempts"
+RECOVERY_LOCKED_UNTIL_KEY = "admin_recovery_locked_until"
+
+
 def _mask_id_card(value: str | None) -> str:
     if not value:
         return ""
@@ -83,6 +94,37 @@ def _generate_reset_password() -> str:
     return "".join(secrets.choice(alphabet) for _ in range(10))
 
 
+def _setting_value(db: Session, key: str) -> str | None:
+    setting = db.scalar(select(SystemSetting).where(SystemSetting.key == key))
+    return setting.value if setting is not None else None
+
+
+def _set_setting_value(db: Session, key: str, value: str) -> None:
+    setting = db.scalar(select(SystemSetting).where(SystemSetting.key == key))
+    if setting is None:
+        db.add(SystemSetting(key=key, value=value))
+    else:
+        setting.value = value
+
+
+def _clear_setting_value(db: Session, key: str) -> None:
+    setting = db.scalar(select(SystemSetting).where(SystemSetting.key == key))
+    if setting is not None:
+        db.delete(setting)
+
+
+def _parse_utc_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
 def _validate_avatar_file(db: Session, avatar_file_id: str | None) -> None:
     if avatar_file_id is None:
         return
@@ -96,6 +138,8 @@ def current_user(authorization: str | None = Header(default=None), db: Session =
     try:
         payload = decode_token(authorization[7:])
         user = db.scalar(select(User).where(User.id == int(payload["sub"]), User.is_active.is_(True)))
+        if user is not None and int(payload.get("auth_version", 1)) != user.auth_version:
+            user = None
     except (ValueError, TypeError):
         user = None
     if user is None:
@@ -111,6 +155,120 @@ def require_admin(user: User = Depends(current_user)) -> User:
 
 @router.post("/login")
 def login(body: LoginRequest, db: Session = Depends(get_db)) -> dict:
+    user = _authenticate_user(body, db)
+    return _login_response(user)
+
+
+@router.post("/admin/login")
+def admin_login(body: LoginRequest, db: Session = Depends(get_db)) -> dict:
+    user = _authenticate_user(body, db)
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "ADMIN_PORTAL_REQUIRED", "message": "普通操作员账号不能登录电脑管理端"},
+        )
+    return _login_response(user)
+
+
+@router.post("/admin/recover")
+def recover_admin_password(body: AdminRecoveryRequest, db: Session = Depends(get_db)) -> dict:
+    settings = get_settings()
+    if not settings.admin_recovery_secret_hash:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"code": "ADMIN_RECOVERY_DISABLED", "message": "管理员紧急恢复功能尚未配置"},
+        )
+
+    now = datetime.now(timezone.utc)
+    locked_until = _parse_utc_datetime(_setting_value(db, RECOVERY_LOCKED_UNTIL_KEY))
+    if locked_until is not None:
+        if locked_until > now:
+            retry_after = max(1, int((locked_until - now).total_seconds()))
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={
+                    "code": "ADMIN_RECOVERY_LOCKED",
+                    "message": f"恢复密码错误次数过多，请在 {max(1, (retry_after + 59) // 60)} 分钟后重试",
+                    "retry_after_seconds": retry_after,
+                },
+            )
+        _clear_setting_value(db, RECOVERY_LOCKED_UNTIL_KEY)
+        _set_setting_value(db, RECOVERY_ATTEMPTS_KEY, "0")
+
+    try:
+        attempts = int(_setting_value(db, RECOVERY_ATTEMPTS_KEY) or "0")
+    except ValueError:
+        attempts = 0
+
+    if not verify_password(body.recovery_password, settings.admin_recovery_secret_hash):
+        attempts += 1
+        if attempts >= settings.admin_recovery_max_attempts:
+            next_lock = now + timedelta(minutes=settings.admin_recovery_lockout_minutes)
+            _set_setting_value(db, RECOVERY_ATTEMPTS_KEY, "0")
+            _set_setting_value(db, RECOVERY_LOCKED_UNTIL_KEY, next_lock.isoformat())
+            db.add(AuditLog(
+                action="admin_password.recovery_locked",
+                resource_type="user",
+                resource_id="admin",
+                detail_json=json.dumps({"failed_attempts": attempts}, separators=(",", ":")),
+            ))
+            db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={
+                    "code": "ADMIN_RECOVERY_LOCKED",
+                    "message": f"恢复密码错误次数过多，请在 {settings.admin_recovery_lockout_minutes} 分钟后重试",
+                    "retry_after_seconds": settings.admin_recovery_lockout_minutes * 60,
+                },
+            )
+
+        _set_setting_value(db, RECOVERY_ATTEMPTS_KEY, str(attempts))
+        db.add(AuditLog(
+            action="admin_password.recovery_failed",
+            resource_type="user",
+            resource_id="admin",
+            detail_json=json.dumps({"failed_attempts": attempts}, separators=(",", ":")),
+        ))
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "code": "INVALID_RECOVERY_PASSWORD",
+                "message": "恢复密码不正确",
+                "remaining_attempts": max(0, settings.admin_recovery_max_attempts - attempts),
+            },
+        )
+
+    admin = db.scalar(select(User).where(User.role == "admin").order_by(User.id))
+    if admin is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"code": "ADMIN_ACCOUNT_NOT_FOUND", "message": "管理员账号不存在，请联系维护人员"},
+        )
+
+    temporary_password = _generate_reset_password()
+    admin.password_hash = hash_password(temporary_password)
+    admin.must_change_password = True
+    admin.auth_version = (admin.auth_version or 1) + 1
+    _set_setting_value(db, RECOVERY_ATTEMPTS_KEY, "0")
+    _clear_setting_value(db, RECOVERY_LOCKED_UNTIL_KEY)
+    db.add(AuditLog(
+        action="admin_password.recovered",
+        resource_type="user",
+        resource_id=str(admin.id),
+        detail_json=None,
+    ))
+    db.commit()
+    return {
+        "status": "ok",
+        "username": admin.username,
+        "temporary_password": temporary_password,
+        "must_change_password": True,
+        "message": "管理员密码已重置，请立即复制临时密码并在登录后修改",
+    }
+
+
+def _authenticate_user(body: LoginRequest, db: Session) -> User:
     user = db.scalar(select(User).where(User.username == body.username))
     if user is None or not verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail={"code": "INVALID_CREDENTIALS", "message": "账号或密码错误"})
@@ -120,7 +278,15 @@ def login(body: LoginRequest, db: Session = Depends(get_db)) -> dict:
         raise HTTPException(status_code=403, detail={"code": "ACCOUNT_REJECTED", "message": "账号注册申请已被驳回，请联系管理员"})
     if not user.is_active:
         raise HTTPException(status_code=403, detail={"code": "ACCOUNT_DISABLED", "message": "账号已停用，请联系管理员"})
-    return {"access_token": create_token(user.id, user.role), "token_type": "bearer", "user": _public_user(user)}
+    return user
+
+
+def _login_response(user: User) -> dict:
+    return {
+        "access_token": create_token(user.id, user.role, user.auth_version),
+        "token_type": "bearer",
+        "user": _public_user(user),
+    }
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
@@ -276,6 +442,7 @@ def reset_user_password(user_id: int, _user: User = Depends(require_admin), db: 
     temporary_password = _generate_reset_password()
     user.password_hash = hash_password(temporary_password)
     user.must_change_password = True
+    user.auth_version = (user.auth_version or 1) + 1
     db.commit()
     return {
         "username": user.username,

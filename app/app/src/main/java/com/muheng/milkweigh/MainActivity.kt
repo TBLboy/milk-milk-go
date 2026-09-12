@@ -31,16 +31,19 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -53,9 +56,11 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
@@ -77,6 +82,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -704,6 +710,161 @@ private fun AvatarImage(
 }
 
 @Composable
+private fun StoredImage(
+    fileId: String?,
+    previewUri: String? = null,
+    repository: MilkRepository,
+    modifier: Modifier = Modifier,
+    contentScale: ContentScale = ContentScale.Crop,
+    onClick: (() -> Unit)? = null,
+) {
+    val context = LocalContext.current
+    var bitmap by remember(fileId, previewUri) { mutableStateOf<ImageBitmap?>(null) }
+
+    androidx.compose.runtime.LaunchedEffect(fileId, previewUri) {
+        bitmap = null
+        if (!previewUri.isNullOrBlank()) {
+            val bytes = runCatching {
+                context.contentResolver.openInputStream(Uri.parse(previewUri))?.use { it.readBytes() }
+            }.getOrNull()
+            bitmap = bytes
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() }
+            return@LaunchedEffect
+        }
+        if (fileId.isNullOrBlank()) return@LaunchedEffect
+        val bytes = runCatching { repository.loadFileBytes(fileId) }.getOrNull()
+        bitmap = bytes
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() }
+    }
+
+    Box(
+        modifier = if (onClick == null) {
+            modifier.background(Color(0xFFF1F5F4))
+        } else {
+            modifier.background(Color(0xFFF1F5F4)).clickable(onClick = onClick)
+        },
+        contentAlignment = Alignment.Center,
+    ) {
+        val image = bitmap
+        if (image != null) {
+            Image(
+                bitmap = image,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = contentScale,
+            )
+        } else {
+            Icon(Icons.Default.Inventory2, contentDescription = null, tint = Muted)
+        }
+    }
+}
+
+@Composable
+private fun ImagePreviewDialog(
+    target: ImagePreviewTarget,
+    repository: MilkRepository,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("图片预览") },
+        text = {
+            StoredImage(
+                fileId = target.fileId,
+                previewUri = target.previewUri,
+                repository = repository,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(460.dp)
+                    .clip(RoundedCornerShape(10.dp)),
+                contentScale = ContentScale.Fit,
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("关闭") }
+        },
+    )
+}
+
+@Composable
+private fun ImageThumbnail(
+    fileId: String? = null,
+    previewUri: String? = null,
+    repository: MilkRepository,
+    onClick: () -> Unit,
+    onDelete: (() -> Unit)? = null,
+    size: Dp = 104.dp,
+) {
+    Box(modifier = Modifier.size(size)) {
+        StoredImage(
+            fileId = fileId,
+            previewUri = previewUri,
+            repository = repository,
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(10.dp))
+                .border(1.dp, Color(0xFFDDE5E3), RoundedCornerShape(10.dp)),
+            onClick = onClick,
+        )
+        if (onDelete != null) {
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(5.dp)
+                    .size(28.dp)
+                    .background(Color(0xCC17202B), CircleShape),
+            ) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "删除图片",
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditableImageStrip(
+    existingFileIds: List<String>,
+    localUris: List<String>,
+    repository: MilkRepository,
+    onPreview: (ImagePreviewTarget) -> Unit,
+    onDeleteExisting: (String) -> Unit,
+    onDeleteLocal: (String) -> Unit,
+) {
+    if (existingFileIds.isEmpty() && localUris.isEmpty()) {
+        Text("暂无图片", color = Muted, fontSize = 14.sp)
+        return
+    }
+    LazyRow(
+        modifier = Modifier.fillMaxWidth().height(112.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        items(existingFileIds, key = { "existing-$it" }) { fileId ->
+            ImageThumbnail(
+                fileId = fileId,
+                repository = repository,
+                onClick = { onPreview(ImagePreviewTarget(fileId = fileId)) },
+                onDelete = { onDeleteExisting(fileId) },
+            )
+        }
+        items(localUris, key = { "local-$it" }) { uri ->
+            ImageThumbnail(
+                previewUri = uri,
+                repository = repository,
+                onClick = { onPreview(ImagePreviewTarget(previewUri = uri)) },
+                onDelete = { onDeleteLocal(uri) },
+            )
+        }
+    }
+}
+
+@Composable
 private fun UserMenu(
     user: AppUser,
     repository: MilkRepository,
@@ -929,10 +1090,27 @@ private fun MainShell(
     var currentUser by remember { mutableStateOf(user) }
     var showProfileDialog by remember { mutableStateOf(false) }
     var showChangePasswordDialog by remember { mutableStateOf(user.mustChangePassword) }
+    var isRefreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    androidx.compose.runtime.LaunchedEffect(Unit) {
+    val context = LocalContext.current
+    suspend fun refreshData() {
         orders = repository.listWorkOrders()
         products = repository.listProducts()
+    }
+    val refreshDataWithFeedback: () -> Unit = {
+        if (!isRefreshing) {
+            isRefreshing = true
+            scope.launch {
+                runCatching { refreshData() }
+                    .onFailure {
+                        Toast.makeText(context, "刷新失败，请检查网络后重试", Toast.LENGTH_SHORT).show()
+                    }
+                isRefreshing = false
+            }
+        }
+    }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        runCatching { refreshData() }
     }
     androidx.compose.runtime.LaunchedEffect(currentUser.mustChangePassword) {
         if (currentUser.mustChangePassword) showChangePasswordDialog = true
@@ -964,7 +1142,12 @@ private fun MainShell(
                 Spacer(Modifier.weight(1f)); Text("局域网模式 · 实时接口", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(8.dp))
             }
             when (selected) {
-                "工单" -> OrderListScreen(orders, onCreate = { showCreateDialog = true }) { order ->
+                "工单" -> OrderListScreen(
+                    orders = orders,
+                    isRefreshing = isRefreshing,
+                    onRefresh = refreshDataWithFeedback,
+                    onCreate = { showCreateDialog = true },
+                ) { order ->
                     selectedOrderNo = order.orderNo
                     selected = "详情"
                 }
@@ -979,8 +1162,9 @@ private fun MainShell(
                 )
                 "辅料与配方" -> AdminMasterDataScreen(repository)
                 else -> DashboardScreen(
-                    orders,
-                    onRefresh = { scope.launch { orders = repository.listWorkOrders() } },
+                    orders = orders,
+                    isRefreshing = isRefreshing,
+                    onRefresh = refreshDataWithFeedback,
                     onCreate = { showCreateDialog = true },
                     openOrders = { selected = "工单" },
                     openOrder = { order ->
@@ -1037,28 +1221,45 @@ private fun NavItem(label: String, icon: androidx.compose.ui.graphics.vector.Ima
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DashboardScreen(orders: List<WorkOrder>, onRefresh: () -> Unit, onCreate: () -> Unit, openOrders: () -> Unit, openOrder: (WorkOrder) -> Unit) {
+private fun DashboardScreen(
+    orders: List<WorkOrder>,
+    isRefreshing: Boolean,
+    onRefresh: () -> Unit,
+    onCreate: () -> Unit,
+    openOrders: () -> Unit,
+    openOrder: (WorkOrder) -> Unit,
+) {
     val recentOrders = orders.filter { it.status != WorkOrderStatus.CANCELLED && it.status != WorkOrderStatus.DELETED }
-    Column(modifier = Modifier.fillMaxSize().padding(30.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Column { Text("工作台", color = Ink, fontSize = 28.sp, fontWeight = FontWeight.Bold); Text("今天的称量任务概览", color = Muted, fontSize = 15.sp) }; Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { Button(onClick = onCreate) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(6.dp)); Text("新建工单") }; OutlinedButton(onClick = onRefresh) { Text("刷新") } } }
-        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) { StatCard("今日工单", orders.count { it.status != WorkOrderStatus.CANCELLED && it.status != WorkOrderStatus.DELETED }.toString(), "生产称量任务"); StatCard("执行中", orders.count { it.status == WorkOrderStatus.IN_PROGRESS }.toString(), "现场正在称重"); StatCard("待审批", orders.count { it.status == WorkOrderStatus.PENDING_APPROVAL }.toString(), "需要及时处理") }
-        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-            Column(modifier = Modifier.fillMaxWidth().padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("最近工单", color = Ink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.weight(1f))
-                    Text("查看全部", color = Green, modifier = Modifier.clickable(onClick = openOrders))
-                }
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth().height(264.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    if (recentOrders.isEmpty()) {
-                        item { Text("暂无工单", color = Muted, fontSize = 14.sp) }
-                    } else {
-                        items(recentOrders, key = { it.orderNo }) { order ->
-                            RecentOrderRow(order) { openOrder(order) }
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(30.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Column { Text("工作台", color = Ink, fontSize = 28.sp, fontWeight = FontWeight.Bold); Text("今天的称量任务概览", color = Muted, fontSize = 15.sp) }; Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { Button(onClick = onCreate) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(6.dp)); Text("新建工单") }; OutlinedButton(onClick = onRefresh, enabled = !isRefreshing) { Text(if (isRefreshing) "刷新中" else "刷新") } } }
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) { StatCard("今日工单", orders.count { it.status != WorkOrderStatus.CANCELLED && it.status != WorkOrderStatus.DELETED }.toString(), "生产称量任务"); StatCard("执行中", orders.count { it.status == WorkOrderStatus.IN_PROGRESS }.toString(), "现场正在称重"); StatCard("待审批", orders.count { it.status == WorkOrderStatus.PENDING_APPROVAL }.toString(), "需要及时处理") }
+            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                Column(modifier = Modifier.fillMaxWidth().padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("最近工单", color = Ink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.weight(1f))
+                        Text("查看全部", color = Green, modifier = Modifier.clickable(onClick = openOrders))
+                    }
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth().height(264.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        if (recentOrders.isEmpty()) {
+                            item { Text("暂无工单", color = Muted, fontSize = 14.sp) }
+                        } else {
+                            items(recentOrders, key = { it.orderNo }) { order ->
+                                RecentOrderRow(order) { openOrder(order) }
+                            }
                         }
                     }
                 }
@@ -1111,8 +1312,15 @@ private fun RecentOrderRow(order: WorkOrder, onClick: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun OrderListScreen(orders: List<WorkOrder>, onCreate: () -> Unit, openDetail: (WorkOrder) -> Unit) {
+private fun OrderListScreen(
+    orders: List<WorkOrder>,
+    isRefreshing: Boolean,
+    onRefresh: () -> Unit,
+    onCreate: () -> Unit,
+    openDetail: (WorkOrder) -> Unit,
+) {
     var filter by remember { mutableStateOf<String?>(null) }
     var page by remember { mutableStateOf(1) }
     val pageSize = 8
@@ -1125,39 +1333,48 @@ private fun OrderListScreen(orders: List<WorkOrder>, onCreate: () -> Unit, openD
     val totalPages = maxOf(1, (filteredOrders.size + pageSize - 1) / pageSize)
     val safePage = page.coerceIn(1, totalPages)
     val pagedOrders = filteredOrders.drop((safePage - 1) * pageSize).take(pageSize)
-    Column(modifier = Modifier.fillMaxSize().padding(30.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Column {
-                Text("工单管理", color = Ink, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-                Text("查看和继续现场称量任务", color = Muted, modifier = Modifier.padding(top = 6.dp))
-            }
-            Button(onClick = onCreate) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(6.dp)); Text("新建工单") }
-        }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(top = 18.dp, bottom = 18.dp),
-        ) {
-            filterOptions.forEach { option ->
-                val selected = (filter ?: "全部") == option
-                Text(
-                    option,
-                    modifier = Modifier
-                        .clickable {
-                            filter = if (option == "全部") null else option
-                            page = 1
-                        }
-                        .background(if (selected) Green.copy(alpha = 0.12f) else Color.White, RoundedCornerShape(50))
-                        .border(1.dp, if (selected) Green.copy(alpha = 0.45f) else Color(0xFFE3E8EA), RoundedCornerShape(50))
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    color = if (selected) Green else Muted,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                )
-            }
-        }
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        modifier = Modifier.fillMaxSize(),
+    ) {
         LazyColumn(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(30.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            item {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Column {
+                        Text("工单管理", color = Ink, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                        Text("查看和继续现场称量任务", color = Muted, modifier = Modifier.padding(top = 6.dp))
+                    }
+                    Button(onClick = onCreate) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(6.dp)); Text("新建工单") }
+                }
+            }
+            item {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(top = 6.dp, bottom = 6.dp),
+                ) {
+                    filterOptions.forEach { option ->
+                        val selected = (filter ?: "全部") == option
+                        Text(
+                            option,
+                            modifier = Modifier
+                                .clickable {
+                                    filter = if (option == "全部") null else option
+                                    page = 1
+                                }
+                                .background(if (selected) Green.copy(alpha = 0.12f) else Color.White, RoundedCornerShape(50))
+                                .border(1.dp, if (selected) Green.copy(alpha = 0.45f) else Color(0xFFE3E8EA), RoundedCornerShape(50))
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            color = if (selected) Green else Muted,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                        )
+                    }
+                }
+            }
             if (pagedOrders.isEmpty()) {
                 item { Text("暂无工单", color = Muted, fontSize = 14.sp) }
             } else {
@@ -1165,33 +1382,35 @@ private fun OrderListScreen(orders: List<WorkOrder>, onCreate: () -> Unit, openD
                     OrderRow(order) { openDetail(order) }
                 }
             }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            OutlinedButton(
-                onClick = { page = safePage - 1 },
-                enabled = safePage > 1,
-            ) {
-                Icon(Icons.Default.ChevronLeft, null)
-                Spacer(Modifier.width(4.dp))
-                Text("上一页")
-            }
-            Text(
-                "第 $safePage / $totalPages 页 · 共 ${filteredOrders.size} 条",
-                color = Muted,
-                fontSize = 13.sp,
-                modifier = Modifier.padding(horizontal = 16.dp),
-            )
-            OutlinedButton(
-                onClick = { page = safePage + 1 },
-                enabled = safePage < totalPages,
-            ) {
-                Text("下一页")
-                Spacer(Modifier.width(4.dp))
-                Icon(Icons.Default.ChevronRight, null)
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedButton(
+                        onClick = { page = safePage - 1 },
+                        enabled = safePage > 1,
+                    ) {
+                        Icon(Icons.Default.ChevronLeft, null)
+                        Spacer(Modifier.width(4.dp))
+                        Text("上一页")
+                    }
+                    Text(
+                        "第 $safePage / $totalPages 页 · 共 ${filteredOrders.size} 条",
+                        color = Muted,
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                    OutlinedButton(
+                        onClick = { page = safePage + 1 },
+                        enabled = safePage < totalPages,
+                    ) {
+                        Text("下一页")
+                        Spacer(Modifier.width(4.dp))
+                        Icon(Icons.Default.ChevronRight, null)
+                    }
+                }
             }
         }
     }
@@ -1719,6 +1938,11 @@ private data class EditableRecipeItem(
     val quantity: String,
 )
 
+private data class ImagePreviewTarget(
+    val fileId: String? = null,
+    val previewUri: String? = null,
+)
+
 @Composable
 private fun AdminMasterDataScreen(repository: MilkRepository) {
     var tab by remember { mutableStateOf("辅料") }
@@ -1726,8 +1950,10 @@ private fun AdminMasterDataScreen(repository: MilkRepository) {
     var recipes by remember { mutableStateOf<List<ProductRecipe>>(emptyList()) }
     var showMaterialDialog by remember { mutableStateOf(false) }
     var editingMaterial by remember { mutableStateOf<Material?>(null) }
+    var viewingMaterial by remember { mutableStateOf<Material?>(null) }
     var showRecipeDialog by remember { mutableStateOf(false) }
     var editingRecipe by remember { mutableStateOf<ProductRecipe?>(null) }
+    var previewImage by remember { mutableStateOf<ImagePreviewTarget?>(null) }
     val scope = rememberCoroutineScope()
 
     androidx.compose.runtime.LaunchedEffect(Unit) {
@@ -1771,12 +1997,31 @@ private fun AdminMasterDataScreen(repository: MilkRepository) {
                 items(materials, key = { it.materialId }) { material ->
                     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                         Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                            StoredImage(
+                                fileId = material.existingImageFileIds.firstOrNull(),
+                                repository = repository,
+                                modifier = Modifier
+                                    .size(58.dp)
+                                    .clip(RoundedCornerShape(9.dp))
+                                    .border(1.dp, Color(0xFFDDE5E3), RoundedCornerShape(9.dp)),
+                            )
+                            Spacer(Modifier.width(14.dp))
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text("${material.nameZh} · ${material.materialCode}", color = Ink, fontWeight = FontWeight.Bold)
                                 Text("${material.materialId} · 保质期 ${material.shelfLifeMonths} 个月", color = Muted, fontSize = 14.sp)
-                                Text("${material.imageNames.size} 张包装图片", color = Muted, fontSize = 14.sp)
+                                Text("${materialImageCount(material)} 张包装图片", color = Muted, fontSize = 14.sp)
                             }
-                            TextButton(onClick = { editingMaterial = material }) { Text("编辑") }
+                            Column(horizontalAlignment = Alignment.End) {
+                                TextButton(
+                                    onClick = { viewingMaterial = material },
+                                    enabled = materialImageCount(material) > 0,
+                                ) {
+                                    Icon(Icons.Default.PhotoLibrary, null, modifier = Modifier.size(17.dp))
+                                    Spacer(Modifier.width(5.dp))
+                                    Text("查看图片")
+                                }
+                                TextButton(onClick = { editingMaterial = material }) { Text("编辑") }
+                            }
                         }
                     }
                 }
@@ -1786,6 +2031,18 @@ private fun AdminMasterDataScreen(repository: MilkRepository) {
                 items(recipes, key = { it.id }) { recipe ->
                     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                         Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                            StoredImage(
+                                fileId = recipe.imageFileId,
+                                repository = repository,
+                                modifier = Modifier
+                                    .size(58.dp)
+                                    .clip(RoundedCornerShape(9.dp))
+                                    .border(1.dp, Color(0xFFDDE5E3), RoundedCornerShape(9.dp)),
+                                onClick = recipe.imageFileId?.let { fileId ->
+                                    { previewImage = ImagePreviewTarget(fileId = fileId) }
+                                },
+                            )
+                            Spacer(Modifier.width(14.dp))
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(recipe.name, color = Ink, fontWeight = FontWeight.Bold)
                                 Text("${recipe.items.size} 种辅料 · ${if (recipe.enabled) "启用" else "停用"}", color = Muted, fontSize = 14.sp)
@@ -1810,6 +2067,13 @@ private fun AdminMasterDataScreen(repository: MilkRepository) {
             },
         )
     }
+    viewingMaterial?.let { material ->
+        MaterialImagesDialog(
+            material = material,
+            repository = repository,
+            onDismiss = { viewingMaterial = null },
+        )
+    }
     if (showRecipeDialog || editingRecipe != null) {
         RecipeEditDialog(
             recipe = editingRecipe,
@@ -1826,6 +2090,74 @@ private fun AdminMasterDataScreen(repository: MilkRepository) {
             },
         )
     }
+    previewImage?.let { target ->
+        ImagePreviewDialog(
+            target = target,
+            repository = repository,
+            onDismiss = { previewImage = null },
+        )
+    }
+}
+
+private fun materialImageCount(material: Material): Int {
+    val localCount = material.imageNames.count(::isLocalImageUri)
+    val imageCount = material.existingImageFileIds.size + localCount
+    return if (imageCount > 0) imageCount else material.imageNames.size
+}
+
+private fun isLocalImageUri(value: String): Boolean =
+    value.startsWith("content://") || value.startsWith("file://")
+
+@Composable
+private fun MaterialImagesDialog(
+    material: Material,
+    repository: MilkRepository,
+    onDismiss: () -> Unit,
+) {
+    var previewTarget by remember { mutableStateOf<ImagePreviewTarget?>(null) }
+    val localUris = material.imageNames.filter(::isLocalImageUri)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("${material.nameZh} 包装图片") },
+        text = {
+            if (material.existingImageFileIds.isEmpty() && localUris.isEmpty()) {
+                Text("暂无包装图片", color = Muted)
+            } else {
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth().height(128.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    items(material.existingImageFileIds, key = { "view-$it" }) { fileId ->
+                        ImageThumbnail(
+                            fileId = fileId,
+                            repository = repository,
+                            onClick = { previewTarget = ImagePreviewTarget(fileId = fileId) },
+                            size = 120.dp,
+                        )
+                    }
+                    items(localUris, key = { "view-local-$it" }) { uri ->
+                        ImageThumbnail(
+                            previewUri = uri,
+                            repository = repository,
+                            onClick = { previewTarget = ImagePreviewTarget(previewUri = uri) },
+                            size = 120.dp,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("关闭") }
+        },
+    )
+    previewTarget?.let { target ->
+        ImagePreviewDialog(
+            target = target,
+            repository = repository,
+            onDismiss = { previewTarget = null },
+        )
+    }
 }
 
 @Composable
@@ -1839,18 +2171,28 @@ private fun MaterialEditDialog(
     var nameZh by remember { mutableStateOf(material?.nameZh ?: "") }
     var nameEn by remember { mutableStateOf(material?.nameEn ?: "") }
     var shelfLife by remember { mutableStateOf(material?.shelfLifeMonths?.toString() ?: "24") }
-    var imageNames by remember { mutableStateOf(material?.imageNames ?: emptyList()) }
+    var existingImageIds by remember(material?.materialId) {
+        mutableStateOf(material?.existingImageFileIds ?: emptyList())
+    }
+    var newImageUris by remember(material?.materialId) { mutableStateOf(emptyList<String>()) }
+    var previewTarget by remember { mutableStateOf<ImagePreviewTarget?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var working by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
-        imageNames = uris.map { it.toString() }
+        newImageUris = (newImageUris + uris.map(Uri::toString)).distinct()
     }
     AlertDialog(
         onDismissRequest = { if (!working) onDismiss() },
         title = { Text(if (material == null) "新增辅料" else "编辑辅料") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 540.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
                 OutlinedTextField(code, { code = it.uppercase() }, modifier = Modifier.fillMaxWidth(), label = { Text("内部代号") }, singleLine = true)
                 OutlinedTextField(nameZh, { nameZh = it }, modifier = Modifier.fillMaxWidth(), label = { Text("中文名称") }, singleLine = true)
                 OutlinedTextField(nameEn, { nameEn = it }, modifier = Modifier.fillMaxWidth(), label = { Text("英文名称（可选）") }, singleLine = true)
@@ -1858,9 +2200,16 @@ private fun MaterialEditDialog(
                 OutlinedButton(onClick = { imagePicker.launch("image/*") }, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.CameraAlt, null)
                     Spacer(Modifier.width(6.dp))
-                    Text(if (imageNames.isEmpty()) "选择多张包装图片" else "已选择 ${imageNames.size} 张图片")
+                    Text("添加包装图片")
                 }
-                imageNames.take(5).forEach { Text("· ${it.substringAfterLast('/').take(42)}", color = Muted, fontSize = 13.sp) }
+                EditableImageStrip(
+                    existingFileIds = existingImageIds,
+                    localUris = newImageUris,
+                    repository = repository,
+                    onPreview = { previewTarget = it },
+                    onDeleteExisting = { fileId -> existingImageIds = existingImageIds - fileId },
+                    onDeleteLocal = { uri -> newImageUris = newImageUris - uri },
+                )
                 error?.let { Text(it, color = Color(0xFFC7473C), fontSize = 14.sp) }
             }
         },
@@ -1883,7 +2232,8 @@ private fun MaterialEditDialog(
                                     nameZh = nameZh,
                                     nameEn = nameEn,
                                     shelfLifeMonths = shelf,
-                                    imageNames = imageNames,
+                                    imageNames = newImageUris,
+                                    existingImageFileIds = existingImageIds,
                                 )
                             )
                         }
@@ -1896,6 +2246,13 @@ private fun MaterialEditDialog(
         },
         dismissButton = { TextButton(onClick = { if (!working) onDismiss() }) { Text("取消") } },
     )
+    previewTarget?.let { target ->
+        ImagePreviewDialog(
+            target = target,
+            repository = repository,
+            onDismiss = { previewTarget = null },
+        )
+    }
 }
 
 @Composable
@@ -1908,6 +2265,9 @@ private fun RecipeEditDialog(
 ) {
     var name by remember { mutableStateOf(recipe?.name ?: "") }
     var enabled by remember { mutableStateOf(recipe?.enabled ?: true) }
+    var existingImageFileId by remember(recipe?.id) { mutableStateOf(recipe?.imageFileId) }
+    var selectedImageUri by remember(recipe?.id) { mutableStateOf<String?>(null) }
+    var previewTarget by remember { mutableStateOf<ImagePreviewTarget?>(null) }
     var items by remember {
         mutableStateOf(
             recipe?.items?.map { EditableRecipeItem(it.materialId, it.quantityPerTonKg.toString()) }
@@ -1918,15 +2278,55 @@ private fun RecipeEditDialog(
     var error by remember { mutableStateOf<String?>(null) }
     var working by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        selectedImageUri = uri?.toString()
+    }
+    val hasImage = !selectedImageUri.isNullOrBlank() || !existingImageFileId.isNullOrBlank()
     AlertDialog(
         onDismissRequest = { if (!working) onDismiss() },
         title = { Text(if (recipe == null) "新增产品配方" else "编辑产品配方") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 540.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
                 OutlinedTextField(name, { name = it }, modifier = Modifier.fillMaxWidth(), label = { Text("产品名称") }, singleLine = true)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = enabled, onCheckedChange = { enabled = it })
                     Text(if (enabled) "配方启用" else "配方停用", color = Muted)
+                }
+                Text("产品图片（选填）", color = Ink, fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    StoredImage(
+                        fileId = existingImageFileId,
+                        previewUri = selectedImageUri,
+                        repository = repository,
+                        modifier = Modifier
+                            .size(96.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .border(1.dp, Color(0xFFDDE5E3), RoundedCornerShape(10.dp)),
+                        onClick = if (hasImage) {
+                            { previewTarget = ImagePreviewTarget(existingImageFileId, selectedImageUri) }
+                        } else {
+                            null
+                        },
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        OutlinedButton(onClick = { imagePicker.launch("image/*") }) {
+                            Icon(Icons.Default.PhotoLibrary, null, modifier = Modifier.size(17.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(if (hasImage) "更换图片" else "选择图片")
+                        }
+                        if (hasImage) {
+                            TextButton(onClick = {
+                                existingImageFileId = null
+                                selectedImageUri = null
+                            }) { Text("删除图片") }
+                        }
+                    }
                 }
                 if (materials.isEmpty()) {
                     Text("请先创建辅料，再添加产品配方。", color = Muted)
@@ -2001,13 +2401,14 @@ private fun RecipeEditDialog(
                     error = null
                     scope.launch {
                         runCatching {
+                            val imageFileId = selectedImageUri?.let { repository.uploadImage(it) } ?: existingImageFileId
                             val saved = repository.saveProductRecipe(
                                 ProductRecipe(
                                     id = recipe?.id ?: 0,
                                     name = name,
                                     enabled = enabled,
                                     items = parsedItems,
-                                    imageFileId = recipe?.imageFileId,
+                                    imageFileId = imageFileId,
                                 )
                             )
                             if (enabled != (recipe?.enabled ?: true)) {
@@ -2024,4 +2425,11 @@ private fun RecipeEditDialog(
         },
         dismissButton = { TextButton(onClick = { if (!working) onDismiss() }) { Text("取消") } },
     )
+    previewTarget?.let { target ->
+        ImagePreviewDialog(
+            target = target,
+            repository = repository,
+            onDismiss = { previewTarget = null },
+        )
+    }
 }

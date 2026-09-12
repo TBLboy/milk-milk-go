@@ -12,7 +12,13 @@ function App() {
   const [page, setPage] = React.useState('dashboard')
   const [user, setUser] = React.useState<any>(() => {
     const saved = localStorage.getItem('milk_user')
-    return saved ? JSON.parse(saved) : null
+    if (!saved) return null
+    try {
+      const parsed = JSON.parse(saved)
+      return parsed?.role === 'admin' ? parsed : null
+    } catch {
+      return null
+    }
   })
   const [checking, setChecking] = React.useState(Boolean(api.hasToken()))
 
@@ -22,7 +28,12 @@ function App() {
       return
     }
     api.getMe()
-      .then(setUser)
+      .then((currentUser) => {
+        if (currentUser.role !== 'admin') {
+          throw new Error('普通操作员账号不能登录电脑管理端')
+        }
+        setUser(currentUser)
+      })
       .catch(() => {
         api.logout()
         setUser(null)
@@ -62,7 +73,7 @@ function App() {
   }
 
   return (
-    <AppShell page={page} onPageChange={setPage} user={user} onLogout={handleLogout}>
+    <AppShell page={page} onPageChange={setPage} user={user} onLogout={handleLogout} onUserChange={setUser}>
       {renderPage()}
     </AppShell>
   )
