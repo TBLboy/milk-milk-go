@@ -13,7 +13,12 @@ def setup_order(client):
 
 def test_qr_confirmation_and_weight_evidence(client):
     headers, order_no, material_id = setup_order(client)
-    assert client.post(f"/api/v1/evidence/work-orders/{order_no}/steps/1/qr", headers=headers, json={"material_id": material_id}).status_code == 200
+    qr_file_id = client.post("/api/v1/evidence/files", headers=headers, files={"file": ("qr.jpg", b"qr-image", "image/jpeg")}).json()["file_id"]
+    assert client.post(
+        f"/api/v1/evidence/work-orders/{order_no}/steps/1/qr",
+        headers=headers,
+        json={"material_id": material_id, "evidence_file_id": qr_file_id},
+    ).status_code == 200
     file_response = client.post("/api/v1/evidence/files", headers=headers, files={"file": ("scale.jpg", b"fake-image", "image/jpeg")})
     assert file_response.status_code == 201
     file_id = file_response.json()["file_id"]
@@ -26,9 +31,20 @@ def test_qr_confirmation_and_weight_evidence(client):
     assert step["confirmations"]
     assert step["confirmations"][0]["method"] == "qr"
     assert step["confirmations"][0]["status"] == "passed"
+    assert step["confirmations"][0]["evidence_file_id"] == qr_file_id
     assert step["weighing_attempts"]
     assert step["weighing_attempts"][0]["scale_photo_file_id"] == file_id
     assert step["weighing_attempts"][0]["passed"] is True
+
+
+def test_qr_confirmation_requires_uploaded_evidence(client):
+    headers, order_no, material_id = setup_order(client)
+    response = client.post(
+        f"/api/v1/evidence/work-orders/{order_no}/steps/1/qr",
+        headers=headers,
+        json={"material_id": material_id},
+    )
+    assert response.status_code == 422
 
 
 def test_photo_approval_is_required_before_weight(client):

@@ -1895,3 +1895,660 @@ tasks:
       follow_ups: []
     created_at: "2026-09-12T14:00:00Z"
     updated_at: "2026-09-12T14:00:00Z"
+  - id: TASK-039
+    title: APP 登录记住账号与记住密码
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 平板登录页支持记录最近登录账号和可选记住密码，退出登录后仍保留这些登录便利设置。
+    status: done
+    priority: medium
+    risk: low
+    authority: B
+    owner: agent
+    tags: [app, android, auth, login]
+    related_business_logic: [BL-AUTH-001]
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: [TASK-038]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户要求增加记住账号功能，记录用户登录过的账号
+      - 用户要求增加记住密码复选框，勾选后登录成功记住密码
+    outputs:
+      - SessionStore 增加最近登录账号持久化，最多保留 5 个
+      - 登录页账号框可下拉选择已记住账号，并提供清除已记账号入口
+      - 登录页默认记录账号，新增记住密码复选框；用户协议勾选保留
+    plan:
+      - 在 SessionStore 中独立保存 remembered_logins，避免退出登录时清空
+      - 登录页从最近一个记录初始化账号和密码
+      - 账号输入框增加下拉菜单，选择记录时回填账号和已记住密码
+      - 登录成功根据勾选状态增加、更新或移除当前账号记录
+    done_when:
+      - 登录成功后，下次打开登录页自动回填账号
+      - 勾选记住密码后登录成功，下次打开登录页自动回填密码
+      - 账号框可下拉查看并选择最近登录账号
+      - 可清除全部记住的账号
+      - Android debug APK 构建通过
+    verification:
+      status: passed
+      commands:
+        - cd /home/tbl/Project/辅料称重防错系统/app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
+      evidence:
+        - SessionStore.rememberedLogins/saveRememberedLogin/removeRememberedLogin/clearRememberedLogins 已实现
+        - 登录页已增加账号下拉和记住密码 UI
+        - Android debug APK 构建成功
+      limitations:
+        - 真机下拉选择和密码回填体验需重新安装 APK 后确认
+    result:
+      summary: 平板登录页默认记录最近账号，并支持可选记住密码；记录保存在独立本地设置中，退出登录不会丢失。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12T16:30:00Z"
+    updated_at: "2026-09-12T16:30:00Z"
+  - id: TASK-040
+    title: 待审批工单未进入 PC 审批中心修复
+    kind: repair
+    parent_id: null
+    phase: implementation
+    goal: 平板创建的待审批工单能够在 PC 审批中心看到并完成批准/驳回操作。
+    status: done
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [pc, backend, work-order, approval]
+    related_business_logic: []
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: []
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户反馈新建工单显示待审批，但 PC 审批中心看不到该审批
+    outputs:
+      - /approvals 返回待审批工单，类型为 work_order
+      - PC 审批中心批准工单时调用 /work-orders/{order_no}/approve
+      - PC 审批中心驳回工单时调用 /work-orders/{order_no}/cancel
+      - 新增后端测试覆盖待审批工单进入审批列表和批准后移除
+    plan:
+      - 在 approvals API 中查询 WorkOrder.status == pending_approval 并转换为审批项
+      - PC api.aprove/reject 增加 AP-WO 分支
+      - 补充测试并重新启动 8011 后端
+    done_when:
+      - 平板创建待审批工单后，管理员 /approvals 能看到 AP-WO 项
+      - PC 审批中心批准后工单状态变为 approved
+      - PC 审批中心驳回后工单状态变为 cancelled
+      - 后端测试与 PC 前端构建通过
+    verification:
+      status: passed
+      commands:
+        - cd /home/tbl/Project/辅料称重防错系统/pc/server && PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - cd /home/tbl/Project/辅料称重防错系统/pc && npm run build
+      evidence:
+        - 后端测试 37 passed
+        - npm run build 通过
+        - 8011 后端已重启，健康检查返回 ok
+      limitations:
+        - 需要管理员重新登录 PC 后查看/处理已存在的待审批工单
+    result:
+      summary: 待审批工单已加入审批中心数据源，PC 端批准/驳回动作已接通；实际未处理的待审批工单在重启后可见。
+      changed_files:
+        - pc/server/app/api/approvals.py
+        - pc/src/services/api.ts
+        - pc/server/tests/test_work_orders.py
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12T09:01:30Z"
+    updated_at: "2026-09-12T09:01:30Z"
+  - id: TASK-041
+    title: APP 类型确认未扫码自动通过修复
+    kind: repair
+    parent_id: null
+    phase: implementation
+    goal: 平板端类型确认必须扫码或拍照取证，不允许因为输入框预填正确辅料 ID 而自动通过。
+    status: done
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [app, android, qr, type-confirmation]
+    related_business_logic: []
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: []
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户反馈点击类型确认后，还没扫码就自动出现正确的辅料类型并可通过
+      - 当前自制二维码内容为 JSON，旧逻辑直接把整段 JSON 当作 materialId 提交
+    outputs:
+      - 类型确认弹窗打开时扫码结果为空
+      - 扫码后从自制二维码 JSON 中提取 materialId
+      - 未识别到辅料 ID 时禁用确认并提示
+    plan:
+      - 去掉 materialId 初始值对 step.materialId 的预填
+      - 扫码结果先调用 extractScannedMaterialId 解析 JSON
+      - 扫码结果为空时不能提交
+    done_when:
+      - 类型确认弹窗扫码字段初始为空
+      - 扫描自制二维码后可正确提取 materialId
+      - 空扫码结果不能点击确认
+      - Android debug APK 构建通过
+    verification:
+      status: passed
+      commands:
+        - cd /home/tbl/Project/辅料称重防错系统/app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
+      evidence:
+      - materialId 初始状态改为空字符串
+      - 新增 extractScannedMaterialId 解析二维码 JSON
+      - 确认按钮在 materialId 为空时不可用
+      - ZXing 回调改用 IntentIntegrator.REQUEST_CODE，扫描结果能够回填
+      - Android debug APK 构建成功
+      limitations:
+        - 真机扫码行为需重新安装 APK 后验证
+    result:
+      summary: 类型确认不再预填正确辅料 ID，扫描回调已能正常回填，并会把自制二维码 JSON 解析为 materialId；未扫码时不能提交。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12T09:10:00Z"
+    updated_at: "2026-09-12T09:10:00Z"
+  - id: TASK-042
+    title: APP 统一现场拍照证据与类型拍照扫码
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 将类型确认收敛为“拍照扫码”，所有生产流程证据照片改为应用内现场拍摄并添加操作水印，取消生产步骤中的相册选择入口。
+    status: done
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [app, android, camera, qr, evidence, weighing]
+    related_business_logic: [BL-EVID-001, BL-RECOG-001, BL-WEIGH-002, BL-WEIGH-003, BL-WEIGH-005, BL-WEIGH-006]
+    acceptance_refs: [AC-EVID-001, AC-RECOG-001, AC-WEIGH-006]
+    related_decisions: []
+    depends_on: [TASK-041]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户要求类型确认统一为“拍照扫码”，拍摄后自动解析二维码并上传带水印照片
+      - 用户要求除类型确认外，重量确认等所有生产证据照片也只能拍照，不能选择相册
+    outputs:
+      - 类型确认界面只有一个“拍照扫码”入口，不再提供相册、独立扫码或手工辅料 ID 入口
+      - 类型确认照片解析出二维码时绑定照片并提交 materialId，未识别二维码时可用同一照片提交拍照审批
+      - 称重界面取消相册入口，必须拍摄并上传电子秤读数照片
+      - 现场照片统一添加操作员、时间、工单和步骤/辅料水印
+      - 后端类型确认接口强制要求当前操作员上传的照片证据
+      - 相机照片按 EXIF 方向归一化，降低横向/旋转照片二维码识别失败风险
+    plan:
+      - 使用 ActivityResultContracts.TakePicture 统一采集生产证据照片
+      - 在本地处理照片，先解析二维码，再添加水印并保存待上传照片
+      - 类型确认和重量提交接口改为传递真实证据 URI 并上传文件
+      - 后端 QRConfirmation 将 evidence_file_id 改为必填并校验上传人
+      - 增加二维码确认缺少照片的后端回归测试
+    done_when:
+      - 类型确认不再显示相册或独立扫码按钮
+      - 类型确认二维码解析和照片证据来自同一次现场拍摄
+      - 重量确认无现场照片时不能提交
+      - 上传照片包含操作员、时间、工单和步骤水印
+      - 后端测试和 Android debug APK 构建通过
+    verification:
+      status: passed
+      commands:
+        - cd /home/tbl/Project/辅料称重防错系统/pc/server && PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - cd /home/tbl/Project/辅料称重防错系统/app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
+        - /home/tbl/Android/Sdk/platform-tools/adb install -r app/app/build/outputs/apk/debug/app-debug.apk
+        - /home/tbl/Android/Sdk/platform-tools/adb shell am start -n com.muheng.milkweigh/.MainActivity
+      evidence:
+        - 类型确认弹窗已移除相册、独立扫码和手工 materialId 输入，保留单一“拍照扫码”动作
+        - 拍摄照片先解析二维码，再添加操作员/时间/工单/步骤水印并保存
+        - 重量确认弹窗已移除相册入口，提交按钮要求电子秤读数照片
+        - QRConfirmation.evidence_file_id 为必填且校验当前操作员上传，新增缺少照片返回 422 的测试
+        - 相机证据按 EXIF 方向归一化后处理
+        - 后端 38 项测试通过
+        - Android debug APK 构建成功
+        - APK 已在 emulator-5554 安装并启动，MainActivity 保持 resumed，登录页正常渲染且 AndroidRuntime 无崩溃记录
+        - 8011 后端已重启，健康检查返回 ok
+      limitations:
+        - 当前无 Android 真机连接，相机权限、照片方向、水印观感、二维码拍摄识别和完整上传流程仍需现场平板验收
+        - “禁止相册”目前在 APP 交互层实现，后端无法证明文件一定来自相机
+    result:
+      summary: 生产流程拍照入口已统一为应用内相机；类型确认完成拍照扫码与证据绑定，重量确认必须拍摄电子秤读数，所有生产证据照片带操作水印；后端同步收紧类型确认证据约束。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
+        - pc/server/app/api/evidence.py
+        - pc/server/tests/test_evidence.py
+      deviations: []
+      follow_ups:
+        - 在真实 Android 平板验收相机授权、横竖屏照片方向、二维码识别、水印显示和证据上传
+        - 后续可评估服务端捕获证明机制，避免绕过 APP 直接上传相册图片
+    created_at: "2026-09-12T09:30:00Z"
+    updated_at: "2026-09-12T09:30:00Z"
+  - id: TASK-043
+    title: 修复相机拍摄后无法读取照片
+    kind: repair
+    parent_id: null
+    phase: implementation
+    goal: 修复平板拍照扫码时提示“照片处理失败：无法读取拍摄照片”的问题，确保外部相机应用能够写入 APP 指定文件，APP 返回后可直接读取该文件并继续二维码解析和水印处理。
+    status: done
+    priority: critical
+    risk: high
+    authority: B
+    owner: agent
+    tags: [app, android, camera, file-provider, evidence]
+    related_business_logic: [BL-EVID-001, BL-RECOG-001, BL-WEIGH-006]
+    acceptance_refs: [AC-EVID-001]
+    related_decisions: []
+    depends_on: [TASK-042]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户反馈拍照扫码一直提示“处理失败，无法读取拍摄照片”
+    outputs:
+      - 相机 Intent 显式授予输出 URI 的读写权限和 ClipData
+      - 拍摄结果直接使用 APP 缓存目录中的目标文件读取，不再依赖 ContentResolver 二次打开
+      - 相机返回的 Activity 重建场景通过 rememberSaveable 保留拍摄文件路径
+      - 相机返回但文件为空时给出明确重拍提示
+    plan:
+      - 使用自定义 EvidenceTakePicture 契约启动系统相机
+      - 对 EXTRA_OUTPUT URI 添加 FLAG_GRANT_READ_URI_PERMISSION 和 FLAG_GRANT_WRITE_URI_PERMISSION
+      - 将相机目标文件绝对路径保存为可恢复状态
+      - 二维码解析、EXIF 方向读取和水印处理改为直接读取目标文件
+    done_when:
+      - 拍照扫码返回后可读取相机写入的原始照片
+      - 照片读取失败时不再因为 ContentProvider URI 重开问题触发
+      - Android debug APK 构建通过
+      - APK 可升级安装并正常启动
+      - 项目日志校验通过
+    verification:
+      status: passed
+      commands:
+        - cd /home/tbl/Project/辅料称重防错系统/app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
+        - /home/tbl/Android/Sdk/platform-tools/adb install -r app/app/build/outputs/apk/debug/app-debug.apk
+        - /home/tbl/Android/Sdk/platform-tools/adb shell am start -n com.muheng.milkweigh/.MainActivity
+      evidence:
+        - 自定义相机契约显式授予输出 URI 读写权限并设置 ClipData
+        - 相机输出文件路径使用 rememberSaveable 保存，可跨 Activity 重建恢复
+        - BitmapFactory 和 ExifInterface 改为直接读取相机目标文件
+        - Android debug APK 构建成功
+        - APK 升级安装成功，MainActivity 正常启动
+      limitations:
+        - 当前修复已通过构建和模拟器安装启动验证，仍需在出现问题的真实 Android 平板上完成拍照扫码回归
+    result:
+      summary: 相机输出 URI 增加显式授权，拍摄后改为直接读取 APP 缓存中的目标文件，避免了部分设备通过 ContentResolver 再次打开相机输出 URI 失败的问题。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+      deviations: []
+      follow_ups:
+        - 用真实平板验证拍照扫码、无码拍照审批和称重读数拍照三条路径
+    created_at: "2026-09-12T09:37:00Z"
+    updated_at: "2026-09-12T09:37:00Z"
+  - id: TASK-044
+    title: 删除拍照后的水印提示文案
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 删除拍照成功后关于已添加操作员姓名和时间水印的显式提醒，保留后台实际水印处理逻辑。
+    status: done
+    priority: low
+    risk: low
+    authority: A
+    owner: agent
+    tags: [app, android, evidence, ui-copy]
+    related_business_logic: [BL-EVID-001]
+    acceptance_refs: [AC-EVID-001]
+    related_decisions: []
+    depends_on: [TASK-043]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户反馈已经添加水印，界面无需再提醒
+    outputs:
+      - 删除类型确认照片拍摄后的水印提醒
+      - 称重照片名称不再显示水印说明
+      - 处理中状态文案不再强调水印
+    plan:
+      - 删除“证据照片已拍摄，已自动添加操作员姓名和时间水印”
+      - 将称重照片说明改为“现场拍摄”
+      - 将处理中提示改为普通照片处理文案
+    done_when:
+      - 界面不再出现已添加水印的提醒
+      - 实际照片水印处理保持不变
+      - Android debug APK 构建并升级安装通过
+    verification:
+      status: passed
+      commands:
+        - cd /home/tbl/Project/辅料称重防错系统/app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
+        - /home/tbl/Android/Sdk/platform-tools/adb install -r app/app/build/outputs/apk/debug/app-debug.apk
+      evidence:
+        - 类型确认和称重界面的水印提醒文案已删除
+        - 照片水印生成逻辑未修改
+        - Android debug APK 构建成功
+        - APK 升级安装成功
+      limitations: []
+    result:
+      summary: 已删除拍照后的水印提示，实际水印仍正常生成。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12T09:42:00Z"
+    updated_at: "2026-09-12T09:42:00Z"
+  - id: TASK-045
+    title: PC 工单详情证据图片点击放大
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 在 PC 后台工单详情中，点击每个步骤的证据缩略图后弹出原图放大预览，且不增加额外说明文字。
+    status: done
+    priority: high
+    risk: low
+    authority: A
+    owner: agent
+    tags: [pc, frontend, work-order, evidence, image-preview]
+    related_business_logic: [BL-EVID-001, BL-WEIGH-006]
+    acceptance_refs: [AC-EVID-001]
+    related_decisions: []
+    depends_on: [TASK-044]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户要求在 PC 工单详情点击步骤图片后弹出放大图观察
+      - 用户要求放大层只显示图片，不添加多余文字说明
+    outputs:
+      - EvidenceThumb 缩略图可点击
+      - 点击后通过 Portal 显示全屏原图放大层
+      - 点击遮罩或按 Escape 关闭
+    plan:
+      - 在 EvidenceThumb 内增加预览状态和 Portal
+      - 使用原文件 URL 作为放大图 src
+      - 增加全屏遮罩、原图自适应尺寸和缩放鼠标样式
+      - 打开时锁定页面滚动，支持 Escape 关闭
+    done_when:
+      - 工单详情内类型确认和称重证据缩略图均可点击
+      - 点击后显示原图放大预览
+      - 点击遮罩或按 Escape 可关闭
+      - 放大层不显示标题或说明文字
+      - PC 前端生产构建通过
+    verification:
+      status: passed
+      commands:
+        - cd /home/tbl/Project/辅料称重防错系统/pc && npm run build
+        - "Chrome CDP desktop workflow: open completed work order, click evidence thumbnail, assert lightbox image dimensions and close on Escape"
+      evidence:
+        - 工单 WO-20260912084531-496 详情中检测到 3 个证据缩略图按钮
+        - 点击第一个缩略图后 .image-lightbox 正常出现
+        - 放大图片 naturalWidth=3264、naturalHeight=2448
+        - 按 Escape 后放大层关闭
+        - npm run build 通过
+      limitations:
+        - 当前仅在桌面浏览器视口验证，未单独执行移动浏览器交互验收
+    result:
+      summary: PC 工单详情证据缩略图已支持点击弹出原图预览，遮罩和 Escape 均可关闭，预览层未添加额外文字。
+      changed_files:
+        - pc/src/components/Modals.tsx
+        - pc/src/styles/app.css
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12T09:51:00Z"
+    updated_at: "2026-09-12T09:51:00Z"
+  - id: TASK-046
+    title: 修复多步骤工单申请操作不可见
+    kind: repair
+    parent_id: null
+    phase: implementation
+    goal: 修复三步辅料工单开始执行后“申请接管、申请撤销、申请删除”按钮被步骤列表挤出屏幕、用户无法操作的问题。
+    status: done
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [app, android, work-order, layout, requests]
+    related_business_logic: [BL-WO-003, BL-WO-006]
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: [TASK-045]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户反馈三步工单开始执行后找不到申请接管、撤销、删除入口
+      - 一步和两步工单可以正常看到同一组操作
+      - 用户要求申请按钮仍然保留在页面底部，通过滚动详情区域访问
+    outputs:
+      - 工单申请按钮保持在步骤列表和工单操作区下方
+      - 工单详情区域支持纵向滚动
+      - 新增“三步工单开始执行后仍可提交撤销申请”的后端回归测试
+    plan:
+      - 保持工单级申请按钮位于详情内容底部
+      - 为工单详情根 Column 增加 verticalScroll，使三步及以上内容可以上下滚动
+      - 新增 3 个配方步骤、in_progress 状态下的撤销申请接口测试
+    done_when:
+      - 三步工单开始执行后可通过滚动详情区域看到底部申请按钮
+      - 内容超出屏幕时详情页可以自然纵向滚动
+      - 后端允许三步 in_progress 工单提交撤销申请
+      - 后端测试和 Android debug APK 构建通过
+    verification:
+      status: passed
+      commands:
+        - cd /home/tbl/Project/辅料称重防错系统/pc/server && PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - cd /home/tbl/Project/辅料称重防错系统/app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
+      evidence:
+        - 工单申请按钮保持在详情内容底部
+        - 工单详情根布局已增加 verticalScroll
+        - 三步工单开始执行后提交 cancel 请求返回 201
+        - 后端 39 项测试通过
+        - Android debug APK 构建成功
+        - 真实 Android 平板打开三步执行中工单 WO-20260912095043-860，向上滚动后底部完整显示“申请接管 / 申请撤销 / 申请删除”
+        - 真机点击“申请撤销”正常打开“申请撤销工单”提交窗口
+      limitations: []
+    result:
+      summary: 根因是工单详情内容超过平板可视高度后无法滚动；现已保持申请按钮位于页面底部，并让整个详情区域支持纵向滚动。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - pc/server/tests/test_work_order_requests.py
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12T10:00:00Z"
+    updated_at: "2026-09-12T10:00:00Z"
+  - id: TASK-047
+    title: 工单操作收敛与平板分页优化
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 合并重复的撤销/删除操作，平板工单列表改为真实分页，并避免当前执行人在自己的工单上看到接管入口。
+    status: done
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [app, pc, backend, work-order, pagination, permission]
+    related_business_logic: [BL-WO-003, BL-WO-006]
+    acceptance_refs: [AC-WO-006]
+    related_decisions: [DEC-029]
+    depends_on: [TASK-046]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户指出工单撤销和删除功能重复，要求只保留一个
+      - 用户要求平板工单列表分页，避免工单数量增加后列表无限变长
+      - 用户指出当前执行人自己的工单不应显示申请接管
+    outputs:
+      - 保留申请撤销，停用新的删除申请和后台删除接口
+      - 平板工单列表增加真实的上一页、下一页和页码统计
+      - 仅非执行人且非创建人显示申请接管
+      - 平板移除已删除状态筛选，仅兼容历史数据
+    plan:
+      - 后端限制 request_type 仅支持 takeover 和 cancel，并移除工单删除接口
+      - 平板工单模型读取 operator_id 和 created_by，按当前用户判断接管入口
+      - 平板列表按每页 8 条切片，筛选时重置到第一页
+      - 同步更新 REQ-001、BL-WO-006 和 DEC-029
+    done_when:
+      - 平板工单详情不再显示申请删除
+      - 自己的工单不显示申请接管
+      - 平板工单列表可以在多页之间切换并显示总数
+      - 后端拒绝新的删除申请和删除接口
+      - 后端测试、PC 构建和 Android 构建通过
+    verification:
+      status: passed
+      commands:
+        - cd /home/tbl/Project/辅料称重防错系统/pc/server && PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - cd /home/tbl/Project/辅料称重防错系统/pc && npm run build
+        - cd /home/tbl/Project/辅料称重防错系统/app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
+      evidence:
+        - 后端 40 项测试通过
+        - 删除申请请求返回 422，工单删除接口返回 404
+        - 真实 Android 平板显示“第 1 / 2 页 · 共 9 条”，点击下一页后显示“第 2 / 2 页”
+        - 真实 Android 平板打开当前执行人的三步工单，底部只显示“申请撤销”
+        - 平板工单筛选不再显示“已删除”
+        - PC 前端生产构建和 Android debug APK 构建通过
+      limitations: []
+    result:
+      summary: 撤销成为唯一有效的工单停止操作，删除仅保留历史数据兼容；平板工单列表支持分页，接管入口按工单归属隐藏。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
+        - pc/server/app/api/work_order_requests.py
+        - pc/server/tests/test_work_order_requests.py
+        - pc/src/pages/ManagementPages.tsx
+        - pc/src/services/api.ts
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12T10:25:23Z"
+    updated_at: "2026-09-12T10:25:23Z"
+  - id: TASK-048
+    title: 合并工单状态与申请操作按钮
+    kind: repair
+    parent_id: null
+    phase: implementation
+    goal: 将开始执行或提交完成按钮与符合条件的申请接管、申请撤销按钮放在同一行显示。
+    status: done
+    priority: medium
+    risk: low
+    authority: B
+    owner: agent
+    tags: [app, work-order, layout, action-state]
+    related_business_logic: [BL-WO-003, BL-WO-006]
+    acceptance_refs: []
+    related_decisions: [DEC-029]
+    depends_on: [TASK-047]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户指出开始执行和申请撤销仍然分两行显示
+      - 用户要求按工单状态和账号归属规则在同一行显示按钮
+    outputs:
+      - 已批准工单同排显示开始执行和申请撤销
+      - 非执行人、非创建人且无待审批申请时同排显示申请接管
+      - 执行中工单不显示开始执行，只显示状态提示和符合条件的申请按钮
+    plan:
+      - 将工单状态操作和申请按钮合并到同一个 Row
+      - 保留开始执行、提交完成和申请接管的原有状态及归属条件
+      - 在真实平板上检查同排布局和按钮可见性
+    done_when:
+      - 已批准且当前账号为执行人时，开始执行和申请撤销同一行显示
+      - 符合接管条件时，申请接管与申请撤销同一行显示
+      - 不满足条件的按钮继续隐藏
+      - Android debug APK 构建和真机验证通过
+    verification:
+      status: passed
+      commands:
+        - cd /home/tbl/Project/辅料称重防错系统/app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
+      evidence:
+        - Android debug APK 构建成功
+        - 真机已批准工单同排显示“开始执行”和“申请撤销”
+        - 两个按钮的界面节点纵向位置一致
+        - 当前执行人的工单未显示“申请接管”
+      limitations: []
+    result:
+      summary: 工单状态操作和申请按钮已合并到同一行，按钮仍按工单状态、账号归属和待审批状态决定是否显示。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12T10:42:00Z"
+    updated_at: "2026-09-12T10:42:00Z"
+  - id: TASK-049
+    title: 工作台最近工单改为五项滚动列表
+    kind: repair
+    parent_id: null
+    phase: implementation
+    goal: 工作台最近工单固定显示五个紧凑工单行，超过五项时在列表区域内部上下滚动，避免后续工单被挤压。
+    status: done
+    priority: medium
+    risk: low
+    authority: B
+    owner: agent
+    tags: [app, dashboard, work-order, scrolling, layout]
+    related_business_logic: []
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: [TASK-048]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户反馈工作台最近工单列表不能上下滑动
+      - 已有工单较多时最后一个工单会被挤压
+      - 用户要求一次只显示最近五个工单
+    outputs:
+      - 最近工单区域使用固定五项高度
+      - 超过五项时在列表内部上下滚动
+      - 工单行改为两行紧凑布局，保持状态和进度可读
+    plan:
+      - 将最近工单从静态 forEach 改为 LazyColumn
+      - 固定每个工单行和列表视口高度，保证一次显示五项
+      - 在真实平板上验证五条完整显示和滚动后的后续工单
+    done_when:
+      - 最近工单区域一次完整显示五条工单
+      - 工单超过五条时可以在最近工单区域内滚动
+      - 最后一条工单不再被压缩或遮挡
+      - Android debug APK 构建和真机验证通过
+    verification:
+      status: passed
+      commands:
+        - cd /home/tbl/Project/辅料称重防错系统/app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
+      evidence:
+        - Android debug APK 构建成功
+        - 真实平板最近工单区域同时完整显示五条记录
+        - 向上滑动后列表显示后续工单，证明内部滚动有效
+        - 工单列表节点为 scrollable=true，视口内保持五行
+      limitations: []
+    result:
+      summary: 工作台最近工单已改为固定五行的内部滚动列表，超过五条时可上下滑动查看，不再挤压最后一条记录。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12T10:49:00Z"
+    updated_at: "2026-09-12T10:49:00Z"

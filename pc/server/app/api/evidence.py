@@ -19,6 +19,7 @@ ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 class QRConfirmation(BaseModel):
     material_id: str = Field(min_length=1, max_length=32)
+    evidence_file_id: str = Field(min_length=1, max_length=64)
 
 
 class WeightSubmission(BaseModel):
@@ -78,8 +79,11 @@ def confirm_qr(order_no: str, step_no: int, body: QRConfirmation, user: User = D
     authorize_step(step, user)
     if step.status not in {"pending", "type_confirmation"}:
         raise HTTPException(status_code=409, detail={"code": "STEP_STATE_CONFLICT", "message": "当前步骤不允许类型确认"})
+    evidence = db.scalar(select(EvidenceFile).where(EvidenceFile.file_id == body.evidence_file_id, EvidenceFile.uploaded_by == user.id))
+    if evidence is None:
+        raise HTTPException(status_code=422, detail={"code": "EVIDENCE_NOT_FOUND", "message": "类型确认照片证据不存在"})
     matched = body.material_id == step.material_id_snapshot
-    db.add(TypeConfirmation(work_order_step_id=step.id, method="qr", scanned_material_id=body.material_id, status="passed" if matched else "rejected", created_by=user.id))
+    db.add(TypeConfirmation(work_order_step_id=step.id, method="qr", scanned_material_id=body.material_id, evidence_file_id=body.evidence_file_id, status="passed" if matched else "rejected", created_by=user.id))
     if matched:
         step.status = "weighing"
     db.commit()
@@ -92,7 +96,7 @@ def confirm_qr(order_no: str, step_no: int, body: QRConfirmation, user: User = D
 def request_photo_confirmation(order_no: str, step_no: int, body: PhotoRequest, user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
     step = get_step(db, order_no, step_no)
     authorize_step(step, user)
-    if db.scalar(select(EvidenceFile).where(EvidenceFile.file_id == body.file_id)) is None:
+    if db.scalar(select(EvidenceFile).where(EvidenceFile.file_id == body.file_id, EvidenceFile.uploaded_by == user.id)) is None:
         raise HTTPException(status_code=422, detail={"code": "EVIDENCE_NOT_FOUND", "message": "照片证据不存在"})
     confirmation = TypeConfirmation(work_order_step_id=step.id, method="photo", reason=body.reason, evidence_file_id=body.file_id, status="pending", created_by=user.id)
     db.add(confirmation)

@@ -56,35 +56,38 @@ def test_takeover_request_updates_operator_after_admin_approval(client):
     assert detail["operator_name"] == "李师傅"
 
 
-def test_cancel_and_delete_requests_keep_traceable_records(client):
+def test_cancel_request_keeps_traceable_record(client):
     admin = admin_headers(client)
     operator = operator_headers(client)
     product_id = create_product(client)
-    order_one = create_order(client, product_id)
-    order_two = create_order(client, product_id)
+    order = create_order(client, product_id)
 
     cancel = client.post(
-        f"/api/v1/work-orders/{order_one['order_no']}/requests",
+        f"/api/v1/work-orders/{order['order_no']}/requests",
         headers=operator,
         json={"request_type": "cancel", "reason": "计划调整"},
     ).json()
     cancelled = client.post(f"/api/v1/work-orders/requests/{cancel['id']}/approve", headers=admin)
     assert cancelled.status_code == 200
-    assert client.get(f"/api/v1/work-orders/{order_one['order_no']}", headers=admin).json()["status"] == "cancelled"
+    assert client.get(f"/api/v1/work-orders/{order['order_no']}", headers=admin).json()["status"] == "cancelled"
+    requests = client.get(f"/api/v1/work-orders/{order['order_no']}/requests", headers=admin).json()
+    assert requests[0]["request_type"] == "cancel"
+    assert requests[0]["status"] == "approved"
 
-    delete = client.post(
-        f"/api/v1/work-orders/{order_two['order_no']}/requests",
+
+def test_delete_request_is_no_longer_available(client):
+    product_id = create_product(client)
+    order = create_order(client, product_id)
+    operator = operator_headers(client)
+    admin = admin_headers(client)
+
+    deleted_request = client.post(
+        f"/api/v1/work-orders/{order['order_no']}/requests",
         headers=operator,
         json={"request_type": "delete", "reason": "误建工单"},
-    ).json()
-    deleted = client.post(f"/api/v1/work-orders/requests/{delete['id']}/approve", headers=admin)
-    assert deleted.status_code == 200
-    assert client.get(f"/api/v1/work-orders/{order_two['order_no']}", headers=admin).json()["status"] == "deleted"
-
-    operator_orders = client.get("/api/v1/work-orders", headers=operator).json()
-    assert all(item["order_no"] != order_two["order_no"] for item in operator_orders)
-    admin_orders = client.get("/api/v1/work-orders", headers=admin).json()
-    assert [item["order_no"] for item in admin_orders][-2:] == [order_two["order_no"], order_one["order_no"]]
+    )
+    assert deleted_request.status_code == 422
+    assert client.post(f"/api/v1/work-orders/{order['order_no']}/delete", headers=admin).status_code == 404
 
 
 def test_work_order_request_can_be_rejected(client):
@@ -101,3 +104,39 @@ def test_work_order_request_can_be_rejected(client):
     assert rejected.status_code == 200
     assert rejected.json()["status"] == "rejected"
     assert client.get(f"/api/v1/work-orders/{order['order_no']}", headers=admin).json()["operator_name"] != "李师傅"
+
+
+def test_started_three_step_order_still_accepts_cancel_request(client):
+    admin = admin_headers(client)
+    operator = operator_headers(client)
+    material_ids = []
+    for index in range(1, 4):
+        material = client.post(
+            "/api/v1/master-data/materials",
+            headers=admin,
+            json={"material_code": f"T{index}", "name_zh": f"测试辅料{index}", "shelf_life_months": 24},
+        ).json()
+        material_ids.append(material["material_id"])
+    product = client.post(
+        "/api/v1/master-data/products",
+        headers=admin,
+        json={
+            "name": "三步测试产品",
+            "items": [
+                {"material_id": material_id, "quantity_per_ton_kg": index + 1}
+                for index, material_id in enumerate(material_ids)
+            ],
+        },
+    ).json()
+    order = create_order(client, product["id"])
+    assert len(order["steps"]) == 3
+    assert client.post(f"/api/v1/work-orders/{order['order_no']}/start", headers=admin).status_code == 200
+    detail = client.get(f"/api/v1/work-orders/{order['order_no']}", headers=operator).json()
+    assert detail["status"] == "in_progress"
+
+    request = client.post(
+        f"/api/v1/work-orders/{order['order_no']}/requests",
+        headers=operator,
+        json={"request_type": "cancel", "reason": "三步工单开始后需要撤销"},
+    )
+    assert request.status_code == 201

@@ -176,10 +176,6 @@ export const api = {
     return request(`/work-orders/${orderNo}/cancel`, { method: 'POST' })
   },
 
-  async deleteWorkOrder(orderNo: string): Promise<any> {
-    return request(`/work-orders/${orderNo}/delete`, { method: 'POST' })
-  },
-
   async completeWorkOrder(orderNo: string): Promise<any> {
     return request(`/work-orders/${orderNo}/complete`, { method: 'POST' })
   },
@@ -187,7 +183,10 @@ export const api = {
   // 审批
   async approve(id: string): Promise<{ id: string; status: 'approved' }> {
     const numericId = parseInt(id.replace(/[^0-9]/g, ''), 10)
-    if (id.startsWith('AP-USER-') && !isNaN(numericId) && numericId > 0) {
+    if (id.startsWith('AP-WO-')) {
+      const orderNo = decodeURIComponent(id.slice('AP-WO-'.length))
+      await request(`/work-orders/${encodeURIComponent(orderNo)}/approve`, { method: 'POST' })
+    } else if (id.startsWith('AP-USER-') && !isNaN(numericId) && numericId > 0) {
       await request(`/auth/users/${numericId}/approve`, { method: 'POST' })
     } else if (id.startsWith('AP-REQ-') && !isNaN(numericId) && numericId > 0) {
       await request(`/work-orders/requests/${numericId}/approve`, { method: 'POST' })
@@ -199,7 +198,10 @@ export const api = {
 
   async reject(id: string): Promise<{ id: string; status: 'rejected' }> {
     const numericId = parseInt(id.replace(/[^0-9]/g, ''), 10)
-    if (id.startsWith('AP-USER-') && !isNaN(numericId) && numericId > 0) {
+    if (id.startsWith('AP-WO-')) {
+      const orderNo = decodeURIComponent(id.slice('AP-WO-'.length))
+      await request(`/work-orders/${encodeURIComponent(orderNo)}/cancel`, { method: 'POST' })
+    } else if (id.startsWith('AP-USER-') && !isNaN(numericId) && numericId > 0) {
       await request(`/auth/users/${numericId}/reject`, { method: 'POST' })
     } else if (id.startsWith('AP-REQ-') && !isNaN(numericId) && numericId > 0) {
       await request(`/work-orders/requests/${numericId}/reject`, { method: 'POST' })

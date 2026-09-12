@@ -47,6 +47,33 @@ def test_operator_order_requires_admin_approval(client):
     assert client.post(f"/api/v1/work-orders/{response.json()['order_no']}/start", headers={"Authorization": f"Bearer {token}"}).status_code == 409
 
 
+def test_pending_work_order_appears_in_admin_approvals(client):
+    headers = admin_headers(client)
+    product_id = create_product(client, headers)
+    operator = client.post(
+        "/api/v1/auth/users",
+        headers=headers,
+        json={"username": "operator_approval", "display_name": "李师傅", "password": "operator123"},
+    ).json()["user"]
+    token = client.post("/api/v1/auth/login", json={"username": "operator_approval", "password": "operator123"}).json()["access_token"]
+    order = client.post(
+        "/api/v1/work-orders",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"product_id": product_id, "target_weight_kg": 1000},
+    ).json()
+
+    approvals = client.get("/api/v1/approvals", headers=headers).json()
+    approval = next((item for item in approvals if item["order_no"] == order["order_no"] and item["type"] == "work_order"), None)
+    assert approval is not None
+    assert approval["id"] == f"AP-WO-{order['order_no']}"
+
+    approved = client.post(f"/api/v1/work-orders/{order['order_no']}/approve", headers=headers)
+    assert approved.status_code == 200
+    assert approved.json()["status"] == "approved"
+    approvals_after = client.get("/api/v1/approvals", headers=headers).json()
+    assert not any(item["order_no"] == order["order_no"] and item["type"] == "work_order" for item in approvals_after)
+
+
 def test_admin_can_cancel_order_but_not_complete_incomplete_steps(client):
     headers = admin_headers(client)
     product_id = create_product(client, headers)
