@@ -4,6 +4,7 @@ import { api } from '../services/api'
 import { StatusBadge } from '../components/StatusBadge'
 import { CreateOrderModal, OrderDetailModal } from '../components/Modals'
 import { StatusFilter } from '../components/StatusFilter'
+import { useAutoRefresh } from '../hooks/useAutoRefresh'
 import type { DashboardData } from '../types/domain'
 
 const filterOptions = ['全部状态', '待审批', '已批准', '执行中', '已完成']
@@ -16,13 +17,14 @@ export function Dashboard({ onNavigate }: { onNavigate?: (page: string) => void 
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('全部状态')
 
-  const loadData = () => {
-    api.getDashboard().then(setData)
+  const loadData = async () => {
+    setData(await api.getDashboard())
   }
 
   useEffect(() => {
-    loadData()
+    void loadData().catch(() => {})
   }, [])
+  useAutoRefresh(loadData)
 
   if (!data) return <div className="loading">正在加载工作台<span /></div>
 

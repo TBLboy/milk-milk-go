@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { CheckCircle2, CircleDashed, Clock3, ImagePlus, PackageCheck, PlayCircle, X, Plus, Trash2 } from 'lucide-react'
+import { CheckCircle2, CircleDashed, Clock3, Copy, ImagePlus, KeyRound, PackageCheck, PlayCircle, UserRound, X, Plus, Trash2 } from 'lucide-react'
 import { api } from '../services/api'
+import { useAutoRefresh } from '../hooks/useAutoRefresh'
 
 export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
@@ -107,11 +108,17 @@ export function OrderDetailModal({ orderNo, onClose, onSuccess }: { orderNo: str
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  const load = () => {
-    api.getWorkOrder(orderNo).then(setOrder).catch((err) => setError(err.message))
+  const load = async () => {
+    try {
+      setOrder(await api.getWorkOrder(orderNo))
+      setError(null)
+    } catch (err: any) {
+      setError(err.message)
+    }
   }
 
-  useEffect(() => { load() }, [orderNo])
+  useEffect(() => { void load() }, [orderNo])
+  useAutoRefresh(load)
 
   const act = async (action: () => Promise<any>) => {
     setBusy(true)
@@ -832,6 +839,282 @@ export function CreateUserModal({ onClose, onSuccess, existing }: { onClose: () 
           </button>
         </div>
       </form>
+    </Modal>
+  )
+}
+
+export function UserProfileModal({ user, onClose, onSuccess }: { user: any; onClose: () => void; onSuccess: (user: any) => void }) {
+  const [displayName, setDisplayName] = useState(user?.display_name || '')
+  const [phone, setPhone] = useState(user?.phone || '')
+  const [avatarFileId, setAvatarFileId] = useState(user?.avatar_file_id || '')
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarUrl, setAvatarUrl] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!user?.avatar_file_id) return
+    let active = true
+    api.getFileUrl(user.avatar_file_id).then((value) => {
+      if (active) setAvatarUrl(value)
+    }).catch(() => {
+      if (active) setAvatarUrl('')
+    })
+    return () => { active = false }
+  }, [user?.avatar_file_id])
+
+  useEffect(() => () => {
+    if (avatarUrl.startsWith('blob:')) URL.revokeObjectURL(avatarUrl)
+  }, [avatarUrl])
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setLoading(true)
+    setError(null)
+    try {
+      let nextAvatarFileId = avatarFileId
+      if (avatarFile) {
+        const uploaded = await api.uploadFile(avatarFile)
+        nextAvatarFileId = uploaded.file_id
+      }
+      const updated = await api.updateMyProfile({
+        display_name: displayName.trim(),
+        phone: phone.trim(),
+        avatar_file_id: nextAvatarFileId || null,
+      })
+      onSuccess(updated)
+      onClose()
+    } catch (err: any) {
+      setError(err.message || '保存用户信息失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Modal title="用户信息" onClose={onClose}>
+      <form onSubmit={handleSubmit} className="modal-form">
+        {error && <div className="modal-error">{error}</div>}
+        <label>
+          头像
+          <div className="avatar-edit-row">
+            <div className="avatar-edit-preview">
+              {avatarUrl ? <img src={avatarUrl} alt="头像" /> : <span className="operator-dot">{displayName.slice(0, 1) || '牧'}</span>}
+            </div>
+            <button type="button" className="outline-button" onClick={() => fileInputRef.current?.click()}>
+              <ImagePlus size={16} />{avatarFileId || avatarFile ? '更换头像' : '选择头像'}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                if (!file) return
+                setAvatarFile(file)
+                setAvatarUrl(URL.createObjectURL(file))
+              }}
+            />
+          </div>
+        </label>
+        <label>
+          用户姓名
+          <input
+            type="text"
+            value={displayName}
+            onChange={(event) => setDisplayName(event.target.value)}
+            required
+          />
+        </label>
+        <label>
+          登录账号
+          <input type="text" value={user?.username || ''} disabled />
+        </label>
+        <label>
+          电话
+          <input
+            type="text"
+            value={phone}
+            onChange={(event) => setPhone(event.target.value)}
+            placeholder="选填"
+          />
+        </label>
+        <label>
+          账号角色
+          <input type="text" value={user?.role === 'admin' ? '管理员' : '普通操作员'} disabled />
+        </label>
+        <label>
+          身份证
+          <input type="text" value={user?.id_card || '未设置'} disabled />
+        </label>
+        <div className="modal-footer">
+          <button type="button" className="outline-button" onClick={onClose}>取消</button>
+          <button type="submit" className="primary-button" disabled={loading}>
+            {loading ? '保存中...' : '保存用户信息'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+export function ChangePasswordModal({ onClose }: { onClose: () => void }) {
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setError(null)
+    if (newPassword.length < 8) {
+      setError('新密码至少需要 8 位')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setError('两次输入的新密码不一致')
+      return
+    }
+    setLoading(true)
+    try {
+      await api.changeMyPassword({
+        current_password: currentPassword,
+        new_password: newPassword,
+      })
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+      setSuccess(true)
+    } catch (err: any) {
+      setError(err.message || '修改密码失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Modal title="密码管理" onClose={onClose}>
+      {success ? (
+        <div className="password-success">
+          <CheckCircle2 size={38} />
+          <strong>密码修改成功</strong>
+          <span>下次登录请使用新密码。</span>
+          <button type="button" className="primary-button" onClick={onClose}>完成</button>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="modal-form">
+          {error && <div className="modal-error">{error}</div>}
+          <label>
+            当前密码
+            <div className="modal-input-with-icon"><KeyRound size={16} /><input type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required /></div>
+          </label>
+          <label>
+            新密码
+            <div className="modal-input-with-icon"><KeyRound size={16} /><input type="password" autoComplete="new-password" minLength={8} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required /></div>
+          </label>
+          <label>
+            确认新密码
+            <div className="modal-input-with-icon"><KeyRound size={16} /><input type="password" autoComplete="new-password" minLength={8} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required /></div>
+          </label>
+          <div className="modal-footer">
+            <button type="button" className="outline-button" onClick={onClose}>取消</button>
+            <button type="submit" className="primary-button" disabled={loading}>
+              {loading ? '修改中...' : '确认修改'}
+            </button>
+          </div>
+        </form>
+      )}
+    </Modal>
+  )
+}
+
+export function AdminRecoveryModal({ onClose }: { onClose: () => void }) {
+  const [recoveryPassword, setRecoveryPassword] = useState('')
+  const [result, setResult] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await api.recoverAdminPassword(recoveryPassword)
+      setRecoveryPassword('')
+      setResult(response)
+    } catch (err: any) {
+      setError(err.message || '管理员密码恢复失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const copyTemporaryPassword = async () => {
+    if (!result?.temporary_password) return
+    try {
+      await navigator.clipboard.writeText(result.temporary_password)
+    } catch {
+      const textarea = document.createElement('textarea')
+      textarea.value = result.temporary_password
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+    }
+    setCopied(true)
+  }
+
+  return (
+    <Modal title="管理员紧急恢复" onClose={onClose}>
+      {result ? (
+        <div className="password-success recovery-success">
+          <CheckCircle2 size={38} />
+          <strong>管理员密码已重置</strong>
+          <span>请立即复制临时密码。关闭本窗口后，系统不会再次显示该密码。</span>
+          <div className="reset-password-line recovery-password-line">
+            <code>{result.temporary_password}</code>
+            <button type="button" className="outline-button" onClick={copyTemporaryPassword}>
+              {copied ? <CheckCircle2 size={16} /> : <Copy size={16} />}
+              {copied ? '已复制' : '复制'}
+            </button>
+          </div>
+          <small>管理员使用临时密码登录后，必须立即修改密码。</small>
+          <button type="button" className="primary-button" onClick={onClose}>我已保存并关闭</button>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="modal-form">
+          {error && <div className="modal-error">{error}</div>}
+          <label>
+            恢复密码
+            <div className="modal-input-with-icon">
+              <KeyRound size={16} />
+              <input
+                className="recovery-secret-input"
+                type="password"
+                autoComplete="off"
+                value={recoveryPassword}
+                onChange={(event) => setRecoveryPassword(event.target.value)}
+                required
+                autoFocus
+              />
+            </div>
+          </label>
+          <p className="form-hint">恢复密码只提交到后端校验。连续输错会触发临时锁定。</p>
+          <div className="modal-footer">
+            <button type="button" className="outline-button" onClick={onClose}>取消</button>
+            <button type="submit" className="primary-button" disabled={loading}>
+              {loading ? '正在重置...' : '确定重置'}
+            </button>
+          </div>
+        </form>
+      )}
     </Modal>
   )
 }

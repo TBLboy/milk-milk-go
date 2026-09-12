@@ -1,4 +1,5 @@
 import type { DashboardData, WorkOrder } from '../types/domain'
+import { emitDataSync } from './dataSync'
 
 const API_BASE = '/api/v1'
 
@@ -42,7 +43,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     }
     throw new Error(parseError(errBody))
   }
-  return response.json()
+  const result = await response.json()
+  const method = (options.method || 'GET').toUpperCase()
+  if (method !== 'GET') emitDataSync()
+  return result
 }
 
 function orderToDomain(order: any): WorkOrder {
@@ -76,7 +80,7 @@ function orderToDomain(order: any): WorkOrder {
 export const api = {
   // 认证
   async login(username: string, password: string): Promise<any> {
-    const res = await request<any>('/auth/login', {
+    const res = await request<any>('/auth/admin/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
     })
@@ -84,6 +88,13 @@ export const api = {
     localStorage.setItem('milk_role', res.user?.role || res.role)
     localStorage.setItem('milk_user', JSON.stringify(res.user || {}))
     return res
+  },
+
+  async recoverAdminPassword(recoveryPassword: string): Promise<any> {
+    return request('/auth/admin/recover', {
+      method: 'POST',
+      body: JSON.stringify({ recovery_password: recoveryPassword }),
+    })
   },
 
   logout() {
@@ -100,6 +111,22 @@ export const api = {
     const res = await request<any>('/auth/me')
     localStorage.setItem('milk_user', JSON.stringify(res.user || {}))
     return res.user
+  },
+
+  async updateMyProfile(payload: { display_name?: string; avatar_file_id?: string | null; phone?: string }): Promise<any> {
+    const res = await request<any>('/auth/me', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    })
+    localStorage.setItem('milk_user', JSON.stringify(res.user || {}))
+    return res.user
+  },
+
+  async changeMyPassword(payload: { current_password: string; new_password: string }): Promise<any> {
+    return request('/auth/me/change-password', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
   },
 
   async listUsers(): Promise<any[]> {
@@ -146,6 +173,11 @@ export const api = {
       ],
       pendingApprovals,
     }
+  },
+
+  async getPendingApprovalCount(): Promise<number> {
+    const approvals = await request<any[]>('/approvals')
+    return approvals.length
   },
 
   // 工单

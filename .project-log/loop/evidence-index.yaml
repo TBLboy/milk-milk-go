@@ -21,3 +21,189 @@ evidence:
   recorded_at: '2026-09-08T08:37:21Z'
   invalidated_at: '2026-09-08T08:53:29Z'
   invalidation_reason: PostToolUse:apply_patch
+- id: EV-TASK-050-REFRESH
+  kind: end-to-end
+  subject: APP 工作台与工单页下拉刷新
+  status: valid
+  command: JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon;
+    adb -s a67adf5d install -r app-debug.apk; 真机下拉手势验证
+  result_ref: Android 构建成功；两页均显示刷新指示器；后端收到 GET /work-orders 和 GET /master-data/products；logcat
+    无 FATAL EXCEPTION
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-050
+  version_binding:
+    git_commit: 2bcbaa20887bdb0826bc8694e133adea75cf26a5
+    diff_hash: 6f6ca327ce37bd9603a2cf0530750163cc0ba0c14c0ce3b21121af1260840480
+    file_hashes: {}
+  recorded_at: '2026-09-12T11:00:16Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-051-PC-SYNC
+  kind: browser-e2e
+  subject: PC 端业务数据自动同步
+  status: valid
+  command: cd /home/tbl/Project/辅料称重防错系统/pc && npm run build; python3 /tmp/verify_pc_auto_refresh.py
+  result_ref: 生产构建通过；浏览器模拟跨客户端审批后红点和页面待办自动更新；本机审批后 400ms 内清除红点
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-051
+  version_binding:
+    git_commit: 2bcbaa20887bdb0826bc8694e133adea75cf26a5
+    diff_hash: c7782d68c19d2c218dd543cef15eadb35448c29803080ef91f976458b7082dba
+    file_hashes: {}
+  recorded_at: '2026-09-12T11:26:38Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-052-ADMIN-GUARD
+  kind: browser-e2e
+  subject: 普通操作员无法登录 PC 管理端
+  status: valid
+  command: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q; npm run build; /usr/bin/python3 /tmp/verify_pc_operator_guard.py
+  result_ref: 后端 41 passed；PC 构建通过；通用登录 200；管理员专用登录对操作员返回 403 ADMIN_PORTAL_REQUIRED；浏览器显示拒绝提示并停留在管理员登录页
+  covers:
+    files:
+    - pc/server/app/api/auth.py
+    - pc/server/tests/test_auth.py
+    - pc/src/services/api.ts
+    - pc/src/main.tsx
+    requirements: []
+    tasks:
+    - TASK-052
+  version_binding:
+    git_commit: 2bcbaa20887bdb0826bc8694e133adea75cf26a5
+    diff_hash: 811cafddcf70c4fa4f71c7d757edee77a3571ba273545fd08fb36de453608a47
+    file_hashes:
+      pc/server/app/api/auth.py: 3ec92c62512a7e7700b03ac4f3f75ae04bc9ded9c9444dace3d353064fb3e144
+      pc/server/tests/test_auth.py: a53c98874c0310b9b332bccc0def4de7300d5133d69c69c13b008e95c054cef0
+      pc/src/services/api.ts: 4ed0f52a1b2a9d8ab0f93b2d595590fdd5055dc7e457108b2ceb1810d0500e60
+      pc/src/main.tsx: b8c7a39cf321c8eda7bfc9588e61cff26e2e6977c9762b7db36087167777a17a
+  recorded_at: '2026-09-12T11:42:41Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-053-USER-MENU
+  kind: browser-e2e
+  subject: PC 顶栏用户菜单、用户信息和密码管理
+  status: stale
+  command: npm run build; PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q; /usr/bin/python3 /tmp/verify_pc_user_menu.py; /usr/bin/python3 /tmp/verify_pc_user_menu_success.py
+  result_ref: PC 构建与后端 41 项测试通过；菜单、用户信息和密码管理弹窗正常；临时管理员资料保存与成功改密通过，旧密码失效、新密码可登录，临时账号已清理
+  covers:
+    files:
+    - pc/src/layouts/AppShell.tsx
+    - pc/src/components/Modals.tsx
+    - pc/src/services/api.ts
+    - pc/src/main.tsx
+    - pc/src/styles/app.css
+    requirements: []
+    tasks:
+    - TASK-053
+  version_binding:
+    git_commit: 2bcbaa20887bdb0826bc8694e133adea75cf26a5
+    diff_hash: a84532991684aaa0d943b0d2e4df74fed1811c78c5e48ec2a1e460cff7762a3a
+    file_hashes:
+      pc/src/layouts/AppShell.tsx: e0794375f32abcc7664a414fb795c20391119c6696e41e7ef4fef5737553e2be
+      pc/src/components/Modals.tsx: 35656dfa02b9f3591da16cd53cba9f79ec5bb76ba679947158c319c8da27e763
+      pc/src/services/api.ts: 3270e4a546242ddbd652b25596dd52c45e81e535c742d8e2f8f60b9de5b643bd
+      pc/src/main.tsx: cd28640659954d17296ce5e8584bc53c19950e33bd29e5472db4e470d3df0ce7
+      pc/src/styles/app.css: e466ea08b4f8402822e964f7f55dd10686c42c8153a23717ac2690ead452834a
+  recorded_at: '2026-09-12T11:53:54Z'
+  invalidated_at: '2026-09-12T12:19:30Z'
+  invalidation_reason: TASK-055 changed the PC modal source and shared stylesheet
+    after existing browser evidence was recorded
+- id: EV-TASK-054-RECOVERY
+  kind: browser-e2e
+  subject: PC 管理员隐藏入口与紧急密码恢复
+  status: stale
+  command: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q; npm run build; /usr/bin/python3 /tmp/verify_admin_recovery_ui.py
+  result_ref: 后端 43 项测试与 PC 构建通过；10 次隐藏点击打开恢复窗口；正确恢复口令生成 10 位临时密码并复制成功；限流、审计、旧令牌失效由回归测试验证；真实管理员密码状态验证后已完整恢复
+  covers:
+    files:
+    - pc/server/app/api/auth.py
+    - pc/server/app/core/config.py
+    - pc/server/app/core/security.py
+    - pc/server/app/db/models.py
+    - pc/server/tests/test_auth.py
+    - pc/src/components/Login.tsx
+    - pc/src/components/Modals.tsx
+    - pc/src/services/api.ts
+    - pc/src/styles/app.css
+    - .gitignore
+    requirements: []
+    tasks:
+    - TASK-054
+  version_binding:
+    git_commit: 2bcbaa20887bdb0826bc8694e133adea75cf26a5
+    diff_hash: 308fdc7aa5ef99c4d4fdbd55e05b7241dce5a7dd28640bd47a5059f41e015963
+    file_hashes:
+      pc/server/app/api/auth.py: 8e716ba7408ec983faa27f12eebc662e56dcaf79252fbdf5b7a98b9a837116f9
+      pc/server/app/core/config.py: d0a0ae312e17c5e957536be1fcb0cefbc5ebce796e0acd2b1284554da177c43e
+      pc/server/app/core/security.py: 1a23c071a098d6ea2554627d8872df6456760f16cd90f956bb32c35d559ad0a8
+      pc/server/app/db/models.py: 8a86006545be37f0db6b4bd83dbbf7deaf26775155fc42048935590ac0a8a5df
+      pc/server/tests/test_auth.py: a326691985b0b85e60863fb209c170f36542be938b1873ad5b919e25619308e3
+      pc/src/components/Login.tsx: 369daa7390118e4e710604f53be0c34f23b45fcf4f14c9c938042eb9d311d0e2
+      pc/src/components/Modals.tsx: e655ff7cfb264dee5c9af3db5cfffc2a33f119f9e57ba483ef847c399924912f
+      pc/src/services/api.ts: 48213278c10a47c2cc3779fb9c7cac5926ac27168923dc67c2f13ca338575a54
+      pc/src/styles/app.css: d07001510813a104bf8dc57d7ae0bbc0b72fba7fb01d2d93b813afec63358ee9
+      .gitignore: d2f0e0eb0ef9848e7b5f50c613346e8fe3a5a8bffd4dbfaf64e65cdf1c23214a
+  recorded_at: '2026-09-12T12:12:22Z'
+  invalidated_at: '2026-09-12T12:19:30Z'
+  invalidation_reason: TASK-055 changed the PC modal source and shared stylesheet
+    after existing browser evidence was recorded
+- id: EV-TASK-055-RECOVERY-EYE
+  kind: browser-e2e
+  subject: PC 管理员恢复弹窗密码眼睛控件移除
+  status: valid
+  command: 'cd pc && npm run build; Chrome + Playwright: open recovery modal, focus
+    password input, inspect type and capture screenshot; git diff --check'
+  result_ref: PC TypeScript/Vite 构建通过；Chrome 截图中恢复密码输入框无眼睛控件；输入类型保持 password；git diff
+    --check 通过
+  covers:
+    files:
+    - pc/src/components/Modals.tsx
+    - pc/src/styles/app.css
+    requirements: []
+    tasks:
+    - TASK-055
+  version_binding:
+    git_commit: 2bcbaa20887bdb0826bc8694e133adea75cf26a5
+    diff_hash: 608d22cc189392acc7d70df05d4a2c53f7bb6515a73f1f63ba4a9b2ac242f509
+    file_hashes:
+      pc/src/components/Modals.tsx: 838cbe7e0c16e59a8cb20c6bf331476e44f90b3f2d71564551374d46290fda03
+      pc/src/styles/app.css: cc46a1d3acdec425935cddd7a7b4f29574f57dd5c1099701dcf58e65431b37c1
+  recorded_at: '2026-09-12T12:19:36Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-056-APP-MASTER-DATA
+  kind: android-e2e
+  subject: APP 辅料配方表单滚动与图片管理
+  status: valid
+  command: JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon;
+    adb install -r app-debug.apk; adb shell input swipe 1200 1220 1200 520 500; adb
+    logcat -d -t 800
+  result_ref: Android debug APK 构建通过；平板模拟器显示辅料查看图片入口，两张图片可横向展示并打开图片预览；配方列表显示已保存产品图片；三辅料配方编辑弹窗可滚动访问第三项、添加辅料和保存按钮；无
+    FATAL EXCEPTION；验证后管理员状态和模拟器已恢复清理
+  covers:
+    files:
+    - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+    - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+    - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
+    requirements: []
+    tasks:
+    - TASK-056
+  version_binding:
+    git_commit: 2bcbaa20887bdb0826bc8694e133adea75cf26a5
+    diff_hash: 886861581e06e766984252331b687d7140b5482a3b887c47b5ef2123eb7b67b5
+    file_hashes:
+      app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt: b85ef896de93a75ceec19dcdd44ad339041e2bcc80f944c2a4bc499f644f6823
+      app/app/src/main/java/com/muheng/milkweigh/AppData.kt: f7ef9fd62debe5ebbc316e55226b7352eb806530ac7a304f5bc7bd0d09124922
+      app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt: 6490dbd106cd5f922ce0abb1f625e6ffa51d5bb94085844481024bf8cf3a427d
+  recorded_at: '2026-09-12T12:35:37Z'
+  invalidated_at: null
+  invalidation_reason: null

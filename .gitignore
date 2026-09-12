@@ -9,3 +9,4 @@
 /app/.kotlin/
 pc/data/*.sqlite3
 pc/data/backups/
+pc/server/.env

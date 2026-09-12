@@ -6,6 +6,7 @@ import { api } from '../services/api'
 import { CreateMaterialModal, CreateOrderModal, CreateProductModal, CreateUserModal, EvidenceThumb, MaterialImageModal, Modal, OrderDetailModal, RecipeDetailModal } from '../components/Modals'
 import { StatusFilter } from '../components/StatusFilter'
 import { Pagination } from '../components/Pagination'
+import { useAutoRefresh } from '../hooks/useAutoRefresh'
 
 export function WorkOrdersPage({ approvals = false }: { approvals?: boolean }) {
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -74,17 +75,20 @@ function OrdersTable({ onOpen, query, statusFilter }: { onOpen: (orderNo: string
   const [page, setPage] = useState(1)
   const pageSize = 10
 
-  const load = () => {
-    setLoading(true)
-    api.getDashboard().then((res) => {
+  const load = async (showLoading = false) => {
+    if (showLoading) setLoading(true)
+    try {
+      const res = await api.getDashboard()
       setOrders(res.workOrders || [])
-      setLoading(false)
-    }).catch(() => setLoading(false))
+    } finally {
+      if (showLoading) setLoading(false)
+    }
   }
 
   useEffect(() => {
-    load()
+    void load(true).catch(() => {})
   }, [])
+  useAutoRefresh(() => load(false))
 
   useEffect(() => {
     setPage(1)
@@ -157,17 +161,20 @@ function ApprovalTable({ onOpen }: { onOpen?: (orderNo: string) => void }) {
   const [page, setPage] = useState(1)
   const pageSize = 10
 
-  const load = () => {
-    setLoading(true)
-    api.getDashboard().then((res) => {
+  const load = async (showLoading = false) => {
+    if (showLoading) setLoading(true)
+    try {
+      const res = await api.getDashboard()
       setItems(res.pendingApprovals || [])
-      setLoading(false)
-    }).catch(() => setLoading(false))
+    } finally {
+      if (showLoading) setLoading(false)
+    }
   }
 
   useEffect(() => {
-    load()
+    void load(true).catch(() => {})
   }, [])
+  useAutoRefresh(() => load(false))
 
   const handleApprove = async (id: string) => {
     try {
@@ -248,24 +255,23 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
   const excelInputRef = useRef<HTMLInputElement>(null)
   const pageSize = recipesPage ? 12 : 10
 
-  const loadData = () => {
-    setLoading(true)
-    if (recipesPage) {
-      api.getProducts().then((res) => {
-        setProducts(res || [])
-        setLoading(false)
-      }).catch(() => setLoading(false))
-    } else {
-      api.getMaterials().then((res) => {
-        setMaterials(res || [])
-        setLoading(false)
-      }).catch(() => setLoading(false))
+  const loadData = async (showLoading = true) => {
+    if (showLoading) setLoading(true)
+    try {
+      if (recipesPage) {
+        setProducts(await api.getProducts() || [])
+      } else {
+        setMaterials(await api.getMaterials() || [])
+      }
+    } finally {
+      if (showLoading) setLoading(false)
     }
   }
 
   useEffect(() => {
-    loadData()
+    void loadData().catch(() => {})
   }, [recipesPage])
+  useAutoRefresh(() => loadData(false))
 
   useEffect(() => {
     setPage(1)
@@ -462,19 +468,27 @@ export function LabelsPage() {
   const [batchPage, setBatchPage] = useState(1)
   const batchPageSize = 10
 
-  const loadBatches = () => {
-    api.getPrintBatches().then(setBatches).catch(() => setBatches([]))
+  const loadBatches = async () => {
+    setBatches(await api.getPrintBatches() || [])
+  }
+
+  const loadMaterials = async () => {
+    const list = await api.getMaterials() || []
+    setMaterials(list)
+    setSelectedMat((current: any) => {
+      const currentId = current?.material_id
+      return list.find((material) => material.material_id === currentId) || list[0] || null
+    })
+  }
+
+  const loadData = async () => {
+    await Promise.all([loadMaterials(), loadBatches()])
   }
 
   useEffect(() => {
-    api.getMaterials().then((list) => {
-      if (list && list.length > 0) {
-        setMaterials(list)
-        setSelectedMat(list[0])
-      }
-    })
-    loadBatches()
+    void loadData().catch(() => {})
   }, [])
+  useAutoRefresh(loadData)
 
   useEffect(() => {
     if (!selectedMat) return
@@ -482,7 +496,7 @@ export function LabelsPage() {
     buildQrDataUrl(selectedMat, 180)
       .then(setQrSrc)
       .catch(() => setQrSrc(null))
-  }, [selectedMat])
+  }, [selectedMat?.material_id])
 
   const openPreview = () => {
     if (!selectedMat) return
@@ -711,6 +725,7 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
     setAccountPage(1)
     setBackupPage(1)
   }, [accounts])
+  useAutoRefresh(() => accounts ? loadUsers() : loadSettings())
 
   const handleBackup = async () => {
     setBackupMessage('正在备份...')

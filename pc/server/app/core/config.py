@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     data_dir: Path = PROJECT_ROOT / "data"
     database_filename: str = "milk_weigh.sqlite3"
     api_prefix: str = "/api/v1"
+    admin_recovery_secret_hash: str | None = None
+    admin_recovery_max_attempts: int = 5
+    admin_recovery_lockout_minutes: int = 15
 
     model_config = SettingsConfigDict(env_prefix="MILK_", env_file=".env", extra="ignore")
 
