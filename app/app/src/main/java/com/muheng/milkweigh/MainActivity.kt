@@ -240,12 +240,16 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
             title = { Text("系统设置") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                    ) {
                         Text("192.168.", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Medium)
                         OutlinedTextField(
                             ipThird,
                             { ipThird = it.filter { char -> char.isDigit() }.take(3) },
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.width(82.dp),
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             placeholder = { Text("000") },
@@ -254,7 +258,7 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
                         OutlinedTextField(
                             ipFourth,
                             { ipFourth = it.filter { char -> char.isDigit() }.take(3) },
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.width(82.dp),
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             placeholder = { Text("000") },
