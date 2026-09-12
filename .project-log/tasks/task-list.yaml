@@ -1684,3 +1684,60 @@ tasks:
       follow_ups: []
     created_at: "2026-09-12T13:00:00Z"
     updated_at: "2026-09-12T13:00:00Z"
+  - id: TASK-035
+    title: APP 相机权限与拍照/扫码崩溃修复
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 修复平板点击拍照或扫码时闪退的问题：补齐 CAMERA 权限声明、运行时授权，并保护相机启动异常，避免 ActivityNotFound 或 SecurityException 直接崩溃。
+    status: done
+    priority: critical
+    risk: high
+    authority: B
+    owner: agent
+    tags: [app, android, camera, permission]
+    related_business_logic: [BL-RECOG-001, BL-WEIGH-004, BL-AUTH-002]
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: [TASK-023, TASK-024, TASK-032]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户反馈 APP 点击拍照功能直接闪退
+      - 当前 AndroidManifest 缺少 CAMERA 权限
+    outputs:
+      - AndroidManifest CAMERA 权限与硬件特性声明
+      - 公共相机运行时授权入口
+      - 头像、扫码、无码拍照、电子秤读数拍照启动安全保护
+    plan:
+      - 在 AndroidManifest 增加 CAMERA 权限和非强制 camera feature
+      - 增加运行时相机权限请求封装
+      - 将全部相机启动入口改为先授权再启动
+      - 对相机/扫码启动包裹异常处理，失败时在界面提示
+    done_when:
+      - APK merged manifest 包含 android.permission.CAMERA
+      - 点击拍照/扫码时先请求权限，不再直接裸启动相机
+      - 相机应用不存在或返回异常时给出提示而不是闪退
+      - Android debug APK 构建通过
+    verification:
+      status: passed
+      commands:
+        - cd /home/tbl/Project/辅料称重防错系统/app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
+        - /home/tbl/Android/Sdk/build-tools/34.0.0/aapt dump permissions app/app/build/outputs/apk/debug/app-debug.apk
+      evidence:
+        - Android debug APK 构建成功
+        - aapt 输出包含 android.permission.CAMERA
+        - 头像拍照、类型确认扫码、无码拍照和称重拍照均接入统一授权入口
+      limitations:
+        - 真实平板首次授权弹窗、相机拉起和拍照结果仍需重新安装 APK 后真机确认
+    result:
+      summary: APP 已补齐相机权限与运行时授权，并将相机/扫码启动封装为安全入口，避免点击拍照直接闪退。
+      changed_files:
+        - app/app/src/main/AndroidManifest.xml
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12T13:20:00Z"
+    updated_at: "2026-09-12T13:20:00Z"
