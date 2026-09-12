@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowUpRight, Camera, Check, ChevronRight, Clock3, Database, MoreHorizontal, PackageCheck, ScanLine, Search, Scale, UserRoundCheck } from 'lucide-react'
+import { ArrowUpRight, Camera, Check, ChevronRight, Clock3, Database, MoreHorizontal, PackageCheck, ScanLine, Search, Scale, Trash2, UserRoundCheck } from 'lucide-react'
 import { api } from '../services/api'
 import { StatusBadge } from '../components/StatusBadge'
 import { CreateOrderModal, OrderDetailModal } from '../components/Modals'
@@ -27,7 +27,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (page: string) => void 
   if (!data) return <div className="loading">正在加载工作台<span /></div>
 
   const visibleOrders = data.workOrders.filter((order) => {
-    if (order.status === '已撤销') return false
+    if (order.status === '已撤销' || order.status === '已删除') return false
     const textMatch = `${order.id}${order.product}`.toLowerCase().includes(query.toLowerCase())
     const statusMatch = statusFilter === '全部状态' || order.status === statusFilter
     return textMatch && statusMatch
@@ -140,7 +140,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (page: string) => void 
             ) : data.pendingApprovals.map((item) => (
               <div className={approved.includes(item.id) ? 'approval-item approved' : 'approval-item'} key={item.id}>
                 <div className={`approval-icon ${item.type}`}>
-                  {item.type === 'photo' ? <Camera size={17} /> : item.type === 'takeover' ? <UserRoundCheck size={17} /> : <PackageCheck size={17} />}
+                  {item.type === 'photo' ? <Camera size={17} /> : item.type === 'takeover' ? <UserRoundCheck size={17} /> : item.type === 'delete' ? <Trash2 size={17} /> : <PackageCheck size={17} />}
                 </div>
                 <div className="approval-copy">
                   <strong>{item.title}</strong>

@@ -63,6 +63,8 @@ function orderToDomain(order: any): WorkOrder {
       ? '已完成'
       : order.status === 'cancelled'
       ? '已撤销'
+      : order.status === 'deleted'
+      ? '已删除'
       : order.status === 'approved'
       ? '已批准'
       : '待审批') as WorkOrder['status'],
@@ -135,7 +137,7 @@ export const api = {
     }))
     const inProgressCount = workOrders.filter((w) => w.status === '执行中').length
     const completedCount = workOrders.filter((w) => w.status === '已完成').length
-    const activeWorkOrderCount = workOrders.filter((w) => w.status !== '已撤销').length
+    const activeWorkOrderCount = workOrders.filter((w) => w.status !== '已撤销' && w.status !== '已删除').length
 
     return {
       workOrders,
@@ -177,23 +179,31 @@ export const api = {
     return request(`/work-orders/${orderNo}/cancel`, { method: 'POST' })
   },
 
+  async deleteWorkOrder(orderNo: string): Promise<any> {
+    return request(`/work-orders/${orderNo}/delete`, { method: 'POST' })
+  },
+
   async completeWorkOrder(orderNo: string): Promise<any> {
     return request(`/work-orders/${orderNo}/complete`, { method: 'POST' })
   },
 
   // 审批
   async approve(id: string): Promise<{ id: string; status: 'approved' }> {
-    const confId = parseInt(id.replace(/[^0-9]/g, ''), 10)
-    if (!isNaN(confId) && confId > 0) {
-      await request(`/evidence/confirmations/${confId}/approve`, { method: 'POST' })
+    const numericId = parseInt(id.replace(/[^0-9]/g, ''), 10)
+    if (id.startsWith('AP-REQ-') && !isNaN(numericId) && numericId > 0) {
+      await request(`/work-orders/requests/${numericId}/approve`, { method: 'POST' })
+    } else if (id.startsWith('AP-PHOTO-') && !isNaN(numericId) && numericId > 0) {
+      await request(`/evidence/confirmations/${numericId}/approve`, { method: 'POST' })
     }
     return { id, status: 'approved' }
   },
 
   async reject(id: string): Promise<{ id: string; status: 'rejected' }> {
-    const confId = parseInt(id.replace(/[^0-9]/g, ''), 10)
-    if (!isNaN(confId) && confId > 0) {
-      await request(`/approvals/${confId}/reject`, { method: 'POST' })
+    const numericId = parseInt(id.replace(/[^0-9]/g, ''), 10)
+    if (id.startsWith('AP-REQ-') && !isNaN(numericId) && numericId > 0) {
+      await request(`/work-orders/requests/${numericId}/reject`, { method: 'POST' })
+    } else if (id.startsWith('AP-PHOTO-') && !isNaN(numericId) && numericId > 0) {
+      await request(`/approvals/${numericId}/reject`, { method: 'POST' })
     }
     return { id, status: 'rejected' }
   },

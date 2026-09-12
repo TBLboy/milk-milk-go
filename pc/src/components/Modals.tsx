@@ -151,7 +151,7 @@ export function OrderDetailModal({ orderNo, onClose, onSuccess }: { orderNo: str
           </div>
           <div>
             <span>工单状态</span>
-            <strong><span className={`status ${order.status === 'in_progress' ? 'status-running' : order.status === 'completed' ? 'status-done' : order.status === 'cancelled' ? 'status-cancelled' : 'status-pending'}`}><i />{order.status === 'in_progress' ? '执行中' : order.status === 'completed' ? '已完成' : order.status === 'cancelled' ? '已撤销' : '待审批'}</span></strong>
+            <strong><span className={`status ${order.status === 'in_progress' ? 'status-running' : order.status === 'completed' ? 'status-done' : order.status === 'cancelled' || order.status === 'deleted' ? 'status-cancelled' : 'status-pending'}`}><i />{order.status === 'in_progress' ? '执行中' : order.status === 'completed' ? '已完成' : order.status === 'cancelled' ? '已撤销' : order.status === 'deleted' ? '已删除' : '待审批'}</span></strong>
           </div>
         </div>
         <div className="progress-row detail-progress">
@@ -174,6 +174,20 @@ export function OrderDetailModal({ orderNo, onClose, onSuccess }: { orderNo: str
             </div>
           ))}
         </div>
+        {order.requests && order.requests.length > 0 && (
+          <div className="step-list request-list">
+            <div className="detail-section-title">工单申请</div>
+            {order.requests.map((request: any) => (
+              <div className="step-row request-row" key={request.id}>
+                <div className="step-copy">
+                  <strong>{request.request_type === 'takeover' ? '接管申请' : request.request_type === 'cancel' ? '撤销申请' : '删除申请'} · {request.requester_name || `用户 #${request.requested_by}`}</strong>
+                  <span>{request.reason}</span>
+                </div>
+                <span className={`request-status ${request.status}`}>{request.status === 'pending' ? '待审批' : request.status === 'approved' ? '已通过' : '已驳回'}</span>
+              </div>
+            ))}
+          </div>
+        )}
         {error && <div className="modal-error">{error}</div>}
         <div className="modal-footer">
           <button type="button" className="outline-button" onClick={onClose}>关闭</button>

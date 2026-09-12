@@ -116,6 +116,7 @@ class WorkOrder(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
     steps: Mapped[list["WorkOrderStep"]] = relationship(back_populates="work_order", cascade="all, delete-orphan", order_by="WorkOrderStep.step_no")
+    requests: Mapped[list["WorkOrderRequest"]] = relationship(back_populates="work_order", cascade="all, delete-orphan", order_by="WorkOrderRequest.id")
 
 
 class WorkOrderStep(Base):
@@ -132,6 +133,21 @@ class WorkOrderStep(Base):
     work_order: Mapped[WorkOrder] = relationship(back_populates="steps")
     confirmations: Mapped[list["TypeConfirmation"]] = relationship(back_populates="step", cascade="all, delete-orphan", order_by="TypeConfirmation.id")
     weighing_attempts: Mapped[list["WeighingAttempt"]] = relationship(back_populates="step", cascade="all, delete-orphan", order_by="WeighingAttempt.id")
+
+
+class WorkOrderRequest(Base):
+    __tablename__ = "work_order_requests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    work_order_id: Mapped[int] = mapped_column(ForeignKey("work_orders.id"), nullable=False, index=True)
+    request_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    reason: Mapped[str] = mapped_column(String(500), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    requested_by: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    decided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    work_order: Mapped[WorkOrder] = relationship(back_populates="requests")
 
 
 class EvidenceFile(Base):

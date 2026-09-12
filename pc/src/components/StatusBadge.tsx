@@ -7,6 +7,7 @@ const statusClass: Record<WorkOrderStatus, string> = {
   待接管: 'status status-takeover',
   已完成: 'status status-done',
   已撤销: 'status status-cancelled',
+  已删除: 'status status-cancelled',
 }
 
 export function StatusBadge({ status }: { status: WorkOrderStatus }) {

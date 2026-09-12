@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.auth import current_user
-from app.db.models import TypeConfirmation, User, WorkOrderStep, WorkOrder
+from app.db.models import TypeConfirmation, User, WorkOrder, WorkOrderRequest, WorkOrderStep
 from app.db.session import get_db
 
 router = APIRouter(prefix="/approvals", tags=["approvals"])
@@ -33,6 +33,31 @@ def list_pending_approvals(user: User = Depends(current_user), db: Session = Dep
             "step_no": step.step_no,
             "file_id": conf.evidence_file_id,
             "time": conf.created_at.strftime("%H:%M") if conf.created_at else "刚刚",
+            "status": "pending",
+        })
+    request_query = (
+        select(WorkOrderRequest, WorkOrder, User)
+        .join(WorkOrder, WorkOrderRequest.work_order_id == WorkOrder.id)
+        .join(User, WorkOrderRequest.requested_by == User.id)
+        .where(WorkOrderRequest.status == "pending")
+        .order_by(WorkOrderRequest.id.desc())
+    )
+    type_titles = {
+        "takeover": "工单接管申请",
+        "cancel": "工单撤销申请",
+        "delete": "工单删除申请",
+    }
+    for request, order, requester in db.execute(request_query).all():
+        items.append({
+            "id": f"AP-REQ-{request.id}",
+            "request_id": request.id,
+            "type": request.request_type,
+            "title": f"{type_titles.get(request.request_type, '工单申请')} · {order.product_name_snapshot}",
+            "description": f"工单 {order.order_no} · 申请人 {requester.display_name} - 理由: {request.reason}",
+            "order_no": order.order_no,
+            "step_no": None,
+            "file_id": None,
+            "time": request.created_at.strftime("%H:%M") if request.created_at else "刚刚",
             "status": "pending",
         })
     return items
