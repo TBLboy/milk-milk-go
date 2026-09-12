@@ -1612,7 +1612,7 @@ decisions:
   - id: DEC-019
     title: 辅料主数据字段清单与英文名称选填规则
     category: data
-    status: active
+    status: superseded
     authority: C
     user_approval: approved
     related_tasks: []
@@ -1656,14 +1656,70 @@ decisions:
     expected_result: 辅料字段和必填规则进入第一版业务基线
     reversal_plan: 若客户后续要求英文名称必填，可调整录入校验和 Excel 模板
     observation: 用户答复“可以没问题，就按照你说的来”
-    actual_result: 辅料主数据字段方案已纳入第一版业务基线
-    outcome_status: successful
+    actual_result: 原字段方案曾纳入业务基线，其中 material enabled 状态已由 DEC-034 移除
+    outcome_status: superseded
     lesson: null
     evidence:
       - .project-log/business-logic/open-questions.yaml#Q-020
     supersedes: []
     created_at: "2026-09-09T04:00:00Z"
     updated_at: "2026-09-09T04:00:00Z"
+  - id: DEC-034
+    title: 辅料不设置启用停用状态
+    category: data
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks:
+      - TASK-058
+    related_business_logic:
+      - BL-DATA-003
+      - BL-DATA-004
+      - BL-LABEL-001
+    context: 先前的辅料字段方案曾记录 enabled 默认启用，但电脑端辅料管理最终没有启用/停用入口。随后一次修复又把这个隐含字段用于配方校验，导致无法通过界面操作修改的隐藏状态阻塞配方保存，与用户实际业务规则冲突。
+    hypothesis: 辅料生命周期应只提供新增、编辑和删除，不提供启用/停用；辅料是否存在并有效由主数据记录本身决定，不应由不可见的 enabled 字段参与配方保存或标签打印判断。
+    options:
+      - name: 彻底移除辅料启用停用业务语义
+        benefits:
+          - 与用户确认的业务规则一致
+          - 消除不可见状态导致的操作阻塞
+          - 配方和标签规则更直接
+        costs:
+          - 旧数据库字段需保留作兼容但不再使用
+        risks:
+          - 未来若需要停用辅料，需要重新澄清并增加完整界面
+      - name: 恢复辅料启用停用界面
+        benefits:
+          - 可保留旧字段能力
+        costs:
+          - 增加用户并未要求的业务操作
+          - 需要处理停用辅料的历史配方、标签和工单
+        risks:
+          - 继续偏离用户确认的业务范围
+    decision: 辅料不设置启用/停用业务功能；移除辅料停用接口、App 状态展示、配方保存的可启用校验和标签打印的可启用校验。旧数据库 enabled 字段仅保留作历史表结构兼容，不参与任何业务判断。产品/配方的启用停用功能保持不变。
+    reason_summary:
+      - 用户明确表示辅料管理没有启用关闭选项，也没有该需求
+      - 隐藏状态来自历史字段和一次错误修复，不应继续影响业务
+      - 辅料删除已有引用保护，无需附加停用概念
+    conditions:
+      - 配方保存只校验辅料是否存在和用量是否合法
+      - 标签打印只校验辅料是否存在
+      - App 辅料列表和配方编辑不再展示辅料启用状态
+      - 旧数据库 enabled 字段保持默认值且不再被读取
+    action: 删除辅料停用 API 和前端调用，移除 App 状态展示及配方筛选，调整后端配方和标签校验，并增加兼容回归测试
+    expected_result: 辅料不需要启用即可正常用于配方保存和标签打印，界面不再出现辅料启用/停用状态
+    reversal_plan: 如未来客户确有辅料停用需求，重新进行 C 级业务澄清后设计完整生命周期规则和历史数据处理
+    observation: 用户反馈“辅料管理里根本没有这个启用关闭辅料的选项，我也本来就没这个需求”
+    actual_result: 辅料启用/停用业务语义已移除，旧字段仅保留数据库兼容
+    outcome_status: successful
+    lesson: 历史技术字段不能在没有明确业务确认时成为用户不可见的业务约束。
+    evidence:
+      - user-statement/2026-09-12 辅料不需要启用停用
+      - TASK-058
+    supersedes:
+      - DEC-019
+    created_at: "2026-09-12T13:35:34Z"
+    updated_at: "2026-09-12T13:35:34Z"
   - id: DEC-020
     title: 第一版后端主机与局域网部署边界
     category: technical

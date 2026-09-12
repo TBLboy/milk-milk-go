@@ -24,6 +24,21 @@ def test_print_batch_creates_unique_labels(client):
     assert body["status"] == "pending"
 
 
+def test_print_batch_accepts_legacy_material_enabled_flag(client):
+    headers = admin_headers(client)
+    item = material(client, headers)
+    from app.db.models import Material
+    from app.db.session import SessionLocal
+
+    with SessionLocal() as db:
+        row = db.query(Material).filter(Material.material_id == item["material_id"]).one()
+        row.enabled = False
+        db.commit()
+
+    response = client.post("/api/v1/labels/print-batches", headers=headers, json={"material_id": item["material_id"], "quantity": 1})
+    assert response.status_code == 201
+
+
 def test_excel_validation_rejects_duplicate_code(client):
     headers = admin_headers(client)
     material(client, headers)

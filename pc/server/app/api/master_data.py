@@ -40,7 +40,6 @@ def material_view(material: Material) -> dict:
         "name_zh": material.name_zh,
         "name_en": material.name_en,
         "shelf_life_months": material.shelf_life_months,
-        "enabled": material.enabled,
         "images": [{"file_id": image.file_id, "sort_order": image.sort_order} for image in sorted(material.images, key=lambda item: item.sort_order)],
     }
 
@@ -103,23 +102,13 @@ def update_material(material_id: str, body: MaterialInput, _: User = Depends(req
     return material_view(material)
 
 
-@router.patch("/materials/{material_id}/disable")
-def disable_material(material_id: str, _: User = Depends(require_admin), db: Session = Depends(get_db)) -> dict:
-    material = db.scalar(select(Material).where(Material.material_id == material_id))
-    if material is None:
-        raise HTTPException(status_code=404, detail={"code": "MATERIAL_NOT_FOUND", "message": "辅料不存在"})
-    material.enabled = False
-    db.commit()
-    return material_view(material)
-
-
 @router.delete("/materials/{material_id}", status_code=status.HTTP_200_OK)
 def delete_material(material_id: str, _: User = Depends(require_admin), db: Session = Depends(get_db)) -> dict:
     material = db.scalar(select(Material).where(Material.material_id == material_id))
     if material is None:
         raise HTTPException(status_code=404, detail={"code": "MATERIAL_NOT_FOUND", "message": "辅料不存在"})
     if db.scalar(select(RecipeItem.id).where(RecipeItem.material_id == material.id)):
-        raise HTTPException(status_code=409, detail={"code": "MATERIAL_IN_USE", "message": "辅料已被产品配方引用，不能删除；可先编辑配方移除该辅料，或直接停用"})
+        raise HTTPException(status_code=409, detail={"code": "MATERIAL_IN_USE", "message": "辅料已被产品配方引用，不能删除；请先编辑配方移除该辅料"})
     db.delete(material)
     db.commit()
     return {"deleted": True, "material_id": material_id}
@@ -201,6 +190,14 @@ def _resolve_recipe_materials(db: Session, body: ProductInput) -> dict[str, Mate
     if len(set(material_ids)) != len(material_ids):
         raise HTTPException(status_code=422, detail={"code": "DUPLICATE_RECIPE_MATERIAL", "message": "配方中不能重复添加同一辅料"})
     materials = {item.material_id: item for item in db.scalars(select(Material).where(Material.material_id.in_(material_ids))).all()}
-    if len(materials) != len(material_ids) or any(not materials[key].enabled for key in material_ids):
-        raise HTTPException(status_code=422, detail={"code": "MATERIAL_NOT_AVAILABLE", "message": "配方只能引用已存在且启用的辅料"})
+    missing_ids = [material_id for material_id in material_ids if material_id not in materials]
+    if missing_ids:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "MATERIAL_NOT_FOUND",
+                "message": "配方包含不存在的辅料，请检查后重试",
+                "material_ids": missing_ids,
+            },
+        )
     return materials
