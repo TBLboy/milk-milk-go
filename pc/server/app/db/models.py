@@ -29,6 +29,10 @@ class User(Base):
     display_name: Mapped[str] = mapped_column(String(64), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(256), nullable=False)
     role: Mapped[str] = mapped_column(String(32), nullable=False, default="operator")
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
+    avatar_file_id: Mapped[str | None] = mapped_column(String(64))
+    phone: Mapped[str | None] = mapped_column(String(32))
+    id_card: Mapped[str | None] = mapped_column(String(64))
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
     must_change_password: Mapped[bool] = mapped_column(default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
@@ -248,6 +252,7 @@ def initialize_database() -> None:
     from app.db.session import SessionLocal, engine
 
     Base.metadata.create_all(bind=engine)
+    _migrate_user_account_columns(engine)
     with SessionLocal.begin() as db:
         if db.query(SchemaMeta).count() == 0:
             db.add(SchemaMeta(version=1))
@@ -263,3 +268,17 @@ def initialize_database() -> None:
         for key, value in defaults.items():
             if db.query(SystemSetting).filter(SystemSetting.key == key).count() == 0:
                 db.add(SystemSetting(key=key, value=value))
+
+
+def _migrate_user_account_columns(engine) -> None:
+    with engine.begin() as connection:
+        rows = connection.exec_driver_sql("PRAGMA table_info(users)").fetchall()
+        columns = {row[1] for row in rows}
+        if "status" not in columns:
+            connection.exec_driver_sql("ALTER TABLE users ADD COLUMN status VARCHAR(32) NOT NULL DEFAULT 'active'")
+        if "avatar_file_id" not in columns:
+            connection.exec_driver_sql("ALTER TABLE users ADD COLUMN avatar_file_id VARCHAR(64)")
+        if "phone" not in columns:
+            connection.exec_driver_sql("ALTER TABLE users ADD COLUMN phone VARCHAR(32)")
+        if "id_card" not in columns:
+            connection.exec_driver_sql("ALTER TABLE users ADD COLUMN id_card VARCHAR(64)")

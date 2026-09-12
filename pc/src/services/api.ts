@@ -106,11 +106,8 @@ export const api = {
     return request('/auth/users')
   },
 
-  async resetUserPassword(userId: number, password: string): Promise<any> {
-    return request(`/auth/users/${userId}/reset-password`, {
-      method: 'POST',
-      body: JSON.stringify({ password }),
-    })
+  async resetUserPassword(userId: number): Promise<any> {
+    return request(`/auth/users/${userId}/reset-password`, { method: 'POST' })
   },
 
   async setUserActive(userId: number, isActive: boolean): Promise<any> {
@@ -190,7 +187,9 @@ export const api = {
   // 审批
   async approve(id: string): Promise<{ id: string; status: 'approved' }> {
     const numericId = parseInt(id.replace(/[^0-9]/g, ''), 10)
-    if (id.startsWith('AP-REQ-') && !isNaN(numericId) && numericId > 0) {
+    if (id.startsWith('AP-USER-') && !isNaN(numericId) && numericId > 0) {
+      await request(`/auth/users/${numericId}/approve`, { method: 'POST' })
+    } else if (id.startsWith('AP-REQ-') && !isNaN(numericId) && numericId > 0) {
       await request(`/work-orders/requests/${numericId}/approve`, { method: 'POST' })
     } else if (id.startsWith('AP-PHOTO-') && !isNaN(numericId) && numericId > 0) {
       await request(`/evidence/confirmations/${numericId}/approve`, { method: 'POST' })
@@ -200,7 +199,9 @@ export const api = {
 
   async reject(id: string): Promise<{ id: string; status: 'rejected' }> {
     const numericId = parseInt(id.replace(/[^0-9]/g, ''), 10)
-    if (id.startsWith('AP-REQ-') && !isNaN(numericId) && numericId > 0) {
+    if (id.startsWith('AP-USER-') && !isNaN(numericId) && numericId > 0) {
+      await request(`/auth/users/${numericId}/reject`, { method: 'POST' })
+    } else if (id.startsWith('AP-REQ-') && !isNaN(numericId) && numericId > 0) {
       await request(`/work-orders/requests/${numericId}/reject`, { method: 'POST' })
     } else if (id.startsWith('AP-PHOTO-') && !isNaN(numericId) && numericId > 0) {
       await request(`/approvals/${numericId}/reject`, { method: 'POST' })
@@ -324,11 +325,24 @@ export const api = {
     return request('/settings', { method: 'PUT', body: JSON.stringify({ values }) })
   },
 
-  async registerUser(payload: { username: string; display_name: string; password: string; role?: string }): Promise<any> {
-    return request('/auth/register', {
+  async registerUser(payload: { username: string; display_name: string; password: string; avatar_file_id?: string | null; phone?: string; id_card?: string }): Promise<any> {
+    return request('/auth/users', {
       method: 'POST',
-      body: JSON.stringify({ ...payload, role: payload.role || 'operator' }),
+      body: JSON.stringify(payload),
     })
+  },
+
+  async getUser(userId: number): Promise<any> {
+    const res = await request<any>('/auth/users/' + userId)
+    return res.user
+  },
+
+  async updateUserProfile(userId: number, payload: { display_name?: string; avatar_file_id?: string | null; phone?: string; id_card?: string }): Promise<any> {
+    const res = await request<any>(`/auth/users/${userId}/profile`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    })
+    return res.user
   },
 
   // 运维

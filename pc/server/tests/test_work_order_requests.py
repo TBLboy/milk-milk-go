@@ -4,7 +4,12 @@ def admin_headers(client):
 
 
 def operator_headers(client):
-    client.post("/api/v1/auth/register", json={"username": "operator01", "display_name": "李师傅", "password": "operator123"})
+    headers = admin_headers(client)
+    client.post(
+        "/api/v1/auth/users",
+        headers=headers,
+        json={"username": "operator01", "display_name": "李师傅", "password": "operator123"},
+    )
     token = client.post("/api/v1/auth/login", json={"username": "operator01", "password": "operator123"}).json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
 

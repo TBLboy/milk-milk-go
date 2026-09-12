@@ -2,6 +2,7 @@ package com.muheng.milkweigh
 
 import android.app.Activity
 import android.content.Context
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -29,6 +30,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -69,13 +71,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
@@ -118,7 +124,22 @@ fun MilkWeighApp(customRepository: MilkRepository? = null) {
     val repository = remember { customRepository ?: RealMilkRepository(context.applicationContext, sessionStore.load()?.token.orEmpty()) }
     var user by remember { mutableStateOf(sessionStore.load()) }
     Surface(modifier = Modifier.fillMaxSize(), color = Page) {
-        if (user == null) LoginScreen(repository, sessionStore) { user = it } else MainShell(user!!, repository) { sessionStore.clear(); user = null }
+        if (user == null) {
+            LoginScreen(repository, sessionStore) { user = it }
+        } else {
+            MainShell(
+                user = user!!,
+                repository = repository,
+                onUserUpdated = { updated ->
+                    sessionStore.save(updated)
+                    user = updated
+                },
+                onLogout = {
+                    sessionStore.clear()
+                    user = null
+                },
+            )
+        }
     }
 }
 
@@ -137,6 +158,7 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
     var showForgotDialog by remember { mutableStateOf(false) }
     var showAgreementDialog by remember { mutableStateOf(false) }
     var showServerDialog by remember { mutableStateOf(false) }
+    var registerSubmitted by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     Box(modifier = Modifier.fillMaxSize()) {
         Image(
@@ -208,7 +230,15 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
                             }
                             scope.launch {
                                 runCatching { repository.register(username.trim(), displayName.trim(), password) }
-                                    .onSuccess { sessionStore.save(it); onLoggedIn(it) }
+                                    .onSuccess {
+                                        registerSubmitted = it.message
+                                        registerMode = false
+                                        username = ""
+                                        displayName = ""
+                                        password = ""
+                                        confirmPassword = ""
+                                        agreed = false
+                                    }
                                     .onFailure { error = it.message }
                             }
                         } else {
@@ -290,6 +320,16 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
             },
         )
     }
+    if (registerSubmitted != null) {
+        AlertDialog(
+            onDismissRequest = { registerSubmitted = null },
+            title = { Text("注册申请已提交") },
+            text = { Text(registerSubmitted.orEmpty()) },
+            confirmButton = {
+                TextButton(onClick = { registerSubmitted = null }) { Text("知道了") }
+            },
+        )
+    }
     if (showAgreementDialog) {
         AlertDialog(
             onDismissRequest = { showAgreementDialog = false },
@@ -300,26 +340,250 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
     }
 }
 
+@Composable
+private fun AvatarImage(avatarFileId: String?, displayName: String, repository: MilkRepository, size: Dp = 38.dp) {
+    var bitmap by remember(avatarFileId) { mutableStateOf<ImageBitmap?>(null) }
+    androidx.compose.runtime.LaunchedEffect(avatarFileId) {
+        bitmap = null
+        if (avatarFileId.isNullOrBlank()) return@LaunchedEffect
+        val bytes = runCatching { repository.loadFileBytes(avatarFileId) }.getOrNull()
+        bitmap = bytes
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() }
+    }
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(if (bitmap != null) Color.Transparent else Color(0xFFEAF6F0)),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (bitmap != null) {
+            Image(bitmap = bitmap!!, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        } else {
+            Text(displayName.take(1).ifBlank { "牧" }, color = Green, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        }
+    }
+}
+
+@Composable
+private fun UserMenu(
+    user: AppUser,
+    repository: MilkRepository,
+    onProfile: () -> Unit,
+    onChangePassword: () -> Unit,
+    onLogout: () -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            AvatarImage(user.avatarFileId, user.displayName, repository)
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("${user.displayName} · ${user.username}", color = Muted) },
+                onClick = { expanded = false },
+                enabled = false,
+            )
+            DropdownMenuItem(text = { Text("用户资料") }, onClick = { expanded = false; onProfile() })
+            DropdownMenuItem(text = { Text("密码管理") }, onClick = { expanded = false; onChangePassword() })
+            DropdownMenuItem(text = { Text("切换账号") }, onClick = { expanded = false; onLogout() })
+            DropdownMenuItem(text = { Text("退出登录") }, onClick = { expanded = false; onLogout() })
+        }
+    }
+}
+
+@Composable
+private fun UserProfileDialog(
+    user: AppUser,
+    repository: MilkRepository,
+    onDismiss: () -> Unit,
+    onUpdated: (AppUser) -> Unit,
+) {
+    var displayName by remember(user.displayName) { mutableStateOf(user.displayName) }
+    var phone by remember(user.phone) { mutableStateOf(user.phone) }
+    var selectedAvatarUri by remember { mutableStateOf<String?>(null) }
+    var cameraOutputUri by remember { mutableStateOf<Uri?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var working by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        selectedAvatarUri = uri?.toString()
+    }
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { saved ->
+        val uri = cameraOutputUri
+        if (saved && uri != null) selectedAvatarUri = uri.toString()
+    }
+    AlertDialog(
+        onDismissRequest = { if (!working) onDismiss() },
+        title = { Text("用户资料") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    AvatarImage(user.avatarFileId, displayName, repository, size = 46.dp)
+                    OutlinedButton(onClick = { photoPicker.launch("image/*") }, modifier = Modifier.weight(1f)) { Text("相册头像") }
+                    OutlinedButton(
+                        onClick = {
+                            val uri = createPhotoUri(context)
+                            cameraOutputUri = uri
+                            cameraLauncher.launch(uri)
+                        },
+                        modifier = Modifier.weight(1f),
+                    ) { Text("拍照头像") }
+                }
+                OutlinedTextField(displayName, { displayName = it }, modifier = Modifier.fillMaxWidth(), label = { Text("姓名") }, singleLine = true)
+                OutlinedTextField(phone, { phone = it.filter { char -> char.isDigit() || char == '-' } }, modifier = Modifier.fillMaxWidth(), label = { Text("电话") }, singleLine = true)
+                Text("身份证：${user.idCard.ifBlank { "未录入" }}", color = Muted, fontSize = 15.sp)
+                error?.let { Text(it, color = Color(0xFFC7473C), fontSize = 14.sp) }
+            }
+        },
+        confirmButton = {
+            Button(
+                enabled = !working,
+                onClick = {
+                    working = true
+                    error = null
+                    scope.launch {
+                        runCatching {
+                            val avatarId = selectedAvatarUri?.let { repository.uploadAvatar(it) } ?: user.avatarFileId
+                            repository.updateProfile(displayName.trim(), phone.trim(), avatarId)
+                        }.onSuccess {
+                            onUpdated(it)
+                            onDismiss()
+                        }.onFailure {
+                            error = it.message
+                        }
+                        working = false
+                    }
+                },
+            ) { Text("保存资料") }
+        },
+        dismissButton = {
+            TextButton(onClick = { if (!working) onDismiss() }) { Text("取消") }
+        },
+    )
+}
+
+@Composable
+private fun ChangePasswordDialog(
+    required: Boolean,
+    repository: MilkRepository,
+    onDismiss: () -> Unit,
+    onChanged: () -> Unit,
+) {
+    var currentPassword by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var working by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    AlertDialog(
+        onDismissRequest = { if (!required && !working) onDismiss() },
+        title = { Text(if (required) "首次登录需修改密码" else "修改密码") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (required) Text("管理员已重置您的密码，请先设置一个新的个人密码。", color = Muted, fontSize = 15.sp)
+                OutlinedTextField(
+                    currentPassword,
+                    { currentPassword = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("当前密码") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    newPassword,
+                    { newPassword = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("新密码") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    confirmPassword,
+                    { confirmPassword = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("确认新密码") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    singleLine = true,
+                )
+                error?.let { Text(it, color = Color(0xFFC7473C), fontSize = 14.sp) }
+            }
+        },
+        confirmButton = {
+            Button(
+                enabled = !working && currentPassword.isNotBlank() && newPassword.length >= 8 && confirmPassword.isNotBlank(),
+                onClick = {
+                    working = true
+                    error = null
+                    when {
+                        currentPassword.isBlank() -> error = "请输入当前密码"
+                        newPassword.length < 8 -> error = "新密码至少 8 位"
+                        newPassword != confirmPassword -> error = "两次输入的新密码不一致"
+                        else -> scope.launch {
+                            runCatching { repository.changePassword(currentPassword, newPassword) }
+                                .onSuccess { onChanged() }
+                                .onFailure { error = it.message }
+                            working = false
+                        }
+                    }
+                },
+            ) { Text("确认修改") }
+        },
+        dismissButton = {
+            if (!required) {
+                TextButton(onClick = { if (!working) onDismiss() }) { Text("取消") }
+            }
+        },
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MainShell(user: AppUser, repository: MilkRepository, onLogout: () -> Unit) {
+private fun MainShell(
+    user: AppUser,
+    repository: MilkRepository,
+    onUserUpdated: (AppUser) -> Unit,
+    onLogout: () -> Unit,
+) {
     var selected by remember { mutableStateOf("工作台") }
     var selectedOrderNo by remember { mutableStateOf<String?>(null) }
     var orders by remember { mutableStateOf<List<WorkOrder>>(emptyList()) }
     var products by remember { mutableStateOf<List<Product>>(emptyList()) }
     var showCreateDialog by remember { mutableStateOf(false) }
+    var currentUser by remember { mutableStateOf(user) }
+    var showProfileDialog by remember { mutableStateOf(false) }
+    var showChangePasswordDialog by remember { mutableStateOf(user.mustChangePassword) }
     val scope = rememberCoroutineScope()
     androidx.compose.runtime.LaunchedEffect(Unit) {
         orders = repository.listWorkOrders()
         products = repository.listProducts()
     }
-    Scaffold(topBar = { TopAppBar(title = { Text("牧衡辅料称重", fontWeight = FontWeight.Bold) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White), actions = { Text(user.displayName, color = Muted); IconButton(onClick = onLogout) { Icon(Icons.Default.Close, "退出") } }) }, containerColor = Page) { padding ->
+    androidx.compose.runtime.LaunchedEffect(currentUser.mustChangePassword) {
+        if (currentUser.mustChangePassword) showChangePasswordDialog = true
+    }
+    Scaffold(topBar = {
+        TopAppBar(
+            title = { Text("牧衡辅料称重", fontWeight = FontWeight.Bold) },
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
+            actions = {
+                UserMenu(
+                    user = currentUser,
+                    repository = repository,
+                    onProfile = { showProfileDialog = true },
+                    onChangePassword = { showChangePasswordDialog = true },
+                    onLogout = onLogout,
+                )
+            },
+        )
+    }, containerColor = Page) { padding ->
         Row(modifier = Modifier.fillMaxSize().padding(padding)) {
             Column(modifier = Modifier.width(230.dp).fillMaxSize().background(Color.White).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("现场操作", color = Muted, fontSize = 13.sp, modifier = Modifier.padding(8.dp))
                 NavItem("工作台", Icons.Default.Assignment, selected == "工作台") { selected = "工作台" }
                 NavItem("工单", Icons.Default.Inventory2, selected == "工单") { selected = "工单" }
-                if (user.role == UserRole.ADMIN) {
+                if (currentUser.role == UserRole.ADMIN) {
                     Spacer(Modifier.height(12.dp)); Text("管理员", color = Muted, fontSize = 13.sp, modifier = Modifier.padding(8.dp))
                     NavItem("辅料与配方", Icons.Default.Settings, selected == "辅料与配方") { selected = "辅料与配方" }
                 }
@@ -333,7 +597,7 @@ private fun MainShell(user: AppUser, repository: MilkRepository, onLogout: () ->
                 "详情" -> OrderDetailScreen(
                     order = orders.firstOrNull { it.orderNo == selectedOrderNo },
                     repository = repository,
-                    canApprove = user.role == UserRole.ADMIN,
+                    canApprove = currentUser.role == UserRole.ADMIN,
                     onBack = { selected = "工单" },
                     onUpdated = { updated -> orders = orders.map { if (it.orderNo == updated.orderNo) updated else it } },
                 )
@@ -361,6 +625,30 @@ private fun MainShell(user: AppUser, repository: MilkRepository, onLogout: () ->
                 selectedOrderNo = order.orderNo
                 showCreateDialog = false
                 selected = "详情"
+            },
+        )
+    }
+    if (showProfileDialog) {
+        UserProfileDialog(
+            user = currentUser,
+            repository = repository,
+            onDismiss = { showProfileDialog = false },
+            onUpdated = { updated ->
+                currentUser = updated
+                onUserUpdated(updated)
+            },
+        )
+    }
+    if (showChangePasswordDialog) {
+        ChangePasswordDialog(
+            required = currentUser.mustChangePassword,
+            repository = repository,
+            onDismiss = { showChangePasswordDialog = false },
+            onChanged = {
+                val updated = currentUser.copy(mustChangePassword = false)
+                currentUser = updated
+                onUserUpdated(updated)
+                showChangePasswordDialog = false
             },
         )
     }

@@ -23,18 +23,11 @@ class RealMilkRepository(
             body = JSONObject().put("username", username).put("password", password),
         )
         token = response.getString("access_token")
-        val user = response.getJSONObject("user")
-        val role = if (user.optString("role") == "admin") UserRole.ADMIN else UserRole.OPERATOR
-        return AppUser(
-            displayName = user.optString("display_name").ifBlank { username },
-            username = user.optString("username").ifBlank { username },
-            role = role,
-            token = token,
-        )
+        return refreshUser()
     }
 
-    override suspend fun register(username: String, displayName: String, password: String): AppUser {
-        jsonObjectRequest(
+    override suspend fun register(username: String, displayName: String, password: String): RegistrationResult {
+        val response = jsonObjectRequest(
             path = "auth/register",
             method = "POST",
             body = JSONObject()
@@ -42,7 +35,45 @@ class RealMilkRepository(
                 .put("display_name", displayName)
                 .put("password", password),
         )
-        return login(username, password)
+        return RegistrationResult(
+            username = response.optString("username", username),
+            status = response.optString("status", "pending"),
+            message = response.optString("message", "注册申请已提交，等待管理员审批"),
+        )
+    }
+
+    override suspend fun refreshUser(): AppUser {
+        val user = jsonObjectRequest("auth/me", "GET", null).getJSONObject("user")
+        return appUserFromJson(user, user.optString("username"), token)
+    }
+
+    override suspend fun uploadAvatar(uri: String): String = uploadImage(uri)
+
+    override suspend fun updateProfile(displayName: String, phone: String, avatarFileId: String?): AppUser {
+        val body = JSONObject()
+            .put("display_name", displayName)
+            .put("phone", phone)
+        if (avatarFileId.isNullOrBlank()) {
+            body.put("avatar_file_id", JSONObject.NULL)
+        } else {
+            body.put("avatar_file_id", avatarFileId)
+        }
+        val user = jsonObjectRequest("auth/me", "PATCH", body).getJSONObject("user")
+        return appUserFromJson(user, user.optString("username"), token)
+    }
+
+    override suspend fun changePassword(currentPassword: String, newPassword: String) {
+        jsonObjectRequest(
+            path = "auth/me/change-password",
+            method = "POST",
+            body = JSONObject()
+                .put("current_password", currentPassword)
+                .put("new_password", newPassword),
+        )
+    }
+
+    override suspend fun loadFileBytes(fileId: String): ByteArray = withContext(Dispatchers.IO) {
+        executeFileRequest("evidence/files/$fileId")
     }
 
     override suspend fun listWorkOrders(): List<WorkOrder> {
@@ -310,6 +341,26 @@ class RealMilkRepository(
         }
     }
 
+    private fun executeFileRequest(path: String): ByteArray {
+        val connection = URL(currentBaseUrl() + path).openConnection() as HttpURLConnection
+        try {
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 8000
+            connection.readTimeout = 12000
+            if (token.isNotBlank()) {
+                connection.setRequestProperty("Authorization", "Bearer $token")
+            }
+            val code = connection.responseCode
+            if (code !in 200..299) {
+                val text = connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                throw Exception(errorMessage(text, connection.responseMessage))
+            }
+            return connection.inputStream.use { it.readBytes() }
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     private fun isImageUri(value: String): Boolean =
         value.startsWith("content://") || value.startsWith("file://")
 
@@ -321,6 +372,22 @@ class RealMilkRepository(
                 ?: json.optString("message").takeIf { it.isNotBlank() }
                 ?: fallback
         }.getOrDefault(fallback)
+    }
+
+    private fun appUserFromJson(user: JSONObject, fallbackUsername: String, token: String): AppUser {
+        val username = user.optString("username").ifBlank { fallbackUsername }
+        val role = if (user.optString("role") == "admin") UserRole.ADMIN else UserRole.OPERATOR
+        return AppUser(
+            displayName = user.optString("display_name").ifBlank { username },
+            username = username,
+            role = role,
+            token = token,
+            avatarFileId = user.optString("avatar_file_id").ifBlank { null },
+            phone = user.optString("phone"),
+            idCard = user.optString("id_card"),
+            accountStatus = user.optString("status", "active"),
+            mustChangePassword = user.optBoolean("must_change_password"),
+        )
     }
 
     private fun orderFromJson(json: JSONObject): WorkOrder {
