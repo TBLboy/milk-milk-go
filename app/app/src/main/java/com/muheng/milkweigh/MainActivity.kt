@@ -371,6 +371,7 @@ private fun AvatarImage(
     displayName: String,
     repository: MilkRepository,
     previewUri: String? = null,
+    onClick: (() -> Unit)? = null,
     size: Dp = 38.dp,
 ) {
     val context = LocalContext.current
@@ -396,13 +397,22 @@ private fun AvatarImage(
         modifier = Modifier
             .size(size)
             .clip(CircleShape)
-            .background(if (bitmap != null) Color.Transparent else Color(0xFFEAF6F0)),
+            .background(if (bitmap != null) Color.Transparent else Color(0xFFEAF6F0))
+            .clickable(
+                enabled = onClick != null,
+                onClick = { onClick?.invoke() },
+            ),
         contentAlignment = Alignment.Center,
     ) {
         if (bitmap != null) {
             Image(bitmap = bitmap!!, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         } else {
-            Text(displayName.take(1).ifBlank { "牧" }, color = Green, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(
+                displayName.take(1).ifBlank { "牧" },
+                color = Green,
+                fontWeight = FontWeight.Bold,
+                fontSize = minOf(size.value * 0.4f, 64f).sp,
+            )
         }
     }
 }
@@ -445,6 +455,7 @@ private fun UserProfileDialog(
     var phone by remember(user.phone) { mutableStateOf(user.phone) }
     var selectedAvatarUri by remember { mutableStateOf<String?>(null) }
     var cameraOutputUri by remember { mutableStateOf<Uri?>(null) }
+    var showAvatarPreview by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var working by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -473,6 +484,7 @@ private fun UserProfileDialog(
                         displayName = displayName,
                         repository = repository,
                         previewUri = selectedAvatarUri,
+                        onClick = { showAvatarPreview = true },
                         size = 46.dp,
                     )
                     OutlinedButton(onClick = { photoPicker.launch("image/*") }, modifier = Modifier.weight(1f)) { Text("相册头像") }
@@ -512,6 +524,29 @@ private fun UserProfileDialog(
             TextButton(onClick = { if (!working) onDismiss() }) { Text("取消") }
         },
     )
+    if (showAvatarPreview) {
+        AlertDialog(
+            onDismissRequest = { showAvatarPreview = false },
+            title = { Text("头像预览") },
+            text = {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(320.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    AvatarImage(
+                        avatarFileId = user.avatarFileId,
+                        displayName = displayName,
+                        repository = repository,
+                        previewUri = selectedAvatarUri,
+                        size = 280.dp,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAvatarPreview = false }) { Text("关闭") }
+            },
+        )
+    }
 }
 
 @Composable
