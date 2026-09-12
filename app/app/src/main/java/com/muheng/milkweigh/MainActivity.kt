@@ -2335,7 +2335,7 @@ private fun RecipeEditDialog(
                         val material = materials.firstOrNull { it.materialId == item.materialId }
                         Box(modifier = Modifier.fillMaxWidth()) {
                             OutlinedButton(onClick = { expandedIndex = index }, modifier = Modifier.fillMaxWidth()) {
-                                Text(material?.let { "${it.nameZh} (${it.materialCode})" } ?: "选择辅料", modifier = Modifier.weight(1f), color = Ink)
+                                Text(material?.let { "${it.nameZh} (${it.materialCode})" } ?: "请选择辅料", modifier = Modifier.weight(1f), color = Ink)
                                 Icon(Icons.Default.KeyboardArrowDown, null, tint = Muted)
                             }
                             DropdownMenu(expanded = expandedIndex == index, onDismissRequest = { expandedIndex = -1 }) {

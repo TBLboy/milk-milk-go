@@ -27,9 +27,9 @@ def _now() -> datetime:
 
 @router.post("/print-batches", status_code=201)
 def create_print_batch(body: PrintRequest, user: User = Depends(require_admin), db: Session = Depends(get_db)) -> dict:
-    material = db.scalar(select(Material).where(Material.material_id == body.material_id, Material.enabled.is_(True)))
+    material = db.scalar(select(Material).where(Material.material_id == body.material_id))
     if material is None:
-        raise HTTPException(status_code=422, detail={"code": "MATERIAL_NOT_AVAILABLE", "message": "辅料不存在或已停用"})
+        raise HTTPException(status_code=422, detail={"code": "MATERIAL_NOT_FOUND", "message": "辅料不存在"})
     printed_at = _now()
     batch_id = f"PB-{printed_at.strftime('%Y%m%d%H%M%S')}-{secrets.token_hex(3)}"
     batch = PrintBatch(batch_id=batch_id, material_id=material.material_id, quantity=body.quantity, status="pending", printed_at=printed_at, created_by=user.id)

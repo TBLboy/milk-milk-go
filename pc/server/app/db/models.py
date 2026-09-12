@@ -48,6 +48,7 @@ class Material(Base):
     name_zh: Mapped[str] = mapped_column(String(128), nullable=False)
     name_en: Mapped[str | None] = mapped_column(String(128))
     shelf_life_months: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Legacy schema compatibility only. Materials have no enable/disable workflow.
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)

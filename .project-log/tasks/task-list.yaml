@@ -3076,3 +3076,166 @@ tasks:
       follow_ups: []
     created_at: "2026-09-12T12:25:28Z"
     updated_at: "2026-09-12T12:25:28Z"
+  - id: TASK-057
+    title: 修复 APP 配方误选停用辅料导致保存失败
+    kind: repair
+    parent_id: null
+    phase: implementation
+    goal: 让 App 正确读取辅料启用状态，配方只允许选择启用辅料，并在现有配方含停用辅料时提供明确替换提示。
+    status: done
+    priority: critical
+    risk: medium
+    authority: B
+    owner: agent
+    tags:
+      - app
+      - recipe
+      - material
+      - bug
+    related_business_logic:
+      - BL-DATA-003
+      - BL-DATA-004
+    acceptance_refs:
+      - AC-DATA-004
+    related_decisions:
+      - DEC-018
+    depends_on:
+      - TASK-056
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户反馈 App 编辑配方时无论选择什么辅料都提示配方只能引用已存在且启用的辅料
+      - App 当前辅料数据模型未读取后端 enabled 字段
+      - 配方下拉框当前包含已停用辅料
+    outputs:
+      - 包含启用状态的 App 辅料模型
+      - 仅展示启用辅料的配方选择器
+      - 停用辅料的明确状态和替换提示
+      - 后端错误响应提供具体不可用辅料 ID
+    plan:
+      - 在 Material 模型和接口解析中增加 enabled 字段
+      - 配方新增和编辑只将启用辅料放入下拉框
+      - 对历史配方中已停用辅料显示停用标记，并在保存前要求替换
+      - 后端 MATERIAL_NOT_AVAILABLE 错误返回具体不可用辅料 ID
+      - 增加回归测试并执行 Android 构建
+    done_when:
+      - App 能识别辅料启用和停用状态
+      - 配方下拉框不再展示停用辅料
+      - 历史配方含停用辅料时保存前提示具体需要替换的辅料
+      - 选择启用辅料后配方可正常保存
+      - 回归测试和 Android debug 构建通过
+    verification:
+      status: passed
+      commands:
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
+        - adb -s emulator-5554 install -r app/app/build/outputs/apk/debug/app-debug.apk
+        - adb -s emulator-5554 shell input tap 2400 815
+      evidence:
+        - 后端 43 项测试通过
+        - Android debug APK 构建通过
+        - App 辅料列表正确显示“启用”或“已停用”
+        - 编辑含停用辅料的产品 111 时，原停用项显示为“已停用：11 (11)”
+        - 配方下拉框只显示 4 种启用辅料，不再显示已停用的 11
+        - 将产品 111 的停用辅料替换为精制白砂糖 A1 后，App 保存成功并返回配方列表
+        - 后端不可用辅料错误响应包含具体 material_ids，回归测试验证通过
+        - 验证后产品 111 的原始配方和管理员密码状态均已恢复
+      limitations:
+        - 后端 8011 已重启加载新的错误响应，平板端需重新安装本次构建的 APK 才能使用修复
+    result:
+      summary: 已修复 App 未识别辅料启用状态的问题；配方只展示启用辅料，历史停用项会明确标记并要求替换，后端同时返回具体不可用辅料 ID。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
+        - pc/server/app/api/master_data.py
+        - pc/server/tests/test_master_data.py
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12T12:42:51Z"
+    updated_at: "2026-09-12T12:42:51Z"
+  - id: TASK-058
+    title: 移除辅料启用停用隐藏业务逻辑
+    kind: repair
+    parent_id: null
+    phase: implementation
+    goal: 让辅料不再具有启用/停用状态，并确保配方保存和标签打印不读取旧 enabled 字段。
+    status: done
+    priority: critical
+    risk: medium
+    authority: B
+    owner: agent
+    tags:
+      - app
+      - pc
+      - material
+      - recipe
+      - bug
+    related_business_logic:
+      - BL-DATA-003
+      - BL-DATA-004
+      - BL-LABEL-001
+    acceptance_refs:
+      - AC-DATA-003
+      - AC-LABEL-001
+    related_decisions:
+      - DEC-034
+    depends_on:
+      - TASK-057
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户明确辅料没有启用/停用需求，辅料管理也没有对应入口
+      - 旧 enabled 字段曾被配方保存校验错误使用
+      - 标签打印接口也受旧 enabled 字段限制
+    outputs:
+      - 不包含辅料启用状态的 App 模型和界面
+      - 不校验辅料 enabled 的配方与标签后端
+      - 不再提供辅料停用 API 和 PC 前端调用
+      - legacy enabled 字段兼容回归测试
+    plan:
+      - 移除辅料停用 API、PC API 调用和 App 状态展示
+      - 配方保存只校验辅料存在性和用量合法性
+      - 标签打印只校验辅料存在性
+      - 保留数据库旧字段作为兼容但不再参与业务判断
+      - 执行后端测试、PC 构建和 Android 构建
+    done_when:
+      - 辅料 API 不再返回 enabled 状态
+      - App 配方编辑展示全部已有辅料
+      - 辅料数据库旧 enabled=false 不影响配方保存和标签打印
+      - 后端测试、PC 构建和 Android 构建通过
+    verification:
+      status: passed
+      commands:
+        - conda run -n milk env PYTHONPATH= PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q
+        - npm run build
+        - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug
+        - git diff --check
+      evidence:
+        - 后端 44 项测试通过
+        - PC 前端 TypeScript 和 Vite 生产构建通过
+        - Android debug APK 构建通过
+        - 真实 8011 接口的辅料响应已不包含 enabled 字段
+        - 回归测试验证 legacy enabled=false 仍可保存配方和生成标签
+      limitations:
+        - 旧数据库 enabled 列暂不移除，仅作表结构兼容
+        - 尚未在真实平板上人工复验，需要安装最新 APK
+    result:
+      summary: 辅料启用/停用概念已从界面、App 和后端业务规则中移除；旧数据库列保留但不再影响配方或标签。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - pc/server/app/api/labels.py
+        - pc/server/app/api/master_data.py
+        - pc/server/app/db/models.py
+        - pc/server/tests/test_labels.py
+        - pc/server/tests/test_master_data.py
+        - pc/src/services/api.ts
+      deviations: []
+      follow_ups:
+        - 在真实平板安装最新 APK 后复验辅料列表和配方编辑
+    created_at: "2026-09-12T13:35:34Z"
+    updated_at: "2026-09-12T13:35:34Z"

@@ -268,10 +268,6 @@ export const api = {
     })
   },
 
-  async disableMaterial(materialId: string): Promise<any> {
-    return request(`/master-data/materials/${materialId}/disable`, { method: 'PATCH' })
-  },
-
   // 产品与配方
   async getProducts(): Promise<any[]> {
     return request('/master-data/products')

@@ -183,7 +183,7 @@ evidence:
 - id: EV-TASK-056-APP-MASTER-DATA
   kind: android-e2e
   subject: APP 辅料配方表单滚动与图片管理
-  status: valid
+  status: stale
   command: JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon;
     adb install -r app-debug.apk; adb shell input swipe 1200 1220 1200 520 500; adb
     logcat -d -t 800
@@ -205,5 +205,45 @@ evidence:
       app/app/src/main/java/com/muheng/milkweigh/AppData.kt: f7ef9fd62debe5ebbc316e55226b7352eb806530ac7a304f5bc7bd0d09124922
       app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt: 6490dbd106cd5f922ce0abb1f625e6ffa51d5bb94085844481024bf8cf3a427d
   recorded_at: '2026-09-12T12:35:37Z'
+  invalidated_at: '2026-09-12T12:50:02Z'
+  invalidation_reason: TASK-057 changed the App master-data and recipe flow after
+    the TASK-056 Android evidence was recorded
+- id: EV-TASK-057-DISABLED-MATERIAL
+  kind: test
+  subject: 已撤销：辅料启用停用校验与用户确认业务规则冲突
+  status: superseded
+  command: null
+  result_ref: 由 EV-TASK-058-MATERIAL-NO-ENABLED 取代
+  covers:
+    files: []
+    requirements:
+    - REQ-001
+    tasks:
+    - TASK-057
+  version_binding:
+    git_commit: d3b8930b64b022b8acfa14bc1865e4eba4408538
+    diff_hash: b246f54259a173db3c55720954c3aaae50097049342bcb3f24a86d95520b0359
+    file_hashes: {}
+  recorded_at: '2026-09-12T13:36:41Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-058-MATERIAL-NO-ENABLED
+  kind: test
+  subject: 辅料不再具有启用停用业务状态；legacy enabled=false 不阻塞配方保存和标签打印
+  status: valid
+  command: pytest -q; npm run build; JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew
+    assembleDebug
+  result_ref: 44 passed; PC build passed; Android assembleDebug passed
+  covers:
+    files: []
+    requirements:
+    - REQ-001
+    tasks:
+    - TASK-058
+  version_binding:
+    git_commit: d3b8930b64b022b8acfa14bc1865e4eba4408538
+    diff_hash: 5df59665659837728390a18250763631f4023281aae97052ddeef58adc714385
+    file_hashes: {}
+  recorded_at: '2026-09-12T13:36:26Z'
   invalidated_at: null
   invalidation_reason: null
