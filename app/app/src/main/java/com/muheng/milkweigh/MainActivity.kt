@@ -236,7 +236,7 @@ private fun MainShell(user: AppUser, repository: MilkRepository, onLogout: () ->
                     onBack = { selected = "工单" },
                     onUpdated = { updated -> orders = orders.map { if (it.orderNo == updated.orderNo) updated else it } },
                 )
-                "辅料与配方" -> AdminPlaceholder()
+                "辅料与配方" -> AdminMasterDataScreen(repository)
                 else -> DashboardScreen(
                     orders,
                     onRefresh = { scope.launch { orders = repository.listWorkOrders() } },
@@ -728,4 +728,309 @@ private fun CreateWorkOrderDialog(repository: MilkRepository, products: List<Pro
     )
 }
 
-@Composable private fun AdminPlaceholder() { Column(Modifier.fillMaxSize().padding(30.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) { Text("辅料与配方", color = Ink, fontSize = 28.sp, fontWeight = FontWeight.Bold); Text("管理员可以在平板维护辅料包装图片和产品配方。", color = Muted); Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { Button(onClick = {}) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(6.dp)); Text("新建辅料") }; OutlinedButton(onClick = {}) { Icon(Icons.Default.CameraAlt, null); Spacer(Modifier.width(6.dp)); Text("拍摄包装图片") } } } }
+private data class EditableRecipeItem(
+    val materialId: String,
+    val quantity: String,
+)
+
+@Composable
+private fun AdminMasterDataScreen(repository: MilkRepository) {
+    var tab by remember { mutableStateOf("辅料") }
+    var materials by remember { mutableStateOf<List<Material>>(emptyList()) }
+    var recipes by remember { mutableStateOf<List<ProductRecipe>>(emptyList()) }
+    var showMaterialDialog by remember { mutableStateOf(false) }
+    var editingMaterial by remember { mutableStateOf<Material?>(null) }
+    var showRecipeDialog by remember { mutableStateOf(false) }
+    var editingRecipe by remember { mutableStateOf<ProductRecipe?>(null) }
+    val scope = rememberCoroutineScope()
+
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        materials = repository.listMaterials()
+        recipes = repository.listRecipes()
+    }
+
+    Column(modifier = Modifier.fillMaxSize().padding(30.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Column {
+                Text("辅料与配方", color = Ink, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                Text("管理员维护现场识别和配方计算需要的主数据", color = Muted, modifier = Modifier.padding(top = 6.dp))
+            }
+            Button(onClick = {
+                if (tab == "辅料") showMaterialDialog = true else showRecipeDialog = true
+            }) {
+                Icon(Icons.Default.Add, null)
+                Spacer(Modifier.width(6.dp))
+                Text(if (tab == "辅料") "新增辅料" else "新增配方")
+            }
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("辅料", "产品配方").forEach { option ->
+                val selected = tab == option
+                Text(
+                    option,
+                    modifier = Modifier
+                        .clickable { tab = option }
+                        .background(if (selected) Green.copy(alpha = 0.12f) else Color.White, RoundedCornerShape(50))
+                        .border(1.dp, if (selected) Green.copy(alpha = 0.45f) else Color(0xFFE3E8EA), RoundedCornerShape(50))
+                        .padding(horizontal = 18.dp, vertical = 9.dp),
+                    color = if (selected) Green else Muted,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                )
+            }
+        }
+
+        if (tab == "辅料") {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(materials, key = { it.materialId }) { material ->
+                    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                        Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text("${material.nameZh} · ${material.materialCode}", color = Ink, fontWeight = FontWeight.Bold)
+                                Text("${material.materialId} · 保质期 ${material.shelfLifeMonths} 个月", color = Muted, fontSize = 14.sp)
+                                Text("${material.imageNames.size} 张包装图片", color = Muted, fontSize = 14.sp)
+                            }
+                            TextButton(onClick = { editingMaterial = material }) { Text("编辑") }
+                        }
+                    }
+                }
+            }
+        } else {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(recipes, key = { it.id }) { recipe ->
+                    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                        Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(recipe.name, color = Ink, fontWeight = FontWeight.Bold)
+                                Text("${recipe.items.size} 种辅料 · ${if (recipe.enabled) "启用" else "停用"}", color = Muted, fontSize = 14.sp)
+                            }
+                            TextButton(onClick = { editingRecipe = recipe }) { Text("编辑") }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showMaterialDialog || editingMaterial != null) {
+        MaterialEditDialog(
+            material = editingMaterial,
+            repository = repository,
+            onDismiss = { showMaterialDialog = false; editingMaterial = null },
+            onSaved = {
+                scope.launch { materials = repository.listMaterials() }
+                showMaterialDialog = false
+                editingMaterial = null
+            },
+        )
+    }
+    if (showRecipeDialog || editingRecipe != null) {
+        RecipeEditDialog(
+            recipe = editingRecipe,
+            materials = materials,
+            repository = repository,
+            onDismiss = { showRecipeDialog = false; editingRecipe = null },
+            onSaved = {
+                scope.launch {
+                    recipes = repository.listRecipes()
+                    materials = repository.listMaterials()
+                }
+                showRecipeDialog = false
+                editingRecipe = null
+            },
+        )
+    }
+}
+
+@Composable
+private fun MaterialEditDialog(
+    material: Material?,
+    repository: MilkRepository,
+    onDismiss: () -> Unit,
+    onSaved: (Material) -> Unit,
+) {
+    var code by remember { mutableStateOf(material?.materialCode ?: "") }
+    var nameZh by remember { mutableStateOf(material?.nameZh ?: "") }
+    var nameEn by remember { mutableStateOf(material?.nameEn ?: "") }
+    var shelfLife by remember { mutableStateOf(material?.shelfLifeMonths?.toString() ?: "24") }
+    var imageNames by remember { mutableStateOf(material?.imageNames ?: emptyList()) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var working by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
+        imageNames = uris.mapNotNull { it.lastPathSegment ?: "包装图片" }
+    }
+    AlertDialog(
+        onDismissRequest = { if (!working) onDismiss() },
+        title = { Text(if (material == null) "新增辅料" else "编辑辅料") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                OutlinedTextField(code, { code = it.uppercase() }, modifier = Modifier.fillMaxWidth(), label = { Text("内部代号") }, singleLine = true)
+                OutlinedTextField(nameZh, { nameZh = it }, modifier = Modifier.fillMaxWidth(), label = { Text("中文名称") }, singleLine = true)
+                OutlinedTextField(nameEn, { nameEn = it }, modifier = Modifier.fillMaxWidth(), label = { Text("英文名称（可选）") }, singleLine = true)
+                OutlinedTextField(shelfLife, { shelfLife = it.filter(Char::isDigit) }, modifier = Modifier.fillMaxWidth(), label = { Text("保质期（月）") }, singleLine = true)
+                OutlinedButton(onClick = { imagePicker.launch("image/*") }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.CameraAlt, null)
+                    Spacer(Modifier.width(6.dp))
+                    Text(if (imageNames.isEmpty()) "选择多张包装图片" else "已选择 ${imageNames.size} 张图片")
+                }
+                imageNames.take(5).forEach { Text("· $it", color = Muted, fontSize = 13.sp) }
+                error?.let { Text(it, color = Color(0xFFC7473C), fontSize = 14.sp) }
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                val shelf = shelfLife.toIntOrNull()
+                if (code.isBlank() || nameZh.isBlank() || shelf == null || shelf <= 0) {
+                    error = "请完整填写辅料信息"
+                    return@Button
+                }
+                if (!working) {
+                    working = true
+                    error = null
+                    scope.launch {
+                        runCatching {
+                            repository.saveMaterial(
+                                Material(
+                                    materialId = material?.materialId ?: "",
+                                    materialCode = code,
+                                    nameZh = nameZh,
+                                    nameEn = nameEn,
+                                    shelfLifeMonths = shelf,
+                                    imageNames = imageNames,
+                                )
+                            )
+                        }
+                            .onSuccess(onSaved)
+                            .onFailure { error = it.message }
+                            .also { working = false }
+                    }
+                }
+            }, enabled = !working) { Text("保存") }
+        },
+        dismissButton = { TextButton(onClick = { if (!working) onDismiss() }) { Text("取消") } },
+    )
+}
+
+@Composable
+private fun RecipeEditDialog(
+    recipe: ProductRecipe?,
+    materials: List<Material>,
+    repository: MilkRepository,
+    onDismiss: () -> Unit,
+    onSaved: (ProductRecipe) -> Unit,
+) {
+    var name by remember { mutableStateOf(recipe?.name ?: "") }
+    var enabled by remember { mutableStateOf(recipe?.enabled ?: true) }
+    var items by remember {
+        mutableStateOf(
+            recipe?.items?.map { EditableRecipeItem(it.materialId, it.quantityPerTonKg.toString()) }
+                ?: listOf(EditableRecipeItem(materials.firstOrNull()?.materialId ?: "", "1"))
+        )
+    }
+    var expandedIndex by remember { mutableStateOf(-1) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var working by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    AlertDialog(
+        onDismissRequest = { if (!working) onDismiss() },
+        title = { Text(if (recipe == null) "新增产品配方" else "编辑产品配方") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                OutlinedTextField(name, { name = it }, modifier = Modifier.fillMaxWidth(), label = { Text("产品名称") }, singleLine = true)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = enabled, onCheckedChange = { enabled = it })
+                    Text(if (enabled) "配方启用" else "配方停用", color = Muted)
+                }
+                if (materials.isEmpty()) {
+                    Text("请先创建辅料，再添加产品配方。", color = Muted)
+                } else {
+                    items.forEachIndexed { index, item ->
+                        val material = materials.firstOrNull { it.materialId == item.materialId }
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedButton(onClick = { expandedIndex = index }, modifier = Modifier.fillMaxWidth()) {
+                                Text(material?.let { "${it.nameZh} (${it.materialCode})" } ?: "选择辅料", modifier = Modifier.weight(1f), color = Ink)
+                                Icon(Icons.Default.KeyboardArrowDown, null, tint = Muted)
+                            }
+                            DropdownMenu(expanded = expandedIndex == index, onDismissRequest = { expandedIndex = -1 }) {
+                                materials.forEach { option ->
+                                    DropdownMenuItem(
+                                        text = { Text("${option.nameZh} (${option.materialCode})") },
+                                        onClick = {
+                                            items = items.mapIndexed { itemIndex, current ->
+                                                if (itemIndex == index) current.copy(materialId = option.materialId) else current
+                                            }
+                                            expandedIndex = -1
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            OutlinedTextField(
+                                value = item.quantity,
+                                onValueChange = { value ->
+                                    items = items.mapIndexed { itemIndex, current ->
+                                        if (itemIndex == index) current.copy(quantity = value.filter { c -> c.isDigit() || c == '.' }) else current
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                label = { Text("每吨用量 (kg)") },
+                                singleLine = true,
+                            )
+                            if (items.size > 1) {
+                                TextButton(onClick = {
+                                    items = items.filterIndexed { itemIndex, _ -> itemIndex != index }
+                                    expandedIndex = -1
+                                }) { Text("移除") }
+                            }
+                        }
+                    }
+                    TextButton(onClick = {
+                        items = items + EditableRecipeItem(materials.first().materialId, "1")
+                    }) { Text("添加辅料") }
+                }
+                error?.let { Text(it, color = Color(0xFFC7473C), fontSize = 14.sp) }
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                val parsedItems = runCatching {
+                    items.map { item ->
+                        val quantity = item.quantity.toDoubleOrNull()
+                        if (quantity == null || quantity <= 0) error("每吨用量必须大于 0")
+                        RecipeItem(item.materialId, quantity)
+                    }
+                }.getOrNull()
+                if (name.isBlank()) {
+                    error = "请输入产品名称"
+                    return@Button
+                }
+                if (parsedItems == null || parsedItems.isEmpty()) {
+                    error = "请至少添加一种有效辅料"
+                    return@Button
+                }
+                if (!working) {
+                    working = true
+                    error = null
+                    scope.launch {
+                        runCatching {
+                            repository.saveProductRecipe(
+                                ProductRecipe(
+                                    id = recipe?.id ?: 0,
+                                    name = name,
+                                    enabled = enabled,
+                                    items = parsedItems,
+                                )
+                            )
+                        }
+                            .onSuccess(onSaved)
+                            .onFailure { error = it.message }
+                            .also { working = false }
+                    }
+                }
+            }, enabled = !working) { Text("保存") }
+        },
+        dismissButton = { TextButton(onClick = { if (!working) onDismiss() }) { Text("取消") } },
+    )
+}

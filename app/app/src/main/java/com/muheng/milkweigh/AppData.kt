@@ -56,10 +56,33 @@ data class WeightSubmitResult(
     val order: WorkOrder,
 )
 
+data class RecipeItem(
+    val materialId: String,
+    val quantityPerTonKg: Double,
+)
+
 data class Product(
     val id: Int,
     val name: String,
-    val materialCount: Int,
+    val materialCount: Int = 0,
+    val items: List<RecipeItem> = emptyList(),
+    val enabled: Boolean = true,
+)
+
+data class Material(
+    val materialId: String,
+    val materialCode: String,
+    val nameZh: String,
+    val nameEn: String = "",
+    val shelfLifeMonths: Int = 24,
+    val imageNames: List<String> = emptyList(),
+)
+
+data class ProductRecipe(
+    val id: Int,
+    val name: String,
+    val enabled: Boolean = true,
+    val items: List<RecipeItem> = emptyList(),
 )
 
 interface MilkRepository {
@@ -67,6 +90,10 @@ interface MilkRepository {
     suspend fun register(username: String, displayName: String, password: String): AppUser
     suspend fun listWorkOrders(): List<WorkOrder>
     suspend fun listProducts(): List<Product>
+    suspend fun listMaterials(): List<Material>
+    suspend fun saveMaterial(material: Material): Material
+    suspend fun listRecipes(): List<ProductRecipe>
+    suspend fun saveProductRecipe(recipe: ProductRecipe): ProductRecipe
     suspend fun createWorkOrder(productId: Int, targetWeightKg: Double): WorkOrder
     suspend fun startWorkOrder(orderNo: String): WorkOrder
     suspend fun confirmStepQr(orderNo: String, stepNo: Int, materialId: String): WorkOrder
@@ -176,10 +203,41 @@ class MockMilkRepository : MilkRepository {
         ),
     )
 
-    private val products = listOf(
-        Product(1, "高钙纯牛奶 1L", 9),
-        Product(2, "草莓风味酸奶", 8),
-        Product(3, "原味发酵乳", 10),
+    private val materials = mutableListOf(
+        Material("MAT-0001", "A1", "维生素 D3", "Vitamin D3", 36, listOf("A1 包装正面", "A1 包装侧面")),
+        Material("MAT-0002", "F-02", "西番莲香精", "Passion Fruit Flavor", 24, listOf("F-02 包装")),
+        Material("MAT-0003", "E2", "精制白砂糖", "White Sugar", 24, listOf("E2 蛇皮袋")),
+    )
+
+    private val products = mutableListOf(
+        Product(
+            id = 1,
+            name = "高钙纯牛奶 1L",
+            materialCount = 3,
+            items = listOf(
+                RecipeItem("MAT-0001", 4.0),
+                RecipeItem("MAT-0002", 1.5),
+                RecipeItem("MAT-0003", 80.0),
+            ),
+        ),
+        Product(
+            id = 2,
+            name = "草莓风味酸奶",
+            materialCount = 2,
+            items = listOf(
+                RecipeItem("MAT-0003", 60.0),
+                RecipeItem("MAT-0002", 2.2),
+            ),
+        ),
+        Product(
+            id = 3,
+            name = "原味发酵乳",
+            materialCount = 2,
+            items = listOf(
+                RecipeItem("MAT-0001", 3.0),
+                RecipeItem("MAT-0003", 50.0),
+            ),
+        ),
     )
 
     override suspend fun login(username: String, password: String): AppUser {
@@ -197,25 +255,84 @@ class MockMilkRepository : MilkRepository {
 
     override suspend fun listProducts(): List<Product> = products
 
+    override suspend fun listMaterials(): List<Material> = materials.toList()
+
+    override suspend fun saveMaterial(material: Material): Material {
+        if (material.materialCode.isBlank() || material.nameZh.isBlank() || material.shelfLifeMonths <= 0) {
+            error("请完整填写辅料信息")
+        }
+        val existing = materials.firstOrNull { it.materialId == material.materialId }
+        val saved = if (existing != null) {
+            existing.copy(
+                materialCode = material.materialCode.uppercase(),
+                nameZh = material.nameZh.trim(),
+                nameEn = material.nameEn.trim(),
+                shelfLifeMonths = material.shelfLifeMonths,
+                imageNames = material.imageNames,
+            )
+        } else {
+            Material(
+                materialId = "MAT-${(materials.size + 1).toString().padStart(4, '0')}",
+                materialCode = material.materialCode.uppercase(),
+                nameZh = material.nameZh.trim(),
+                nameEn = material.nameEn.trim(),
+                shelfLifeMonths = material.shelfLifeMonths,
+                imageNames = material.imageNames,
+            )
+        }
+        if (existing != null) {
+            val index = materials.indexOfFirst { it.materialId == existing.materialId }
+            materials[index] = saved
+        } else {
+            materials.add(saved)
+        }
+        return saved
+    }
+
+    override suspend fun listRecipes(): List<ProductRecipe> = products.map {
+        ProductRecipe(it.id, it.name, it.enabled, it.items)
+    }
+
+    override suspend fun saveProductRecipe(recipe: ProductRecipe): ProductRecipe {
+        if (recipe.name.isBlank() || recipe.items.isEmpty()) error("请填写产品名称并至少添加一种辅料")
+        if (recipe.items.map { it.materialId }.distinct().size != recipe.items.size) error("配方中不能重复添加同一辅料")
+        recipe.items.forEach { item ->
+            if (item.quantityPerTonKg <= 0 || materials.none { it.materialId == item.materialId }) {
+                error("辅料不存在或用量必须大于 0")
+            }
+        }
+        val id = if (recipe.id > 0) recipe.id else (products.maxOfOrNull { it.id } ?: 0) + 1
+        val saved = recipe.copy(id = id)
+        val existing = products.indexOfFirst { it.id == id }
+        val product = Product(id, saved.name.trim(), saved.items.size, saved.items, saved.enabled)
+        if (existing >= 0) products[existing] = product else products.add(product)
+        return saved
+    }
+
     override suspend fun createWorkOrder(productId: Int, targetWeightKg: Double): WorkOrder {
         val product = products.firstOrNull { it.id == productId } ?: error("产品不存在")
         if (targetWeightKg <= 0 || targetWeightKg > 100000) error("请输入正确的目标生产重量")
+        val recipeItems = product.items.ifEmpty {
+            (1..product.materialCount).map { RecipeItem("MAT-40$it", 0.5) }
+        }
+        val tons = targetWeightKg / 1000
         val order = WorkOrder(
             orderNo = "WO-202609${System.currentTimeMillis().toString().takeLast(6)}",
             productName = product.name,
             targetWeightKg = targetWeightKg,
             completedSteps = 0,
-            totalSteps = product.materialCount,
+            totalSteps = recipeItems.size,
             operatorName = "现场操作员",
             status = WorkOrderStatus.PENDING_APPROVAL,
             updatedAt = "刚刚",
-            steps = (1..product.materialCount).map { step ->
+            steps = recipeItems.mapIndexed { index, item ->
+                val material = materials.firstOrNull { it.materialId == item.materialId }
                 WorkOrderStep(
-                    stepNo = step,
-                    materialId = "MAT-40$step",
-                    materialCode = "MAT-40$step",
-                    materialName = "新建辅料 $step",
-                    requiredWeightKg = step * 0.5,
+                    stepNo = index + 1,
+                    materialId = item.materialId,
+                    materialCode = material?.materialCode ?: item.materialId,
+                    materialName = material?.nameZh ?: "新建辅料 ${index + 1}",
+                    requiredWeightKg = item.quantityPerTonKg * tons,
                     toleranceKg = 0.05,
                     status = StepStatus.PENDING,
                 )

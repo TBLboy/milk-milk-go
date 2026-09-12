@@ -1239,7 +1239,7 @@ tasks:
     parent_id: TASK-020
     phase: implementation
     goal: 实现平板端管理员维护辅料和产品配方的界面：辅料支持多张包装图片，配方从现有辅料库选择并填写每吨用量，普通操作员不可见。
-    status: pending
+    status: implemented-unverified
     priority: high
     risk: high
     authority: B
@@ -1273,9 +1273,27 @@ tasks:
       - 普通操作员看不到主数据入口
       - 页面数据全部通过 Repository 访问
     verification:
-      status: not-run
-      commands: [./gradlew assembleDebug]
-      evidence: []
-      limitations: [真实主数据 API 和图片上传后端联调后验证]
+      status: partial
+      commands:
+        - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
+      evidence:
+        - 管理员可查看、创建、编辑辅料，支持内部代号、中英文名称、保质期和多张包装图片选择
+        - 管理员可查看、创建、编辑产品配方，从现有辅料库选择辅料并填写每吨用量
+        - 新建工单会读取产品配方中的真实辅料清单并按目标重量换算
+        - 普通操作员看不到“辅料与配方”导航
+        - Android debug APK 构建通过
+      limitations:
+        - 当前仅支持相册多选图片，真实摄像头拍摄和图片上传后端联调未完成
+        - 当前为 MockRepository，真实 /master-data API 联调未完成
+    result:
+      summary: 平板管理员主数据 Mock 已完成，辅料和产品配方可在平板创建编辑，并且新建工单直接复用配方明细。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+      deviations:
+        - 图片管理第一版以相册多选代替摄像头拍摄，真实图片上传后续接入
+      follow_ups:
+        - 真机验证辅料图片多选和配方编辑
+        - 后续接入真实主数据 API
     created_at: "2026-09-11T14:00:00Z"
-    updated_at: "2026-09-11T14:00:00Z"
+    updated_at: "2026-09-12T05:00:00Z"
