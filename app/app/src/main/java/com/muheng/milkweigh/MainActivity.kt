@@ -14,6 +14,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -73,6 +74,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -91,6 +93,16 @@ private val Green = Color(0xFF1F9469)
 private val Ink = Color(0xFF17202B)
 private val Muted = Color(0xFF77858F)
 private val Page = Color(0xFFF5F7F9)
+
+private fun parseIpParts(url: String): Pair<String, String> {
+    val match = Regex("""^http://192\.168\.(\d{1,3})\.(\d{1,3}):\d+/api/v1/?$""", RegexOption.IGNORE_CASE)
+        .find(url.trim())
+    return if (match == null) {
+        "" to ""
+    } else {
+        match.groupValues[1] to match.groupValues[2]
+    }
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -116,7 +128,9 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
     var password by remember { mutableStateOf("") }
     var displayName by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
-    var serverUrl by remember { mutableStateOf(sessionStore.serverUrl()) }
+    var ipThird by remember { mutableStateOf("") }
+    var ipFourth by remember { mutableStateOf("") }
+    var serverError by remember { mutableStateOf<String?>(null) }
     var registerMode by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var agreed by remember { mutableStateOf(false) }
@@ -141,8 +155,21 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
             }
             Card(modifier = Modifier.width(420.dp), colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(12.dp)) {
                 Column(modifier = Modifier.padding(30.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text(if (registerMode) "注册普通账号" else "登录工作台", color = Ink, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                    Text(if (registerMode) "创建现场操作员账号" else "使用现场账号进入称量任务", color = Muted, fontSize = 15.sp)
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(if (registerMode) "注册普通账号" else "登录工作台", color = Ink, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                            Text(if (registerMode) "创建现场操作员账号" else "使用现场账号进入称量任务", color = Muted, fontSize = 15.sp)
+                        }
+                        IconButton(onClick = {
+                            val parts = parseIpParts(sessionStore.serverUrl())
+                            ipThird = parts.first
+                            ipFourth = parts.second
+                            serverError = null
+                            showServerDialog = true
+                        }) {
+                            Icon(Icons.Default.Settings, contentDescription = "服务器设置", tint = Muted)
+                        }
+                    }
                     OutlinedTextField(username, { username = it }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("账号") }, singleLine = true)
                     if (registerMode) {
                         OutlinedTextField(displayName, { displayName = it }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("姓名") }, singleLine = true)
@@ -158,7 +185,6 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
                         } else {
                             TextButton(onClick = { showForgotDialog = true }, modifier = Modifier.padding(start = 0.dp)) { Text("忘记密码", color = Green) }
                         }
-                        TextButton(onClick = { showServerDialog = true }) { Text("服务器设置", color = Green) }
                         TextButton(onClick = { showAgreementDialog = true }) { Text("用户协议", color = Green) }
                     }
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -211,24 +237,48 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
     if (showServerDialog) {
         AlertDialog(
             onDismissRequest = { showServerDialog = false },
-            title = { Text("服务器设置") },
+            title = { Text("系统设置") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedTextField(
-                        serverUrl,
-                        { serverUrl = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("后端服务地址") },
-                        placeholder = { Text("http://电脑局域网IP:8011/api/v1/") },
-                        singleLine = true,
-                    )
-                    Text("平板将通过该地址连接电脑端的后端服务。", color = Muted, fontSize = 13.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("192.168.", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                        OutlinedTextField(
+                            ipThird,
+                            { ipThird = it.filter { char -> char.isDigit() }.take(3) },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            placeholder = { Text("000") },
+                        )
+                        Text(".", color = Ink, fontSize = 20.sp, fontWeight = FontWeight.Medium)
+                        OutlinedTextField(
+                            ipFourth,
+                            { ipFourth = it.filter { char -> char.isDigit() }.take(3) },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            placeholder = { Text("000") },
+                        )
+                    }
+                    serverError?.let { Text(it, color = Color(0xFFC7473C), fontSize = 14.sp) }
                 }
             },
             confirmButton = {
                 Button(onClick = {
-                    sessionStore.saveServerUrl(serverUrl)
-                    showServerDialog = false
+                    val third = ipThird.trim()
+                    val fourth = ipFourth.trim()
+                    val thirdValue = third.toIntOrNull()
+                    val fourthValue = fourth.toIntOrNull()
+                    serverError = when {
+                        third.isEmpty() || fourth.isEmpty() -> "请输入 IP 地址的第三段和第四段"
+                        thirdValue == null || thirdValue !in 0..255 -> "IP 第三段应为 0-255 的数字"
+                        fourthValue == null || fourthValue !in 0..255 -> "IP 第四段应为 0-255 的数字"
+                        else -> null
+                    }
+                    if (serverError == null) {
+                        sessionStore.saveServerUrl("http://192.168.$third.$fourth:8011/api/v1/")
+                        showServerDialog = false
+                    }
                 }) { Text("保存") }
             },
             dismissButton = {
