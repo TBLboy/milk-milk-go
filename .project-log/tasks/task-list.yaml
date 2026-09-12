@@ -791,3 +791,491 @@ tasks:
       follow_ups: []
     created_at: "2026-09-09T09:00:00Z"
     updated_at: "2026-09-09T09:00:00Z"
+  - id: TASK-019
+    title: 建立 Android App 前端工程骨架与 Mock/API 适配层
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 在 app 目录建立 Android Kotlin 平板前端工程，统一主题、导航、角色状态、后端地址配置和可替换数据层，页面不直接散落 mock 数据。
+    status: implemented-unverified
+    priority: critical
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [app, android, frontend]
+    related_business_logic: [BL-AUTH-001, BL-SCOPE-001]
+    acceptance_refs: []
+    related_decisions: [DEC-024, DEC-028]
+    depends_on: []
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - ARCH-001 的 android-app 组件职责
+      - 用户确认 Android 原生 Kotlin 与 APK 交付
+    outputs:
+      - app 目录内的 Android 工程
+      - 统一导航和基础主题
+      - 可替换的 MockRepository / ApiClient
+      - 后端服务地址配置入口
+    plan:
+      - 初始化 Android Kotlin 工程和 Gradle 配置
+      - 建立登录态、角色状态与导航外壳
+      - 建立 API 契约、Mock 数据和 Repository 适配层
+      - 建立平板适配的布局、字体、空态、错误态和加载态
+    done_when:
+      - 平板前端可以启动并展示主要页面占位
+      - 页面组件统一调用 Repository，不直接写 mock 数据
+      - 普通操作员和管理员导航有差异
+      - 后端地址可配置且 mock/real 可切换
+      - APK debug 构建通过
+    verification:
+      status: not-run
+      commands:
+        - ./gradlew assembleDebug
+      evidence:
+        - app 已建立 Android Kotlin + Compose 工程
+        - 已实现 MockMilkRepository、登录页、角色导航、工作台、工单列表/详情占位和管理员入口
+        - 已显式预留后端 BASE_URL 与 Repository 接口
+      limitations:
+        - 当前环境 Gradle 无法离线解析 Android Gradle Plugin 模块元数据，未生成 APK
+        - 尚未接入真实后端、摄像头、扫码和图片选择能力
+    result:
+      summary: APP 前端第一批工程骨架和主要现场操作页面已落地，页面通过 Repository 使用 Mock 数据，等待 Android 构建环境可用后验证。
+      changed_files:
+        - app/settings.gradle.kts
+        - app/build.gradle.kts
+        - app/app/build.gradle.kts
+        - app/app/src/main/AndroidManifest.xml
+        - app/app/src/main/res/values/styles.xml
+        - app/app/src/main/res/drawable/ic_milk_launcher.xml
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+      deviations:
+        - 为适配当前本地工程环境暂使用 Android Studio 模板复制 Gradle Wrapper；真实 APK 构建需在完整 Android Studio/Gradle 环境验证
+      follow_ups:
+        - 配置 Java 17、Gradle/AGP 可解析环境后重新执行 assembleDebug
+        - 继续完成 TASK-020 登录注册真实页面细化和 TASK-021 工单页面交互
+    created_at: "2026-09-11T14:00:00Z"
+    updated_at: "2026-09-11T14:00:00Z"
+  - id: TASK-020
+    title: APP 登录注册与会话状态
+    kind: task
+    parent_id: TASK-019
+    phase: implementation
+    goal: 实现平板登录、普通账号注册、登录态保存和角色导航，管理员登录后可见管理入口，普通操作员只可见现场操作入口。
+    status: implemented-unverified
+    priority: critical
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [app, android, auth]
+    related_business_logic: [BL-AUTH-001, BL-SCOPE-001]
+    acceptance_refs: []
+    related_decisions: [DEC-028]
+    depends_on: [TASK-019]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 平板注册账号为普通操作员
+      - 管理员账号由后台预置或创建
+    outputs:
+      - 平板登录页
+      - 普通账号注册页
+      - Token 与用户信息持久化
+      - 按角色显示导航
+    plan:
+      - 设计登录注册页与表单校验
+      - Mock 实现 POST /auth/login、/auth/register、GET /auth/me
+      - 保存登录态并处理令牌失效
+      - 按 operator/admin 切换导航
+    done_when:
+      - 普通账号和管理员均可登录
+      - 平板可注册普通账号
+      - 重启后登录态可恢复
+      - 普通账号看不到管理员专属入口
+    verification:
+      status: partial
+      commands:
+        - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
+      evidence:
+        - APP 登录页支持登录/注册切换，注册字段含账号、姓名、密码、确认密码
+        - 登录与注册成功后通过 SessionStore 持久化用户与 token
+        - App 启动时从 SharedPreferences 恢复登录态，退出时清除
+        - Android debug APK 构建通过
+      limitations:
+        - 尚未在模拟器/真机执行重启恢复和角色导航运行验证
+        - 当前仍使用 MockRepository，真实 /auth/login、/auth/register、/auth/me 联调未完成
+    result:
+      summary: APP 已补齐注册页、登录态持久化和启动恢复逻辑，Mock 登录注册返回 token 并保存。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+      deviations: []
+      follow_ups:
+        - 真机验证重启后登录态恢复
+        - 后续接入真实后端 API
+    created_at: "2026-09-11T14:00:00Z"
+    updated_at: "2026-09-11T14:00:00Z"
+  - id: TASK-021
+    title: APP 工作台、工单列表与创建工单
+    kind: task
+    parent_id: TASK-020
+    phase: implementation
+    goal: 实现平板工作台、工单列表、状态筛选/分页占位和创建工单流程，让操作员能选择产品、输入目标生产重量并提交待审批工单。
+    status: implemented-unverified
+    priority: critical
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [app, android, work-order]
+    related_business_logic: [BL-WO-001, BL-WO-002, BL-WEIGH-001]
+    acceptance_refs: []
+    related_decisions: [DEC-008, DEC-013, DEC-028]
+    depends_on: [TASK-020]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 平板为主操作端
+      - 工单创建后进入待审批
+      - 工单绑定的账号规则
+    outputs:
+      - 工作台统计卡片
+      - 工单列表与状态筛选
+      - 分页交互占位
+      - 创建工单弹窗/页面
+    plan:
+      - Mock 实现 GET /work-orders、POST /work-orders、GET /master-data/products
+      - 设计工单状态色、进度、操作员和更新时间
+      - 设计创建工单选择产品与输入目标重量
+      - 保留筛选、分页和“查看其他工单”接口入口
+    done_when:
+      - 可从工作台进入工单列表
+      - 可创建工单并展示待审批状态
+      - 已撤销工单排在最后且工作台不展示
+      - 列表数据来自 Repository
+    verification:
+      status: partial
+      commands:
+        - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
+      evidence:
+        - 工作台统计卡片与最近工单已接入 Repository
+        - 工作台和工单列表均提供“新建工单”入口
+        - 工单列表支持状态筛选、已撤销排序到末尾、每页 8 条分页占位
+        - 新建工单弹窗支持选择产品、输入目标生产重量并创建待审批工单
+        - Android debug APK 构建通过
+      limitations:
+        - 尚未在模拟器/真机执行工单创建交互验证
+        - 当前仍使用 MockRepository，真实 /work-orders、/master-data/products 联调未完成
+    result:
+      summary: APP 已补齐产品 Mock 列表、新建工单弹窗和工单列表筛选/排序/分页占位。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+      deviations: []
+      follow_ups:
+        - 真机验证新建工单流程
+        - 后续接入真实后端 API
+    created_at: "2026-09-11T14:00:00Z"
+    updated_at: "2026-09-11T14:00:00Z"
+  - id: TASK-022
+    title: APP 工单详情与辅料步骤列表
+    kind: task
+    parent_id: TASK-021
+    phase: implementation
+    goal: 实现平板工单详情、整体进度、辅料步骤顺序、当前步骤状态和执行/完成操作，展示工单创建时的配方快照。
+    status: implemented-unverified
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [app, android, work-order, steps]
+    related_business_logic: [BL-WO-001, BL-WO-004, BL-WO-005]
+    acceptance_refs: []
+    related_decisions: [DEC-013, DEC-028]
+    depends_on: [TASK-021]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 工单步骤必须按顺序完成
+      - 全部步骤完成后才可提交完成
+    outputs:
+      - 工单详情页
+      - 辅料步骤列表
+      - 当前步骤引导
+      - 开始执行与提交完成操作
+    plan:
+      - Mock 实现 GET /work-orders/{order_no}、POST /work-orders/{order_no}/start、POST /work-orders/{order_no}/complete
+      - 设计产品、目标重量、执行人、工单状态和整体进度
+      - 展示每个辅料的代号、名称、应称重量、允差和状态
+      - 禁止跳步和未完成提交
+    done_when:
+      - 可打开工单详情查看全部步骤
+      - 当前步骤有明确提示
+      - 未完成步骤时提交完成按钮不可用
+      - 步骤状态完成后界面更新
+    verification:
+      status: partial
+      commands:
+        - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
+      evidence:
+        - 工单详情页展示选中工单的整体进度、产品、目标重量、执行人和全部辅料步骤
+        - 步骤按 PENDING/TYPE_CONFIRMATION/WEIGHING/COMPLETED 顺序展示当前操作
+        - 未完成全部步骤时不能提交工单完成
+        - Android debug APK 构建通过
+      limitations:
+        - 当前为 MockRepository，真实后端状态转换未联调
+        - 未在模拟器/真机执行交互验证
+    result:
+      summary: 平板工单详情已接入步骤模型，点击正确的工单会打开对应详情，并按当前步骤展示类型确认或称重入口。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+      deviations: []
+      follow_ups:
+        - 真机验证工单详情与步骤交互
+        - 后续接入真实后端接口
+    created_at: "2026-09-11T14:00:00Z"
+    updated_at: "2026-09-12T04:00:00Z"
+  - id: TASK-023
+    title: APP 类型确认前端：二维码扫码与无码拍照申请
+    kind: task
+    parent_id: TASK-022
+    phase: implementation
+    goal: 实现平板类型确认界面：扫描自制二维码匹配 materialId；无码或标签异常时拍照并提交申请，审批通过前不能进入称重。
+    status: implemented-unverified
+    priority: critical
+    risk: high
+    authority: B
+    owner: agent
+    tags: [app, android, qr, camera, approval]
+    related_business_logic: [BL-RECOG-001, BL-WEIGH-002, BL-WEIGH-005]
+    acceptance_refs: []
+    related_decisions: [DEC-015, DEC-023, DEC-026, DEC-028]
+    depends_on: [TASK-022]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 自制二维码包含 v/labelId/materialId/materialCode/name/printedAt
+      - 二维码匹配成功后才进入称重
+      - 无码或标签异常走拍照审批
+    outputs:
+      - 扫码确认页
+      - 二维码内容展示
+      - 拍照申请页
+      - 类型确认成功/失败/待审批状态
+    plan:
+      - Mock 实现 POST /evidence/files、POST /evidence/work-orders/{order_no}/steps/{step_no}/qr、POST /evidence/work-orders/{order_no}/steps/{step_no}/photo-request
+      - 设计扫码结果与当前步骤要求对比展示
+      - 设计无码拍照、原因填写和提交申请
+      - 展示匹配成功、辅料错误、待审批三种状态
+    done_when:
+      - 可模拟扫码成功进入称重
+      - 二维码不匹配时禁止进入称重
+      - 无码流程要求照片和原因
+      - 审批通过前界面保持等待
+    verification:
+      status: partial
+      commands:
+        - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
+      evidence:
+        - 类型确认弹窗支持模拟扫码辅料 ID 并校验当前步骤要求
+        - 支持从相册选择包装照片、填写放行原因并提交拍照申请
+        - 待审批状态可模拟后台审批通过后进入称重
+        - Android debug APK 构建通过
+      limitations:
+        - 真实二维码摄像头扫码尚未接入
+        - 当前为 MockRepository，真实 /evidence 接口联调未完成
+    result:
+      summary: 平板类型确认 Mock 流程已完成，覆盖扫码匹配、辅料不匹配拦截、无码拍照申请和待审批到称重转换。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+      deviations:
+        - 第一版先实现模拟扫码与照片选择，真实摄像头扫码与图片识别后续接入
+      follow_ups:
+        - 真机验证相册选择与申请流程
+        - 后续接入真实扫码 SDK 和后端审批接口
+    created_at: "2026-09-11T14:00:00Z"
+    updated_at: "2026-09-12T04:00:00Z"
+  - id: TASK-024
+    title: APP 重量确认前端：手动读数与电子秤照片
+    kind: task
+    parent_id: TASK-023
+    phase: implementation
+    goal: 实现平板重量确认界面：手动输入重量，选择或拍摄电子秤读数照片，数字和照片一起提交，缺一不可，并展示允差是否通过。
+    status: implemented-unverified
+    priority: critical
+    risk: high
+    authority: B
+    owner: agent
+    tags: [app, android, weighing, evidence]
+    related_business_logic: [BL-WEIGH-003, BL-WEIGH-004, BL-WEIGH-006]
+    acceptance_refs: []
+    related_decisions: [DEC-023, DEC-026, DEC-028]
+    depends_on: [TASK-023]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 第一版不连接电子秤
+      - 重量为手动读数并标记 manual
+      - 必须同时保存重量和电子秤读数照片
+    outputs:
+      - 重量输入界面
+      - 拍照/相册选择与预览
+      - 允差结果提示
+      - 称重记录留痕展示
+    plan:
+      - Mock 实现 POST /evidence/work-orders/{order_no}/steps/{step_no}/weight
+      - 设计大字号重量键盘和合法值校验
+      - 设计拍照、相册选择和照片预览
+      - 未输入重量或无照片时禁止提交
+      - 展示通过/超差结果和重新称重入口
+    done_when:
+      - 重量与照片缺一不可
+      - 非法重量被拦截
+      - 超差提示明确且保留重试能力
+      - 提交成功后步骤变为已完成
+    verification:
+      status: partial
+      commands:
+        - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
+      evidence:
+        - 称重弹窗支持手动输入电子秤读数
+        - 必须选择电子秤读数照片才能提交
+        - 允差通过后步骤变为已完成，超差时提示重试
+        - Android debug APK 构建通过
+      limitations:
+        - 当前仅支持相册选择照片，摄像头拍摄后续接入
+        - 当前为 MockRepository，真实照片上传和允差校验接口联调未完成
+    result:
+      summary: 平板重量确认 Mock 流程已完成，重量与读数照片相互绑定，允差通过才完成当前步骤。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+      deviations:
+        - 拍照能力第一版先以相册选择代替，真机摄像头拍摄后续补充
+      follow_ups:
+        - 真机验证相册选择与称重结果
+        - 后续接入真实后端 /weight 接口
+    created_at: "2026-09-11T14:00:00Z"
+    updated_at: "2026-09-12T04:00:00Z"
+  - id: TASK-025
+    title: APP 接管与撤销/删除申请前端
+    kind: task
+    parent_id: TASK-022
+    phase: implementation
+    goal: 实现平板查看其他工单、申请接管、申请撤销/删除的界面和交互，接口先保留为 mock 契约，后端接口补齐前不做真实联调。
+    status: implemented-unverified
+    priority: medium
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [app, android, work-order, takeover, approval]
+    related_business_logic: [BL-WO-003, BL-WO-005]
+    acceptance_refs: []
+    related_decisions: [DEC-008, DEC-009, DEC-028]
+    depends_on: [TASK-022]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 平板可查看其他工单状态和绑定账号
+      - 接管需后台审批
+      - 撤销/删除需后台审批且长期保留记录
+    outputs:
+      - 其他工单列表/详情
+      - 接管申请页
+      - 撤销/删除申请页
+      - 申请状态展示
+    plan:
+      - 预留 GET /work-orders/all、POST /work-orders/{order_no}/takeover-requests、POST /work-orders/{order_no}/cancel-requests、POST /work-orders/{order_no}/delete-requests
+      - Mock 展示其他工单状态和绑定账号
+      - 设计接管申请确认和申请结果
+      - 设计撤销/删除申请原因和确认
+    done_when:
+      - 可看到其他工单的状态和绑定账号
+      - 可提交接管申请并展示待审批
+      - 可提交撤销/删除申请并展示待审批
+      - 接口通过 Repository 预留，不使用硬编码业务写入
+    verification:
+      status: partial
+      commands:
+        - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
+      evidence:
+        - 工单详情可显示当前执行人并提交接管申请
+        - 支持提交撤销/删除申请并填写原因
+        - 提交后在工单详情展示待审批状态
+        - Android debug APK 构建通过
+      limitations:
+        - 接管/撤销/删除后端接口尚未实现，真实审批联调后续完成
+        - 未在模拟器/真机执行申请流程验证
+    result:
+      summary: 平板接管、撤销/删除申请 Mock 页面已完成，申请状态保存在 MockRepository 并在详情页展示。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+      deviations: []
+      follow_ups:
+        - 后端补齐接管/撤销/删除审批接口后联调
+        - 真机验证申请流程
+    created_at: "2026-09-11T14:00:00Z"
+    updated_at: "2026-09-12T04:20:00Z"
+  - id: TASK-026
+    title: APP 管理员主数据前端
+    kind: task
+    parent_id: TASK-020
+    phase: implementation
+    goal: 实现平板端管理员维护辅料和产品配方的界面：辅料支持多张包装图片，配方从现有辅料库选择并填写每吨用量，普通操作员不可见。
+    status: pending
+    priority: high
+    risk: high
+    authority: B
+    owner: agent
+    tags: [app, android, master-data, images]
+    related_business_logic: [BL-DATA-001, BL-DATA-003, BL-DATA-004]
+    acceptance_refs: []
+    related_decisions: [DEC-017, DEC-018, DEC-019, DEC-028]
+    depends_on: [TASK-020]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 辅料录入仅管理员可操作
+      - 辅料包含中文名称、英文名选填、内部代号、保质期和多张包装图片
+      - 产品配方从现有辅料库选择并填写每吨用量
+    outputs:
+      - 辅料列表/创建/编辑页
+      - 多张包装图片拍摄/选择/预览
+      - 产品配方列表/创建/编辑页
+      - 管理员权限隔离
+    plan:
+      - Mock 实现 GET/POST/PUT /master-data/materials、GET/POST/PUT /master-data/products、POST /evidence/files
+      - 设计辅料字段校验、代号唯一、保质期输入和图片管理
+      - 设计配方选择产品名称、从辅料库添加辅料、填写每吨用量
+      - 普通操作员隐藏主数据入口
+    done_when:
+      - 管理员可创建/编辑辅料并管理多张包装图片
+      - 管理员可创建/编辑产品配方并选择现有辅料
+      - 普通操作员看不到主数据入口
+      - 页面数据全部通过 Repository 访问
+    verification:
+      status: not-run
+      commands: [./gradlew assembleDebug]
+      evidence: []
+      limitations: [真实主数据 API 和图片上传后端联调后验证]
+    created_at: "2026-09-11T14:00:00Z"
+    updated_at: "2026-09-11T14:00:00Z"
