@@ -271,7 +271,7 @@ tasks:
     parent_id: TASK-011
     phase: implementation
     goal: 产品配方可在编辑弹窗中删除；配方卡片状态栏只显示启用/停用状态，通过右侧箭头切换状态。
-    status: implemented-verified
+    status: done
     priority: high
     risk: medium
     authority: B
@@ -307,7 +307,7 @@ tasks:
     parent_id: TASK-011
     phase: implementation
     goal: 配方卡片右侧箭头点击后先展开“启用/停用”下拉列表，用户选择状态后再执行切换。
-    status: implemented-verified
+    status: done
     priority: high
     risk: low
     authority: B
@@ -343,7 +343,7 @@ tasks:
     parent_id: TASK-011
     phase: implementation
     goal: 工作台“今日工单”统计只计算未撤销工单，已撤销工单不改动列表展示。
-    status: implemented-verified
+    status: done
     priority: high
     risk: low
     authority: B
@@ -379,7 +379,7 @@ tasks:
     parent_id: TASK-011
     phase: implementation
     goal: 已撤销工单在工单管理中固定排到最后，工作台最近工单不再展示已撤销工单。
-    status: implemented-verified
+    status: done
     priority: high
     risk: medium
     authority: B
@@ -689,7 +689,7 @@ tasks:
     parent_id: TASK-011
     phase: implementation
     goal: 创建新配方时可选择上传可选产品图片，配方卡片据此显示产品图片，未上传时保留默认图标。
-    status: implemented-verified
+    status: done
     priority: medium
     risk: medium
     authority: B
@@ -716,7 +716,6 @@ tasks:
       summary: 产品配方已支持可选上传产品图片，上传后配方卡片 logo 显示产品图片，未上传保留默认图标。
       changed_files: [pc/server/app/api/evidence.py, pc/server/app/api/master_data.py, pc/server/app/db/models.py, pc/src/components/Modals.tsx, pc/src/pages/ManagementPages.tsx, pc/src/services/api.ts, pc/src/styles/app.css, pc/server/tests/test_evidence.py, pc/server/tests/test_master_data.py]
       deviations: []
-    follow_ups: []
     created_at: "2026-09-09T09:00:00Z"
     updated_at: "2026-09-09T09:00:00Z"
   - id: TASK-013
@@ -725,7 +724,7 @@ tasks:
     parent_id: TASK-011
     phase: implementation
     goal: 已创建的产品配方可再次编辑名称、辅料清单、每吨用量和可选图片；创建/编辑配方时用量输入支持任意正数（如 5），不再触发无效值校验。
-    status: implemented-verified
+    status: done
     priority: high
     risk: medium
     authority: B
@@ -761,7 +760,7 @@ tasks:
     parent_id: TASK-011
     phase: implementation
     goal: 产品配方卡片可显示真实启用/停用状态并支持切换；新建操作员账号不再因默认密码过短显示“请求失败”。
-    status: implemented-verified
+    status: done
     priority: high
     risk: medium
     authority: B
@@ -1328,17 +1327,24 @@ tasks:
       - 管理员可更新普通用户头像、姓名、电话和身份证
       - 后端测试覆盖资料接口和脱敏规则
     verification:
-      status: planned
-      commands: []
-      evidence: []
-      limitations: []
+      status: passed
+      commands:
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+      evidence:
+        - 后端 36 项测试通过，含注册待审批、资料维护、随机密码重置和自助改密
+        - /auth/me 与后台用户资料接口返回头像、电话、身份证、状态和改密标记
+      limitations:
+        - 多平板头像同步与真机相册/拍照上传尚未真机验收
     result:
-      summary: null
-      changed_files: []
+      summary: 用户表新增状态、头像、电话、身份证和改密标记；后台资料接口支持普通用户自维护信息和管理员维护完整资料，身份证按权限脱敏。
+      changed_files:
+        - pc/server/app/db/models.py
+        - pc/server/app/api/auth.py
+        - pc/server/tests/test_auth.py
       deviations: []
       follow_ups: []
     created_at: "2026-09-12"
-    updated_at: "2026-09-12"
+    updated_at: "2026-09-12T13:00:00Z"
   - id: TASK-028
     title: 后端一次性随机密码重置与自助改密
     kind: task
@@ -1369,17 +1375,23 @@ tasks:
       - 自助改密接口验证当前密码并直接更新
       - 后端测试覆盖随机密码、重置和改密
     verification:
-      status: planned
-      commands: []
-      evidence: []
-      limitations: []
+      status: passed
+      commands:
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+      evidence:
+        - 重置密码接口不接受管理员指定正式密码，返回 10 位随机会话初始密码并写入 must_change_password
+        - 用户凭当前密码自助改密成功，旧密码错误时按业务规则拒绝
+      limitations:
+        - 初始密码“关闭后不可再次查看”依赖 PC 弹窗一次展示，权限层不再提供明文查询接口
     result:
-      summary: null
-      changed_files: []
+      summary: 管理员只能重置为一次随机初始密码；登录和后台账号管理流程已接入强制改密标记；用户可在平板资料菜单自助修改密码。
+      changed_files:
+        - pc/server/app/api/auth.py
+        - pc/server/tests/test_auth.py
       deviations: []
       follow_ups: []
     created_at: "2026-09-12"
-    updated_at: "2026-09-12"
+    updated_at: "2026-09-12T13:00:00Z"
   - id: TASK-029
     title: 后端平板注册审批流
     kind: task
@@ -1410,17 +1422,25 @@ tasks:
       - approvals 接口包含账号注册申请
       - 后端测试覆盖注册、登录拦截和审批
     verification:
-      status: planned
-      commands: []
-      evidence: []
-      limitations: []
+      status: passed
+      commands:
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+      evidence:
+        - /auth/register 创建 pending 普通账号，待审批账号登录返回 403
+        - 管理员可批准/驳回注册申请，审批后账号按状态恢复或保持不可登录
+        - /approvals 返回 AP-USER 注册申请
+      limitations:
+        - 平板真机注册提交、审批后重新登录尚未端到端验收
     result:
-      summary: null
-      changed_files: []
+      summary: 平板注册账号先待审批，审批通过前不能登录；注册申请已纳入审批中心，后台可批准或驳回。
+      changed_files:
+        - pc/server/app/api/auth.py
+        - pc/server/app/api/approvals.py
+        - pc/server/tests/test_auth.py
       deviations: []
       follow_ups: []
     created_at: "2026-09-12"
-    updated_at: "2026-09-12"
+    updated_at: "2026-09-12T13:00:00Z"
   - id: TASK-030
     title: PC 账号资料、重置密码弹窗与注册审批
     kind: task
@@ -1451,17 +1471,25 @@ tasks:
       - 审批中心可批准/驳回待审批注册账号
       - PC 前端构建通过
     verification:
-      status: planned
-      commands: []
-      evidence: []
-      limitations: []
+      status: passed
+      commands:
+        - cd /home/tbl/Project/辅料称重防错系统/pc && npm run build
+      evidence:
+        - PC 账号列表展示头像、电话、脱敏身份证和账号状态
+        - 新建/编辑账号资料支持头像、电话、身份证；重置密码弹窗展示账号、随机密码并可复制
+        - 审批中心与账号管理均接入注册申请批准/驳回操作
+      limitations:
+        - 浏览器端完整人工流程仍需在真实后台数据上复验
     result:
-      summary: null
-      changed_files: []
+      summary: PC 账号管理已接入资料、注册审批和一次性随机密码弹窗。
+      changed_files:
+        - pc/src/pages/ManagementPages.tsx
+        - pc/src/components/Modals.tsx
+        - pc/src/services/api.ts
       deviations: []
       follow_ups: []
     created_at: "2026-09-12"
-    updated_at: "2026-09-12"
+    updated_at: "2026-09-12T13:00:00Z"
   - id: TASK-031
     title: APP 注册待审批与登录状态处理
     kind: task
@@ -1491,17 +1519,25 @@ tasks:
       - AppUser 包含头像、电话、身份证脱敏和改密标记
       - Android debug APK 构建通过
     verification:
-      status: planned
-      commands: []
-      evidence: []
-      limitations: []
+      status: passed
+      commands:
+        - cd /home/tbl/Project/辅料称重防错系统/app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
+      evidence:
+        - Android debug APK 构建通过
+        - 注册成功提示等待审批且不自动登录；待审批/驳回账号登录错误成为明确提示
+        - AppUser 包含头像、电话、身份证脱敏、账号状态和强制改密标记
+      limitations:
+        - 真机注册、审批、切换账号和重启恢复尚未验收
     result:
-      summary: null
-      changed_files: []
+      summary: 平板注册待审批与登录状态处理已接入真实后端；注册按钮文案修正为“提交注册申请”，避免误导为注册后立即登录。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
       deviations: []
       follow_ups: []
     created_at: "2026-09-12"
-    updated_at: "2026-09-12"
+    updated_at: "2026-09-12T13:00:00Z"
   - id: TASK-032
     title: APP 右上角头像菜单、资料管理与密码管理
     kind: task
@@ -1532,14 +1568,119 @@ tasks:
       - must_change_password=true 时登录后强制进入改密
       - Android debug APK 构建通过
     verification:
-      status: planned
+      status: passed
+      commands:
+        - cd /home/tbl/Project/辅料称重防错系统/app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
+      evidence:
+        - Android debug APK 构建通过
+        - 右上角头像菜单包含用户资料、密码管理、切换账号和退出登录
+        - 用户资料支持相册/拍照头像并保存姓名、电话；密码管理校验当前密码
+        - 首次登录强制打开修改密码弹窗且不允许直接退出流程
+      limitations:
+        - 真机相机、头像跨设备同步和强制改密中断场景尚未验收
+    result:
+      summary: APP 右上角关闭按钮已替换为头像菜单，用户资料和密码管理已接入真实接口。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12"
+    updated_at: "2026-09-12T13:00:00Z"
+  - id: TASK-033
+    title: 平板真机账号资料与密码闭环验收
+    kind: task
+    parent_id: null
+    phase: verification
+    goal: 在真实 Android 平板上验证注册待审批、审批后登录、头像上传/跨设备同步、首次改密、资料编辑、切换账号和退出登录。
+    status: ready
+    priority: high
+    risk: high
+    authority: B
+    owner: shared
+    tags: [app, android, verification]
+    related_business_logic: [BL-AUTH-002, BL-AUTH-003, BL-AUTH-004, BL-AUTH-005]
+    acceptance_refs: [AC-AUTH-002, AC-AUTH-003, AC-AUTH-004, AC-AUTH-005]
+    related_decisions: []
+    depends_on: [TASK-031, TASK-032]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - Android debug APK
+      - 可访问的后端 8011 服务
+    outputs:
+      - 真机验收记录
+      - 发现问题的修复任务
+    plan:
+      - 安装 APK 到真机并连接同一局域网
+      - 验证注册待审批、PC 审批、首次登录强制改密
+      - 验证头像、姓名、电话和密码管理
+      - 验证切换账号、退出登录与重启恢复
+    done_when:
+      - 注册后必须审批通过才能登录
+      - 重置后的初始密码首次登录必须修改
+      - 头像可上传并在另一台登录同一账号时同步显示
+      - 用户可自助修改密码且旧密码错误时被拦截
+    verification:
+      status: not-run
       commands: []
       evidence: []
-      limitations: []
+      limitations: [需要用户提供或连接真实 Android 平板与局域网后端]
     result:
       summary: null
       changed_files: []
       deviations: []
       follow_ups: []
-    created_at: "2026-09-12"
-    updated_at: "2026-09-12"
+    created_at: "2026-09-12T13:00:00Z"
+    updated_at: "2026-09-12T13:00:00Z"
+  - id: TASK-034
+    title: PC 后台账号资料与审批闭环验收
+    kind: task
+    parent_id: null
+    phase: verification
+    goal: 在浏览器中验证电脑后台的账号资料维护、头像上传、随机密码弹窗、复制初始密码、注册审批以及驳回后登录拦截。
+    status: ready
+    priority: high
+    risk: medium
+    authority: B
+    owner: shared
+    tags: [pc, verification]
+    related_business_logic: [BL-AUTH-002, BL-AUTH-003, BL-AUTH-004]
+    acceptance_refs: [AC-AUTH-003, AC-AUTH-004]
+    related_decisions: []
+    depends_on: [TASK-030]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - PC 管理端页面与后端 8011 服务
+    outputs:
+      - 后台闭环验收记录
+      - 发现问题的修复任务
+    plan:
+      - 登录后台进入账号管理
+      - 创建带头像、电话、身份证的普通账号
+      - 审批平板注册申请
+      - 执行随机密码重置并验证复制弹窗
+      - 验证待审批/已驳回账号不可登录
+    done_when:
+      - 后台可维护普通账号头像、姓名、电话和身份证
+      - 账号列表身份证脱敏
+      - 注册申请可批准/驳回且状态正确
+      - 重置密码弹窗只展示一次随机初始密码并可复制
+    verification:
+      status: not-run
+      commands: []
+      evidence: []
+      limitations: [需要用户在真实浏览器中执行人工端到端验收]
+    result:
+      summary: null
+      changed_files: []
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12T13:00:00Z"
+    updated_at: "2026-09-12T13:00:00Z"

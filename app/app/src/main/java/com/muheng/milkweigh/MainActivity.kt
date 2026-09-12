@@ -248,7 +248,7 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
                                     .onFailure { error = it.message }
                             }
                         }
-                    }, modifier = Modifier.fillMaxWidth()) { Text(if (registerMode) "注册并登录" else "登录") }
+                    }, modifier = Modifier.fillMaxWidth()) { Text(if (registerMode) "提交注册申请" else "登录") }
                     if (!registerMode) {
                         TextButton(onClick = { registerMode = true; error = null }, modifier = Modifier.align(Alignment.End)) { Text("没有账号？注册普通账号", color = Green) }
                     }
