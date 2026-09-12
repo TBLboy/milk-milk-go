@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { Bell, ChevronDown, ClipboardList, Database, FileText, KeyRound, LayoutDashboard, LogOut, Menu, Printer, Settings, ShieldCheck, UserRound, Users, X } from 'lucide-react'
+import { Bell, Bug, ChevronDown, ClipboardList, Database, FileText, KeyRound, LayoutDashboard, LogOut, Menu, Printer, Settings, ShieldCheck, UserRound, Users, X } from 'lucide-react'
 import { api } from '../services/api'
 import { DATA_SYNC_EVENT, emitDataSync } from '../services/dataSync'
-import { ChangePasswordModal, UserProfileModal } from '../components/Modals'
+import { BugReportModal, ChangePasswordModal, UserProfileModal } from '../components/Modals'
 
 const nav = [
   { label: '工作台', icon: LayoutDashboard, key: 'dashboard' },
@@ -32,6 +32,7 @@ export function AppShell({ page, onPageChange, children, user, onLogout, onUserC
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [passwordOpen, setPasswordOpen] = useState(false)
+  const [bugReportOpen, setBugReportOpen] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState('')
   const userMenuRef = useRef<HTMLDivElement>(null)
   const displayName = user?.display_name || user?.username || '系统管理员'
@@ -122,8 +123,9 @@ export function AppShell({ page, onPageChange, children, user, onLogout, onUserC
       <div className="sidebar-footer"><UserAvatar name={displayName} avatarUrl={avatarUrl} /><div><strong>{displayName}</strong><span>{displayRole}</span></div><button className="icon-btn" onClick={onLogout} aria-label="退出登录"><LogOut size={16} /></button></div>
     </aside>
     {open && <button className="sidebar-overlay" onClick={() => setOpen(false)} aria-label="关闭菜单" />}
-    <main className="main-content"><header className="topbar"><button className="icon-btn menu-btn" onClick={() => setOpen(true)} aria-label="打开菜单"><Menu size={21} /></button><div className="crumb"><span>生产管理</span><b>/</b><strong>{nav.find((item) => item.key === page)?.label ?? ({ accounts: '账号管理', settings: '系统设置' } as Record<string, string>)[page] ?? '工作台'}</strong></div><div className="top-actions"><button className="icon-btn notification" aria-label="通知" onClick={() => onPageChange('approvals')}><Bell size={19} />{pendingCount > 0 && <i />}</button><div className="user-menu-wrap" ref={userMenuRef}><button className={userMenuOpen ? 'top-user open' : 'top-user'} onClick={() => setUserMenuOpen((value) => !value)} aria-haspopup="menu" aria-expanded={userMenuOpen}><UserAvatar name={displayName} avatarUrl={avatarUrl} small /><span>{displayName}</span><ChevronDown className="user-menu-arrow" size={15} /></button>{userMenuOpen && <div className="user-menu" role="menu"><div className="user-menu-head"><UserAvatar name={displayName} avatarUrl={avatarUrl} /><div><strong>{displayName}</strong><span>{user?.username || 'admin'} · {displayRole}</span></div></div><div className="user-menu-list"><button role="menuitem" onClick={() => { setUserMenuOpen(false); setProfileOpen(true) }}><UserRound size={17} /><span>用户信息</span></button><button role="menuitem" onClick={() => { setUserMenuOpen(false); setPasswordOpen(true) }}><KeyRound size={17} /><span>密码管理</span></button><div className="user-menu-divider" /><button role="menuitem" className="danger" onClick={() => { setUserMenuOpen(false); onLogout?.() }}><LogOut size={17} /><span>退出登录</span></button></div></div>}</div></div></header>{children}</main>
+    <main className="main-content"><header className="topbar"><button className="icon-btn menu-btn" onClick={() => setOpen(true)} aria-label="打开菜单"><Menu size={21} /></button><div className="crumb"><span>生产管理</span><b>/</b><strong>{nav.find((item) => item.key === page)?.label ?? ({ accounts: '账号管理', settings: '系统设置' } as Record<string, string>)[page] ?? '工作台'}</strong></div><div className="top-actions"><button className="icon-btn notification" aria-label="提交 BUG 反馈" title="提交 BUG 反馈" onClick={() => setBugReportOpen(true)}><Bug size={19} /></button><button className="icon-btn notification" aria-label="通知" onClick={() => onPageChange('approvals')}><Bell size={19} />{pendingCount > 0 && <i />}</button><div className="user-menu-wrap" ref={userMenuRef}><button className={userMenuOpen ? 'top-user open' : 'top-user'} onClick={() => setUserMenuOpen((value) => !value)} aria-haspopup="menu" aria-expanded={userMenuOpen}><UserAvatar name={displayName} avatarUrl={avatarUrl} small /><span>{displayName}</span><ChevronDown className="user-menu-arrow" size={15} /></button>{userMenuOpen && <div className="user-menu" role="menu"><div className="user-menu-head"><UserAvatar name={displayName} avatarUrl={avatarUrl} /><div><strong>{displayName}</strong><span>{user?.username || 'admin'} · {displayRole}</span></div></div><div className="user-menu-list"><button role="menuitem" onClick={() => { setUserMenuOpen(false); setProfileOpen(true) }}><UserRound size={17} /><span>用户信息</span></button><button role="menuitem" onClick={() => { setUserMenuOpen(false); setPasswordOpen(true) }}><KeyRound size={17} /><span>密码管理</span></button><div className="user-menu-divider" /><button role="menuitem" className="danger" onClick={() => { setUserMenuOpen(false); onLogout?.() }}><LogOut size={17} /><span>退出登录</span></button></div></div>}</div></div></header>{children}</main>
     {profileOpen && <UserProfileModal user={user} onClose={() => setProfileOpen(false)} onSuccess={(updated) => onUserChange?.(updated)} />}
     {passwordOpen && <ChangePasswordModal onClose={() => setPasswordOpen(false)} />}
+    {bugReportOpen && <BugReportModal onClose={() => setBugReportOpen(false)} />}
   </div>
 }

@@ -16,6 +16,12 @@ class Settings(BaseSettings):
     admin_recovery_secret_hash: str | None = None
     admin_recovery_max_attempts: int = 5
     admin_recovery_lockout_minutes: int = 15
+    bug_report_recipient: str = "1218740205@qq.com"
+    smtp_host: str = "smtp.qq.com"
+    smtp_port: int = 465
+    smtp_use_ssl: bool = True
+    smtp_username: str | None = None
+    smtp_password: str | None = None
 
     model_config = SettingsConfigDict(env_prefix="MILK_", env_file=".env", extra="ignore")
 

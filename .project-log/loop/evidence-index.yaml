@@ -247,3 +247,171 @@ evidence:
   recorded_at: '2026-09-12T13:36:26Z'
   invalidated_at: null
   invalidation_reason: null
+- id: EV-TASK-059-DEMO-MASTER-DATA
+  kind: integration
+  subject: 演示辅料和配方主数据已重建并通过真实 API 核验
+  status: valid
+  command: null
+  result_ref: 14 materials; 6 recipes; backup created; API verification passed
+  covers:
+    files:
+    - pc/data/milk_weigh.sqlite3
+    - pc/data/backups/milk_weigh-20260912T134206Z.sqlite3
+    - .project-log/docs/demo-master-data-20260913.md
+    requirements:
+    - REQ-001
+    tasks:
+    - TASK-059
+  version_binding:
+    git_commit: 968c70420c5d4027b21ac94055ce97bcd19c709b
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      pc/data/milk_weigh.sqlite3: 1ba4ec8046a6fb9646ff4f607e1121dcc2278739fc0180eb4e9f27a3bcf48eb4
+      pc/data/backups/milk_weigh-20260912T134206Z.sqlite3: 2ec3bc27da762388bef0d8422583a5f8248c0ca004c8c16fb35caf4663f65751
+      .project-log/docs/demo-master-data-20260913.md: 6d95117bb8436841a54ea497a66369f60aae58b368548caca9fadc47d63b5731
+  recorded_at: '2026-09-12T13:43:24Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-060-LABEL-QUANTITY
+  kind: ui
+  subject: 标签打印数量支持手动输入且空白点击不再减一
+  status: valid
+  command: npm run build; Playwright label quantity regression
+  result_ref: build passed; blank click unchanged; manual 137 retained; plus/minus
+    passed; request quantity 37 passed
+  covers:
+    files:
+    - pc/src/pages/ManagementPages.tsx
+    - pc/src/styles/global.css
+    requirements:
+    - REQ-001
+    tasks:
+    - TASK-060
+  version_binding:
+    git_commit: 968c70420c5d4027b21ac94055ce97bcd19c709b
+    diff_hash: 8c722f1194028dbef940b57bc7f92efe2008e91869fbb8c52310a0c5a4e5d25c
+    file_hashes:
+      pc/src/pages/ManagementPages.tsx: dedf67fa246db7b181196e28041b377a819648c72669898324216b16352abcd9
+      pc/src/styles/global.css: 3c43ac4b43e73f6cc103ee474d91469162043bf11458d7da5ba49bc08ff2e74e
+  recorded_at: '2026-09-12T13:50:11Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-061-LABEL-CENTER
+  kind: ui
+  subject: 标签预览卡片已在右侧面板空白区域水平垂直居中
+  status: valid
+  command: npm run build; Playwright label preview center measurement
+  result_ref: build passed; vertical center offset 0.5px; horizontal center aligned
+  covers:
+    files:
+    - pc/src/styles/global.css
+    requirements:
+    - REQ-001
+    tasks:
+    - TASK-061
+  version_binding:
+    git_commit: 968c70420c5d4027b21ac94055ce97bcd19c709b
+    diff_hash: 092abba0f5030158e3c71c949dbc96e724dec683f73822d92bf115bdadcece6c
+    file_hashes:
+      pc/src/styles/global.css: 7d58f39b9918f3a13c1e0f86fdaef33c7a309c8a89637c5e1dd6faa8381f91a3
+  recorded_at: '2026-09-12T13:54:26Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-062-BACKEND
+  kind: test
+  subject: BUG 反馈后端接口、SMTP 邮件和图片归属测试
+  status: valid
+  command: conda run -n milk env PYTHONPATH= PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python
+    -m pytest -q
+  result_ref: 47 passed
+  covers:
+    files:
+    - pc/server/tests/test_bug_reports.py
+    requirements:
+    - REQ-001
+    tasks:
+    - TASK-062
+  version_binding:
+    git_commit: 968c70420c5d4027b21ac94055ce97bcd19c709b
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      pc/server/tests/test_bug_reports.py: fc1f4888da0affc86f65ae6251ccfd6ec22ed285ac4999c53e26ab2d5adcc0e3
+  recorded_at: '2026-09-12T14:06:23Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-062-PC-BUILD
+  kind: build
+  subject: PC BUG 反馈入口与弹窗生产构建
+  status: valid
+  command: npm run build
+  result_ref: TypeScript and Vite build passed
+  covers:
+    files:
+    - pc/src/components/Modals.tsx
+    requirements: []
+    tasks:
+    - TASK-062
+  version_binding:
+    git_commit: 968c70420c5d4027b21ac94055ce97bcd19c709b
+    diff_hash: 06caae2b10b62b5b6d54c8d39c9f2d93286805145243e04213b41fb191c0b86a
+    file_hashes:
+      pc/src/components/Modals.tsx: 5d6afc68bb4c1c722c0e5c1b0672f8ba5ed3c06665931a98166ff3504eacced4
+  recorded_at: '2026-09-12T14:06:23Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-062-APP-BUILD
+  kind: build
+  subject: Android BUG 反馈入口与弹窗调试构建
+  status: valid
+  command: JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug
+  result_ref: BUILD SUCCESSFUL
+  covers:
+    files:
+    - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+    requirements: []
+    tasks:
+    - TASK-062
+  version_binding:
+    git_commit: 968c70420c5d4027b21ac94055ce97bcd19c709b
+    diff_hash: eea32b3424e0eca009e2070445b89a2d63440abad46572134fc82f04814c0c9e
+    file_hashes:
+      app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt: 67b33483112d995501f341c317724ee1048b656ae97065b692a71168968759a6
+  recorded_at: '2026-09-12T14:06:23Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-062-PC-UI
+  kind: test
+  subject: PC BUG 按钮位置与提交成功态浏览器回归
+  status: valid
+  command: Playwright desktop BUG report smoke test
+  result_ref: bug x=1125, bell x=1179, success modal visible
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-062
+  version_binding:
+    git_commit: 968c70420c5d4027b21ac94055ce97bcd19c709b
+    diff_hash: c904f6026527bc7636c77c66bb4c14aeb8bbfd2e1620246daafc5136c790ff50
+    file_hashes: {}
+  recorded_at: '2026-09-12T14:06:23Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-062-SMTP-REAL
+  kind: integration
+  subject: QQ SMTP real login and test-message submission
+  status: valid
+  command: python smtplib using local pc/server/.env
+  result_ref: .project-log/tasks/task-list.yaml#TASK-062
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-062
+  version_binding:
+    git_commit: 968c70420c5d4027b21ac94055ce97bcd19c709b
+    diff_hash: 39e97607031c9cc7a00ba04efb6bd045c07eef0e4e68c8a7cfe507d1b32723c7
+    file_hashes: {}
+  recorded_at: '2026-09-12T14:45:04Z'
+  invalidated_at: null
+  invalidation_reason: null

@@ -13,6 +13,7 @@ from app.api.labels import router as labels_router
 from app.api.operations import router as operations_router
 from app.api.approvals import router as approvals_router
 from app.api.settings import router as settings_router
+from app.api.bug_reports import router as bug_reports_router
 from app.core.config import get_settings
 from app.db.models import initialize_database
 
@@ -43,6 +44,7 @@ app.include_router(labels_router, prefix=settings.api_prefix)
 app.include_router(operations_router, prefix=settings.api_prefix)
 app.include_router(approvals_router, prefix=settings.api_prefix)
 app.include_router(settings_router, prefix=settings.api_prefix)
+app.include_router(bug_reports_router, prefix=settings.api_prefix)
 
 
 @app.get("/", include_in_schema=False)

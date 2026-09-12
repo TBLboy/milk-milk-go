@@ -1,14 +1,14 @@
 schema_version: 1
-run_id: RUN-20260912-133620-87e3580f
+run_id: RUN-20260912-140623-e92c7736
 goal_id: null
 phase: implementation
 clarification_domain: null
-task_id: TASK-058
+task_id: TASK-062
 status: handed-off
 next_action:
   kind: waiting-user
-  subject: TASK-058
-  statement: 等待用户在真实平板安装最新 APK 后确认辅料列表和配方编辑不再出现启用/停用信息，或提出下一项需求
+  subject: TASK-062
+  statement: BUG 反馈功能已完成并通过构建与自动化回归；等待用户配置 SMTP 授权码做真实邮件投递测试，或在真实平板查看页面效果
 counters:
   task_attempts: 0
   same_failure_count: 0
@@ -24,5 +24,5 @@ native_goal:
   thread_goal_id: null
   last_known_status: null
   last_synced_at: null
-last_event_id: LE-001673
-updated_at: '2026-09-12T13:37:33Z'
+last_event_id: LE-001695
+updated_at: '2026-09-12T14:45:04Z'

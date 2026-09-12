@@ -307,6 +307,13 @@ export const api = {
     return request('/evidence/files', { method: 'POST', body: form })
   },
 
+  async submitBugReport(payload: { source: 'pc' | 'app'; description: string; image_file_ids: string[] }): Promise<any> {
+    return request('/bug-reports', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
+
   async getFileUrl(fileId: string): Promise<string> {
     const response = await fetch(`${API_BASE}/evidence/files/${fileId}`, { headers: getAuthHeader() })
     if (!response.ok) throw new Error('图片加载失败')

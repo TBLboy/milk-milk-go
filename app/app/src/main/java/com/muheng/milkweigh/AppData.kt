@@ -110,6 +110,7 @@ interface MilkRepository {
     suspend fun refreshUser(): AppUser
     suspend fun uploadAvatar(uri: String): String
     suspend fun uploadImage(uri: String): String
+    suspend fun submitBugReport(description: String, imageUris: List<String>)
     suspend fun updateProfile(displayName: String, phone: String, avatarFileId: String?): AppUser
     suspend fun changePassword(currentPassword: String, newPassword: String)
     suspend fun loadFileBytes(fileId: String): ByteArray
@@ -394,6 +395,11 @@ class MockMilkRepository : MilkRepository {
     override suspend fun uploadAvatar(uri: String): String = uri
 
     override suspend fun uploadImage(uri: String): String = uri
+
+    override suspend fun submitBugReport(description: String, imageUris: List<String>) {
+        if (description.isBlank()) error("请填写问题描述")
+        if (imageUris.size > 8) error("最多上传 8 张图片")
+    }
 
     override suspend fun updateProfile(displayName: String, phone: String, avatarFileId: String?): AppUser {
         val current = mockUser ?: AppUser(displayName, "operator", UserRole.OPERATOR, "mock-${System.currentTimeMillis()}")

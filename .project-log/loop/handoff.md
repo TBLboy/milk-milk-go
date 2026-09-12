@@ -2,13 +2,13 @@
 
 - Goal: not set
 - Phase: implementation
-- Task: TASK-058
+- Task: TASK-062
 - Run status: handed-off
 - Native Goal: unbound
-- Valid evidence: EV-TASK-050-REFRESH, EV-TASK-051-PC-SYNC, EV-TASK-052-ADMIN-GUARD, EV-TASK-055-RECOVERY-EYE, EV-TASK-058-MATERIAL-NO-ENABLED
+- Valid evidence: EV-TASK-050-REFRESH, EV-TASK-051-PC-SYNC, EV-TASK-052-ADMIN-GUARD, EV-TASK-055-RECOVERY-EYE, EV-TASK-058-MATERIAL-NO-ENABLED, EV-TASK-059-DEMO-MASTER-DATA, EV-TASK-060-LABEL-QUANTITY, EV-TASK-061-LABEL-CENTER, EV-TASK-062-BACKEND, EV-TASK-062-PC-BUILD, EV-TASK-062-APP-BUILD, EV-TASK-062-PC-UI
 - Stale evidence: EV-RES-001, EV-TASK-053-USER-MENU, EV-TASK-054-RECOVERY, EV-TASK-056-APP-MASTER-DATA
 - Open C questions: none
-- Next action: 等待用户在真实平板安装最新 APK 后确认辅料列表和配方编辑不再出现启用/停用信息，或提出下一项需求
+- Next action: BUG 反馈功能已完成并通过构建与自动化回归；等待用户配置 SMTP 授权码做真实邮件投递测试，或在真实平板查看页面效果
 
 ## Counters
 

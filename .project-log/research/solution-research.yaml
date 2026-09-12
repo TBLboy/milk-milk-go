@@ -101,3 +101,51 @@ studies:
     retrieved_at: null
     decision_ref: DEC-024
     updated_at: "2026-09-09T07:10:00Z"
+  - id: RES-003
+    status: complete
+    problem: QQ 邮箱 SMTP 授权码的有效期，以及 Windows 客户电脑首次安装时如何自动完成邮件反馈配置并处理凭据失效
+    related_business_logic:
+      - BL-SUPPORT-001
+    related_tasks:
+      - TASK-062
+    constraints:
+      - BUG 反馈邮件固定发送到 1218740205@qq.com
+      - 不部署中央邮件中转服务，不引入固定月费
+      - 后端运行在 Windows 11 现场电脑
+      - 核心业务以局域网为主，邮件反馈需要客户电脑具备腾讯 SMTP 外网访问
+      - 安装升级不能覆盖数据库和邮件配置
+      - 当前后端仍使用被 Git 忽略的本地 .env
+    candidates:
+      - "QQ 免费邮箱 SMTP 直接发信：零固定费用，但授权码是长期可撤销凭据，没有官方永久有效保证"
+      - "安装向导输入并测试后保存：首次需要安装人员输入一次，凭据不入包，安全性和可维护性平衡最好"
+      - "受控配置文件导入：批量部署输入更少，但配置文件仍需要安全交付、访问控制和导入后删除"
+      - "安装包内置授权码：可做到零输入，但安装包可被解包分析，凭据泄露风险不可接受"
+      - "安装后在后台配置：最安全但不符合首次安装时一键配置目标，可作为降级入口"
+      - "中央邮件中转服务：长期最易集中管理，但用户已排除"
+    strategy: wrapper-adapter
+    recommendation: 使用专用 QQ 发件邮箱。Windows 安装向导提供发件邮箱和授权码输入页，点击“测试并保存”后调用配置工具连接 smtp.qq.com:465、执行 TLS、登录并发送测试邮件；成功后使用 Windows DPAPI 加密授权码并保存到 %ProgramData%\\MilkWeigh\\config，后台提供测试邮件、替换凭据和失败重试。不得把授权码内置进安装包，也不得把它视为永久有效。
+    conditions:
+      - 安装人员接受首次录入一次发件邮箱和授权码
+      - 现场电脑允许出站访问 smtp.qq.com:465
+      - 发件邮箱保持 POP3/SMTP 服务开启且不启用禁止 POP3/SMTP/IMAP 的邮箱登录保护
+      - 后台能够显示邮件发送失败并保留本地反馈记录
+      - 如要求完全零输入，则必须重新接受安装包内嵌凭据的风险或引入受控密钥交付服务
+    contrary_evidence:
+      - QQ 免费邮箱公开帮助未承诺 SMTP 授权码永久有效，只明确 SMTP 默认关闭且登录保护会使 POP3/SMTP/IMAP 不可用
+      - 腾讯企业邮箱的客户端专用密码可长期使用并可单独停用，但该公开规则不能直接等同于免费 QQ 邮箱
+      - 机器范围 DPAPI 不能抵御拥有本机管理员权限的攻击者
+      - SMTP 接受测试邮件不等于收件服务器最终一定投递成功
+    confidence: 0.9
+    sources:
+      - "https://service.mail.qq.com/detail/0/347"
+      - "https://service.mail.qq.com/detail/0/74"
+      - "https://open.work.weixin.qq.com/help2/pc/19902"
+      - "https://learn.microsoft.com/en-us/windows/win32/api/dpapi/nf-dpapi-cryptprotectdata"
+      - "https://learn.microsoft.com/en-us/windows/win32/api/dpapi/nf-dpapi-cryptunprotectdata"
+      - "https://jrsoftware.org/ishelp/topic_scriptclasses.htm#TWizardPage"
+      - "https://jrsoftware.org/ishelp/topic_scriptevents.htm#NextButtonClick"
+      - "https://jrsoftware.org/ishelp/topic_scriptfunctions.htm#Exec"
+      - ".project-log/docs/smtp-installer-research-20260912.md"
+    retrieved_at: "2026-09-12T14:35:00Z"
+    decision_ref: null
+    updated_at: "2026-09-12T14:35:00Z"
