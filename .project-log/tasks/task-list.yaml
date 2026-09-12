@@ -1298,3 +1298,248 @@ tasks:
         - 真机验证辅料图片多选、编码冲突提示和配方启停
     created_at: "2026-09-11T14:00:00Z"
     updated_at: "2026-09-12T05:00:00Z"
+  - id: TASK-027
+    title: 后端账号资料字段、头像与资料接口
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 扩展后台用户资料：头像、电话、身份证、注册审批状态，并支持平板和后台读取/更新普通用户资料；身份证按权限脱敏展示。
+    status: done
+    priority: high
+    risk: high
+    authority: B
+    owner: agent
+    tags: [backend, auth, account, avatar]
+    related_business_logic: [BL-AUTH-002, BL-AUTH-003]
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: []
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: []
+    outputs: []
+    plan: []
+    done_when:
+      - 用户表包含头像、电话、身份证和账号状态
+      - /auth/me 返回当前用户资料且身份证脱敏给普通用户
+      - 用户可更新自己的头像、姓名和电话
+      - 管理员可更新普通用户头像、姓名、电话和身份证
+      - 后端测试覆盖资料接口和脱敏规则
+    verification:
+      status: planned
+      commands: []
+      evidence: []
+      limitations: []
+    result:
+      summary: null
+      changed_files: []
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12"
+    updated_at: "2026-09-12"
+  - id: TASK-028
+    title: 后端一次性随机密码重置与自助改密
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 将管理员手动设置密码改为一次性随机初始密码，重置后强制改密；新增用户凭当前密码自助修改密码接口。
+    status: done
+    priority: high
+    risk: high
+    authority: B
+    owner: agent
+    tags: [backend, auth, password]
+    related_business_logic: [BL-AUTH-004, BL-AUTH-005]
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: [TASK-027]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: []
+    outputs: []
+    plan: []
+    done_when:
+      - 管理员重置接口不接受自定义新密码
+      - 重置接口返回一次随机初始密码并设置 must_change_password
+      - 登录响应标记 must_change_password
+      - 自助改密接口验证当前密码并直接更新
+      - 后端测试覆盖随机密码、重置和改密
+    verification:
+      status: planned
+      commands: []
+      evidence: []
+      limitations: []
+    result:
+      summary: null
+      changed_files: []
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12"
+    updated_at: "2026-09-12"
+  - id: TASK-029
+    title: 后端平板注册审批流
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 平板注册账号进入待审批，管理员审批通过/驳回；审批中心展示注册申请；待审批和驳回账号不能登录。
+    status: done
+    priority: high
+    risk: high
+    authority: B
+    owner: agent
+    tags: [backend, auth, approval]
+    related_business_logic: [BL-AUTH-003]
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: [TASK-027]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: []
+    outputs: []
+    plan: []
+    done_when:
+      - auth/register 创建的普通账号默认 status=pending
+      - 登录接口拒绝 pending/rejected/inactive 账号
+      - 管理员可审批通过或驳回待审批账号
+      - approvals 接口包含账号注册申请
+      - 后端测试覆盖注册、登录拦截和审批
+    verification:
+      status: planned
+      commands: []
+      evidence: []
+      limitations: []
+    result:
+      summary: null
+      changed_files: []
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12"
+    updated_at: "2026-09-12"
+  - id: TASK-030
+    title: PC 账号资料、重置密码弹窗与注册审批
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 电脑端账号管理展示头像、电话、身份证脱敏和账号审批状态；创建账号支持资料字段；重置密码改为一次随机密码弹窗+复制；审批中心支持注册申请。
+    status: implemented-unverified
+    priority: high
+    risk: high
+    authority: B
+    owner: agent
+    tags: [pc, account, approval]
+    related_business_logic: [BL-AUTH-002, BL-AUTH-003, BL-AUTH-004]
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: [TASK-027, TASK-028, TASK-029]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: []
+    outputs: []
+    plan: []
+    done_when:
+      - 账号列表显示头像、电话、身份证脱敏和账号审批状态
+      - 新建账号表单支持头像、电话、身份证
+      - 重置密码弹窗展示账号+一次随机密码并提供复制
+      - 审批中心可批准/驳回待审批注册账号
+      - PC 前端构建通过
+    verification:
+      status: planned
+      commands: []
+      evidence: []
+      limitations: []
+    result:
+      summary: null
+      changed_files: []
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12"
+    updated_at: "2026-09-12"
+  - id: TASK-031
+    title: APP 注册待审批与登录状态处理
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 平板注册提交后返回待审批提示且不自动登录；登录请求能返回账号状态错误；头像和资料字段进入 AppUser 模型。
+    status: implemented-unverified
+    priority: high
+    risk: high
+    authority: B
+    owner: agent
+    tags: [app, android, auth]
+    related_business_logic: [BL-AUTH-003]
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: [TASK-027, TASK-029]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: []
+    outputs: []
+    plan: []
+    done_when:
+      - 平板注册成功提示等待审批，不自动登录
+      - 待审批/已驳回账号登录时给出明确提示
+      - AppUser 包含头像、电话、身份证脱敏和改密标记
+      - Android debug APK 构建通过
+    verification:
+      status: planned
+      commands: []
+      evidence: []
+      limitations: []
+    result:
+      summary: null
+      changed_files: []
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12"
+    updated_at: "2026-09-12"
+  - id: TASK-032
+    title: APP 右上角头像菜单、资料管理与密码管理
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 用头像菜单替换右上角关闭按钮；支持查看/编辑用户资料、上传头像、修改密码、切换账号和退出登录；首次登录必须修改密码时进入密码管理。
+    status: implemented-unverified
+    priority: high
+    risk: high
+    authority: B
+    owner: agent
+    tags: [app, android, profile, password]
+    related_business_logic: [BL-AUTH-002, BL-AUTH-004, BL-AUTH-005]
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: [TASK-028, TASK-031]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: []
+    outputs: []
+    plan: []
+    done_when:
+      - 右上角展示用户头像，点击弹出资料、密码管理、切换账号、退出登录
+      - 用户资料页可上传头像并修改显示名、电话
+      - 密码管理支持当前密码+新密码+确认密码
+      - must_change_password=true 时登录后强制进入改密
+      - Android debug APK 构建通过
+    verification:
+      status: planned
+      commands: []
+      evidence: []
+      limitations: []
+    result:
+      summary: null
+      changed_files: []
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12"
+    updated_at: "2026-09-12"
