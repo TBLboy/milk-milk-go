@@ -1793,3 +1793,55 @@ tasks:
       follow_ups: []
     created_at: "2026-09-12T13:35:00Z"
     updated_at: "2026-09-12T13:35:00Z"
+  - id: TASK-037
+    title: APP 用户资料头像放大预览
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 用户在资料页点击头像时，直接弹出放大头像视图，便于查看当前头像或刚选择/拍摄的本地新头像。
+    status: done
+    priority: medium
+    risk: low
+    authority: B
+    owner: agent
+    tags: [app, android, profile, avatar]
+    related_business_logic: [BL-AUTH-002]
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: [TASK-036]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户反馈进入个人资料后希望点击头像直接查看放大图
+    outputs:
+      - 资料页头像点击入口
+      - 放大头像预览弹窗
+    plan:
+      - AvatarImage 支持可选 onClick
+      - 用户资料弹窗点击头像打开预览
+      - 放大预览同时支持后台头像和新选择本地头像
+    done_when:
+      - 点击资料页头像出现放大预览
+      - 预览可正常关闭
+      - 选择或拍照新头像后，放大预览也显示新图片
+      - Android debug APK 构建通过
+    verification:
+      status: passed
+      commands:
+        - cd /home/tbl/Project/辅料称重防错系统/app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
+      evidence:
+        - AvatarImage 增加可选点击回调
+        - 用户资料弹窗点击头像打开 280dp 放大预览
+        - Android debug APK 构建成功
+      limitations:
+        - 真机点击头像后的弹窗体验需重新安装 APK 后确认
+    result:
+      summary: 用户资料页头像已支持点击查看放大图，新选择或拍摄的头像也会在放大预览中显示。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12T13:50:00Z"
+    updated_at: "2026-09-12T13:50:00Z"
