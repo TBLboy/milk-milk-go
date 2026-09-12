@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { CheckCircle2, CircleDashed, Clock3, Copy, ImagePlus, KeyRound, PackageCheck, PlayCircle, UserRound, X, Plus, Trash2 } from 'lucide-react'
+import { Bug, CheckCircle2, CircleDashed, Clock3, Copy, ImagePlus, KeyRound, PackageCheck, PlayCircle, Send, UserRound, X, Plus, Trash2 } from 'lucide-react'
 import { api } from '../services/api'
 import { useAutoRefresh } from '../hooks/useAutoRefresh'
 
-export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+export function Modal({ title, onClose, children, className = '' }: { title: string; onClose: () => void; children: React.ReactNode; className?: string }) {
   return (
     <div className="modal-backdrop">
-      <div className="modal-dialog">
+      <div className={`modal-dialog ${className}`.trim()}>
         <div className="modal-header">
           <h3>{title}</h3>
           <button className="icon-btn" onClick={onClose}><X size={18} /></button>
@@ -15,6 +15,160 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
         <div className="modal-body">{children}</div>
       </div>
     </div>
+  )
+}
+
+type BugReportImage = {
+  file: File
+  preview: string
+}
+
+export function BugReportModal({ onClose }: { onClose: () => void }) {
+  const [description, setDescription] = useState('')
+  const [images, setImages] = useState<BugReportImage[]>([])
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [sent, setSent] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const imagesRef = useRef<BugReportImage[]>([])
+
+  useEffect(() => {
+    imagesRef.current = images
+  }, [images])
+
+  useEffect(() => {
+    return () => {
+      imagesRef.current.forEach((image) => URL.revokeObjectURL(image.preview))
+    }
+  }, [])
+
+  const addImages = (files: FileList | null) => {
+    if (!files) return
+    const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp'])
+    const next = Array.from(files)
+    const invalid = next.find((file) => !allowedTypes.has(file.type))
+    if (invalid) {
+      setError('仅支持 JPG、PNG 或 WebP 图片')
+      return
+    }
+    const oversized = next.find((file) => file.size > 10 * 1024 * 1024)
+    if (oversized) {
+      setError('单张图片不能超过 10MB')
+      return
+    }
+    if (images.length + next.length > 8) {
+      setError('最多上传 8 张图片')
+      return
+    }
+    setError(null)
+    setImages((current) => [
+      ...current,
+      ...next.map((file) => ({ file, preview: URL.createObjectURL(file) })),
+    ])
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const removeImage = (preview: string) => {
+    URL.revokeObjectURL(preview)
+    setImages((current) => current.filter((image) => image.preview !== preview))
+  }
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    const text = description.trim()
+    if (!text) {
+      setError('请填写问题描述')
+      return
+    }
+    setSubmitting(true)
+    setError(null)
+    try {
+      const fileIds = await Promise.all(images.map((image) => api.uploadFile(image.file).then((result) => result.file_id)))
+      await api.submitBugReport({ source: 'pc', description: text, image_file_ids: fileIds })
+      setSent(true)
+    } catch (err: any) {
+      setError(err?.message || 'BUG 反馈提交失败')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (sent) {
+    return (
+      <Modal title="BUG 反馈已提交" onClose={onClose} className="bug-report-dialog">
+        <div className="bug-report-success">
+          <CheckCircle2 size={42} />
+          <strong>反馈已发送</strong>
+          <p>感谢你的反馈，我们会根据描述和图片定位问题。</p>
+          <button type="button" className="primary-button" onClick={onClose}>完成</button>
+        </div>
+      </Modal>
+    )
+  }
+
+  return (
+    <Modal title="提交 BUG 反馈" onClose={onClose} className="bug-report-dialog">
+      <form className="modal-form bug-report-form" onSubmit={submit}>
+        {error && <div className="modal-error">{error}</div>}
+        <label>
+          问题描述
+          <textarea
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            placeholder="请描述当时在哪个页面、执行了什么操作、出现了什么结果"
+            rows={6}
+            maxLength={5000}
+            autoFocus
+          />
+        </label>
+        <div className="bug-report-upload-head">
+          <div>
+            <strong>问题截图</strong>
+            <span>可选，最多 8 张，单张不超过 10MB</span>
+          </div>
+          <button
+            type="button"
+            className="outline-button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={submitting || images.length >= 8}
+          >
+            <ImagePlus size={16} />
+            添加图片
+          </button>
+          <input
+            ref={fileInputRef}
+            className="bug-report-file-input"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            onChange={(event) => addImages(event.target.files)}
+          />
+        </div>
+        {images.length > 0 && (
+          <div className="bug-report-images">
+            {images.map((image) => (
+              <div className="bug-report-image" key={image.preview}>
+                <img src={image.preview} alt={image.file.name} />
+                <button
+                  type="button"
+                  onClick={() => removeImage(image.preview)}
+                  aria-label={`删除 ${image.file.name}`}
+                  disabled={submitting}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="modal-footer">
+          <button type="button" className="outline-button" onClick={onClose} disabled={submitting}>取消</button>
+          <button type="submit" className="primary-button" disabled={submitting}>
+            {submitting ? <><Bug size={16} />提交中...</> : <><Send size={16} />提交反馈</>}
+          </button>
+        </div>
+      </form>
+    </Modal>
   )
 }
 

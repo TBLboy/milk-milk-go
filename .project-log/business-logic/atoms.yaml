@@ -1750,3 +1750,74 @@ atoms:
     created_at: "2026-09-09T04:10:00Z"
     updated_at: "2026-09-09T04:10:00Z"
     last_verified_at: null
+  - id: BL-SUPPORT-001
+    title: 应用内 BUG 反馈通过邮件发送到固定维护邮箱
+    kind: flow
+    domain: support
+    status: active
+    priority: medium
+    risk: low
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-12 BUG 反馈需求确认"
+    description: 电脑端和平板端登录用户均可提交 BUG 反馈，填写问题描述并可选上传多张现场截图；后端保存提交记录并把文字与图片通过邮件发送到固定维护邮箱。
+    actors:
+      - 平板端普通操作员
+      - 平板端管理员
+      - 电脑后台管理员
+    trigger: 用户在应用内点击 BUG 反馈入口并提交
+    preconditions:
+      - 用户已登录
+      - 后端服务可访问
+    inputs:
+      - 提交来源 pc 或 app
+      - 问题描述
+      - 零到八张图片
+    rule:
+      statement: 后端把当前登录用户、来源、问题描述和图片作为邮件发送到固定地址 1218740205@qq.com；图片先通过现有证据文件接口上传，再由 BUG 反馈接口引用当前用户上传的 file_id。
+    outputs:
+      - BUG 反馈邮件
+      - bug_reports 提交与发送状态记录
+      - 审计日志
+    side_effects:
+      - 邮件发送可能受 SMTP 网络、认证和附件大小影响
+    exceptions:
+      - SMTP 发件账号或授权码未配置
+      - SMTP 认证或网络发送失败
+      - 图片不存在、不属于当前用户或超过数量限制
+    failure_handling:
+      - 未配置 SMTP 时返回明确配置错误并记录 failed
+      - 邮件发送失败时返回发送失败并保留失败原因
+      - 图片校验失败时禁止提交
+    invariants:
+      - 收件地址固定为 1218740205@qq.com
+      - 发件账号和 SMTP 授权码只保存在后端本地配置，不进入前端或 Git
+      - 图片只能引用当前提交账号上传的文件
+      - 每次提交保留发送状态和审计记录
+    acceptance:
+      - id: AC-SUPPORT-001
+        given: 用户已在应用内填写问题描述并选择零到八张当前账号上传的图片
+        when: 用户点击提交反馈且后端 SMTP 配置有效
+        then: 固定维护邮箱收到包含提交人、来源、描述和图片附件的邮件，同时后端保留发送成功记录
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-AUTH-001
+      - BL-EVID-001
+    baseline_refs:
+      - REQ-001
+    decision_refs:
+      - DEC-035
+    implementation_refs:
+      - pc/server/app/api/bug_reports.py
+      - pc/src/components/Modals.tsx
+      - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+    test_refs:
+      - pc/server/tests/test_bug_reports.py
+    supersedes: []
+    notes: 真实邮件投递需配置发件 QQ 邮箱和 SMTP 授权码；未配置时后端会明确拒绝并保留失败记录。
+    created_at: "2026-09-12T14:05:00Z"
+    updated_at: "2026-09-12T14:05:00Z"
+    last_verified_at: null

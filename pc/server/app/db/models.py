@@ -249,6 +249,20 @@ class SystemSetting(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
 
 
+class BugReport(Base):
+    __tablename__ = "bug_reports"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    reporter_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    source: Mapped[str] = mapped_column(String(16), nullable=False)
+    description: Mapped[str] = mapped_column(String(5000), nullable=False)
+    image_file_ids_json: Mapped[str] = mapped_column(String(2000), nullable=False, default="[]")
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    error_message: Mapped[str | None] = mapped_column(String(1000))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 def initialize_database() -> None:
     from app.core.security import hash_password
     from app.db.session import SessionLocal, engine

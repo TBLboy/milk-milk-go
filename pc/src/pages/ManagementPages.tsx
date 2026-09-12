@@ -459,6 +459,7 @@ export function LabelsPage() {
   const [batches, setBatches] = useState<any[]>([])
   const [selectedMat, setSelectedMat] = useState<any>(null)
   const [quantity, setQuantity] = useState(10)
+  const [quantityText, setQuantityText] = useState('10')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [successNotice, setSuccessNotice] = useState<string | null>(null)
   const [qrSrc, setQrSrc] = useState<string | null>(null)
@@ -506,11 +507,41 @@ export function LabelsPage() {
       .catch(() => setLargeQrSrc(null))
   }
 
+  const clampQuantity = (value: number) => Math.min(10000, Math.max(1, Math.trunc(value)))
+
+  const updateQuantityText = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 5)
+    if (!digits) {
+      setQuantityText('')
+      return
+    }
+    const next = clampQuantity(Number(digits))
+    setQuantity(next)
+    setQuantityText(String(next))
+  }
+
+  const commitQuantity = () => {
+    const parsed = Number(quantityText)
+    const next = Number.isFinite(parsed) && parsed > 0 ? clampQuantity(parsed) : 1
+    setQuantity(next)
+    setQuantityText(String(next))
+    return next
+  }
+
+  const adjustQuantity = (delta: number) => {
+    const parsed = Number(quantityText)
+    const current = Number.isFinite(parsed) && parsed > 0 ? parsed : quantity
+    const next = clampQuantity(current + delta)
+    setQuantity(next)
+    setQuantityText(String(next))
+  }
+
   const handlePrint = async () => {
     if (!selectedMat) return
+    const printQuantity = commitQuantity()
     setIsSubmitting(true)
     try {
-      const batch = await api.createPrintBatch(selectedMat.material_id, quantity)
+      const batch = await api.createPrintBatch(selectedMat.material_id, printQuantity)
       setSuccessNotice(`成功生成批次 ${batch.batch_id}，共 ${batch.quantity} 张独立二维码标签！`)
       loadBatches()
     } catch (e: any) {
@@ -553,19 +584,31 @@ export function LabelsPage() {
               ))}
             </select>
           </label>
-          <label>
-            打印张数
+          <div className="quantity-field">
+            <span className="field-label">打印张数</span>
             <div className="stepper">
-              <button onClick={() => setQuantity((q) => Math.max(1, q - 1))}>−</button>
-              <strong>{quantity}</strong>
-              <button onClick={() => setQuantity((q) => q + 1)}>＋</button>
+              <button type="button" aria-label="减少打印张数" onClick={() => adjustQuantity(-1)}>−</button>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={5}
+                aria-label="打印张数"
+                value={quantityText}
+                onChange={(e) => updateQuantityText(e.target.value)}
+                onBlur={commitQuantity}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.currentTarget.blur()
+                }}
+              />
+              <button type="button" aria-label="增加打印张数" onClick={() => adjustQuantity(1)}>＋</button>
             </div>
-          </label>
+          </div>
           <div className="info-note">
             <CircleAlert size={16} />
             <span>打印日期将自动使用当前系统时间，第一版不录入实际生产日期。</span>
           </div>
-          <button className="primary-button print-button" disabled={isSubmitting || !selectedMat} onClick={handlePrint}>
+          <button type="button" className="primary-button print-button" disabled={isSubmitting || !selectedMat} onClick={handlePrint}>
             <Printer size={16} />
             {isSubmitting ? '正在生成批次...' : '生成并打印标签'}
           </button>
@@ -577,7 +620,7 @@ export function LabelsPage() {
               <h2>标签预览</h2>
               <p>打印前确认标签信息</p>
             </div>
-            <button className="preview-tag" onClick={openPreview}>预览</button>
+            <button type="button" className="preview-tag" onClick={openPreview}>预览</button>
           </div>
           <div className="label-preview">
             {qrSrc ? <img className="qr-preview" src={qrSrc} alt="辅料二维码预览" /> : <div className="fake-qr">▦</div>}

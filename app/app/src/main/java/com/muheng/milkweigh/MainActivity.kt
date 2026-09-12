@@ -51,6 +51,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronLeft
@@ -71,6 +72,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -1090,6 +1092,7 @@ private fun MainShell(
     var currentUser by remember { mutableStateOf(user) }
     var showProfileDialog by remember { mutableStateOf(false) }
     var showChangePasswordDialog by remember { mutableStateOf(user.mustChangePassword) }
+    var showBugReportDialog by remember { mutableStateOf(false) }
     var isRefreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -1129,7 +1132,15 @@ private fun MainShell(
                 )
             },
         )
-    }, containerColor = Page) { padding ->
+    }, containerColor = Page, floatingActionButton = {
+        FloatingActionButton(
+            onClick = { showBugReportDialog = true },
+            containerColor = Green,
+            contentColor = Color.White,
+        ) {
+            Icon(Icons.Default.BugReport, contentDescription = "提交 BUG 反馈")
+        }
+    }) { padding ->
         Row(modifier = Modifier.fillMaxSize().padding(padding)) {
             Column(modifier = Modifier.width(230.dp).fillMaxSize().background(Color.White).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("现场操作", color = Muted, fontSize = 13.sp, modifier = Modifier.padding(8.dp))
@@ -1212,6 +1223,12 @@ private fun MainShell(
             },
         )
     }
+    if (showBugReportDialog) {
+        BugReportDialog(
+            repository = repository,
+            onDismiss = { showBugReportDialog = false },
+        )
+    }
 }
 
 @Composable
@@ -1219,6 +1236,130 @@ private fun NavItem(label: String, icon: androidx.compose.ui.graphics.vector.Ima
     Row(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).background(if (active) Color(0xFFEAF6F0) else Color.Transparent, RoundedCornerShape(8.dp)).padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, tint = if (active) Green else Muted); Spacer(Modifier.width(12.dp)); Text(label, color = if (active) Green else Ink, fontWeight = if (active) FontWeight.Bold else FontWeight.Normal)
     }
+}
+
+@Composable
+private fun BugReportDialog(
+    repository: MilkRepository,
+    onDismiss: () -> Unit,
+) {
+    var description by remember { mutableStateOf("") }
+    var imageUris by remember { mutableStateOf<List<String>>(emptyList()) }
+    var submitting by remember { mutableStateOf(false) }
+    var sent by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
+        val additions = uris.map(Uri::toString)
+        val combined = (imageUris + additions).distinct()
+        imageUris = combined.take(8)
+        if (combined.size > 8) {
+            error = "最多上传 8 张图片"
+        }
+    }
+
+    if (sent) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text("BUG 反馈已提交") },
+            text = { Text("反馈已发送，我们会根据描述和图片定位问题。") },
+            confirmButton = { Button(onClick = onDismiss) { Text("完成") } },
+        )
+        return
+    }
+
+    AlertDialog(
+        onDismissRequest = { if (!submitting) onDismiss() },
+        title = { Text("提交 BUG 反馈") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 540.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it.take(5000) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("问题描述") },
+                    placeholder = { Text("请描述在哪个页面、执行了什么操作、出现了什么问题") },
+                    minLines = 4,
+                    maxLines = 8,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Text("问题截图", color = Ink, fontWeight = FontWeight.SemiBold)
+                        Text("可选，最多 8 张", color = Muted, fontSize = 13.sp)
+                    }
+                    OutlinedButton(
+                        onClick = { imagePicker.launch("image/*") },
+                        enabled = !submitting && imageUris.size < 8,
+                    ) {
+                        Icon(Icons.Default.PhotoLibrary, null)
+                        Spacer(Modifier.width(6.dp))
+                        Text("添加图片")
+                    }
+                }
+                if (imageUris.isNotEmpty()) {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                        items(imageUris, key = { it }) { uri ->
+                            Box(modifier = Modifier.size(86.dp)) {
+                                StoredImage(
+                                    fileId = null,
+                                    previewUri = uri,
+                                    repository = repository,
+                                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(7.dp)),
+                                )
+                                IconButton(
+                                    onClick = { imageUris = imageUris - uri },
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .size(30.dp)
+                                        .background(Color(0xCCB63D3D), CircleShape),
+                                    enabled = !submitting,
+                                ) {
+                                    Icon(Icons.Default.Delete, contentDescription = "删除图片", tint = Color.White, modifier = Modifier.size(17.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+                error?.let { Text(it, color = Color(0xFFC7473C), fontSize = 14.sp) }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (description.isBlank()) {
+                        error = "请填写问题描述"
+                        return@Button
+                    }
+                    if (!submitting) {
+                        submitting = true
+                        error = null
+                        scope.launch {
+                            runCatching { repository.submitBugReport(description, imageUris) }
+                                .onSuccess { sent = true }
+                                .onFailure { error = it.message ?: "BUG 反馈提交失败" }
+                                .also { submitting = false }
+                        }
+                    }
+                },
+                enabled = !submitting,
+            ) {
+                Text(if (submitting) "提交中..." else "提交反馈")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !submitting) { Text("取消") }
+        },
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

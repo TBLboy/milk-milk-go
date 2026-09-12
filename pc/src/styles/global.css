@@ -27,3 +27,12 @@
 .reset-password-field{display:block;padding:9px 11px;color:#31404d;font-size:17px;background:#f8faf9;border:1px solid #e6eaec;border-radius:5px}
 .reset-password-line{display:flex;align-items:center;gap:10px}
 .reset-password-line code{flex:1;padding:11px 12px;color:#1f6e52;font-size:18px;font-weight:800;background:#f2faf6;border:1px solid #d5ece2;border-radius:5px;word-break:break-all}
+.quantity-field{display:block;margin:0 24px 19px;color:#687681;font-size:15px;font-weight:700}
+.quantity-field .field-label{display:block}
+.stepper{width:160px;overflow:hidden}
+.stepper button{cursor:pointer}
+.stepper button:hover{color:#187552;background:#eaf6f0}
+.stepper input{width:72px;height:32px;min-width:0;padding:0 6px;color:#31434f;font-size:16px;font-weight:700;text-align:center;background:#fff;border:0;border-right:1px solid #e3e8ea;border-left:1px solid #e3e8ea;outline:0}
+.stepper input:focus{background:#f4fbf7;box-shadow:inset 0 0 0 2px #258b662e}
+.preview-panel{display:flex;flex-direction:column}
+.preview-panel > .label-preview{margin:auto}

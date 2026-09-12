@@ -3239,3 +3239,378 @@ tasks:
         - 在真实平板安装最新 APK 后复验辅料列表和配方编辑
     created_at: "2026-09-12T13:35:34Z"
     updated_at: "2026-09-12T13:35:34Z"
+  - id: TASK-059
+    title: 重建演示辅料和产品配方主数据
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 删除现有随手填写的演示辅料和配方，写入一组按类别整理、适合视频演示的乳制品辅料和配方。
+    status: done
+    priority: high
+    risk: high
+    authority: C
+    owner: agent
+    tags:
+      - demo
+      - master-data
+      - materials
+      - recipes
+      - data-reset
+    related_business_logic:
+      - BL-DATA-003
+      - BL-DATA-004
+    acceptance_refs:
+      - AC-DATA-003
+    related_decisions: []
+    depends_on:
+      - TASK-058
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户要求删除当前随手填写的配方和辅料，重建真实可演示数据
+      - 当前产品包含 11、111、222 等演示垃圾数据
+      - 当前辅料包含 11、A1、B7、E2、F-02 等零散编号
+    outputs:
+      - 14 项按类别编码的演示辅料
+      - 6 个乳制品演示配方
+      - 演示主数据说明文档
+      - 数据重建前数据库备份
+    plan:
+      - 创建数据库备份
+      - 删除现有产品和辅料
+      - 写入甜味剂、乳粉、稳定剂、乳化剂、矿物质、维生素、发酵剂、香精和风味原料
+      - 写入高钙牛奶、原味酸奶、西番莲酸奶、草莓酸奶、低糖酸奶和巧克力牛奶配方
+      - 通过真实 API 复核数量、关联和每吨用量
+    done_when:
+      - 旧垃圾辅料和产品已删除
+      - 新辅料和配方可正常通过 API 查询
+      - 每个配方至少包含 4 种辅料
+      - 数据库备份文件存在且可恢复
+      - 演示主数据文档已生成
+    verification:
+      status: passed
+      commands:
+        - POST /api/v1/operations/backups
+        - DELETE /api/v1/master-data/products/{id}
+        - DELETE /api/v1/master-data/materials/{material_id}
+        - POST /api/v1/master-data/materials
+        - POST /api/v1/master-data/products
+        - GET /api/v1/master-data/materials
+        - GET /api/v1/master-data/products
+      evidence:
+        - 数据库备份 milk_weigh-20260912T134206Z.sqlite3 创建成功
+        - 删除旧产品 5 个和旧辅料 5 个
+        - 创建新辅料 14 个，覆盖 9 个辅料类别
+        - 创建新配方 6 个，每个包含 4 至 5 种辅料
+        - 真实 8011 API 查询返回 14 个辅料和 6 个产品
+        - PC 前端 5173 和后端 8011 健康检查正常
+      limitations:
+        - 配方为行业示例演示值，不是客户最终确认的生产配方
+        - 新辅料暂未录入包装图片
+        - 现有历史工单未删除，仍保留原工单快照
+    result:
+      summary: 已清除随手填写的演示主数据，重建 14 个分类辅料和 6 个乳制品演示配方，并提供备份和演示清单。
+      changed_files:
+        - .project-log/docs/demo-master-data-20260913.md
+        - pc/data/milk_weigh.sqlite3
+        - pc/data/backups/milk_weigh-20260912T134206Z.sqlite3
+      deviations: []
+      follow_ups:
+        - 由客户技术部门审核并替换为正式配方用量
+        - 演示前按需补充辅料包装图片
+    created_at: "2026-09-12T13:43:01Z"
+    updated_at: "2026-09-12T13:43:01Z"
+  - id: TASK-060
+    title: 修复标签打印数量控件空白点击异常并支持手动输入
+    kind: repair
+    parent_id: null
+    phase: implementation
+    goal: 让标签打印数量可以直接手动输入，并确保点击数量控件周围空白不会错误触发减少数量。
+    status: done
+    priority: critical
+    risk: medium
+    authority: B
+    owner: agent
+    tags:
+      - pc
+      - labels
+      - print
+      - bug
+    related_business_logic:
+      - BL-LABEL-002
+    acceptance_refs:
+      - AC-LABEL-002
+    related_decisions: []
+    depends_on:
+      - TASK-059
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户反馈打印数量无法手动填写
+      - 点击数量控件周围空白或加号右侧区域会导致数量下降
+      - 原数量区域使用 strong 只读展示，且被 label 包裹
+    outputs:
+      - 支持手动输入的数字数量框
+      - 独立的减少/增加按钮和明确的按钮类型
+      - 空白点击不再转发到减号按钮
+      - 数量输入范围和聚焦样式
+    plan:
+      - 将数量显示 strong 替换为 numeric text input
+      - 将外层 label 改为普通字段容器，避免浏览器点击转发
+      - 增加 1 至 10000 的范围规整、清空恢复和回车提交
+      - 给加减按钮和打印按钮增加 type=button
+      - 通过 Playwright 验证空白点击、手动输入、加减按钮和实际请求数量
+    done_when:
+      - 用户可以手动输入打印数量
+      - 点击控件周围空白不会改变数量
+      - 加号右侧区域点击只增加数量
+      - 打印请求使用手动输入的准确数量
+      - PC 生产构建通过
+    verification:
+      status: passed
+      commands:
+        - npm run build
+        - git diff --check
+        - Playwright 标签打印数量交互回归
+      evidence:
+        - 空白点击后数量保持 10
+        - 手动输入 137 后失焦仍为 137
+        - 减号从 137 变为 136，加号恢复为 137
+        - 点击加号右侧按钮区域后数量变为 138
+        - 拦截打印请求验证手动数量 37 原样发送到 print-batches
+        - PC TypeScript 和 Vite 生产构建通过
+      limitations:
+        - 尚未实际创建打印批次，避免演示前增加测试标签记录
+    result:
+      summary: 标签打印数量已改为可编辑输入框，并修复 label 点击转发导致空白点击减一的问题。
+      changed_files:
+        - pc/src/pages/ManagementPages.tsx
+        - pc/src/styles/global.css
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12T13:49:39Z"
+    updated_at: "2026-09-12T13:49:39Z"
+  - id: TASK-061
+    title: 优化标签预览在右侧面板中的对齐
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 让标签预览卡片在右侧面板标题下方的空白区域中水平、垂直居中。
+    status: done
+    priority: medium
+    risk: low
+    authority: A
+    owner: agent
+    tags:
+      - pc
+      - labels
+      - ui
+    related_business_logic:
+      - BL-LABEL-002
+    acceptance_refs:
+      - AC-LABEL-002
+    related_decisions: []
+    depends_on:
+      - TASK-060
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户反馈右侧标签预览没有处于空白区域中心
+      - 实测标签卡片水平居中，但相对标题下方剩余区域向上偏移约 27px
+    outputs:
+      - 预览面板纵向 flex 布局
+      - 标签卡片使用自动外边距填充剩余空间
+    plan:
+      - 将 preview-panel 改为纵向 flex 容器
+      - 将标签预览卡片设置为剩余空间自动居中
+      - 通过浏览器测量标题下方空白区域中心和卡片中心
+    done_when:
+      - 标签卡片在右侧剩余区域水平居中
+      - 标签卡片在右侧剩余区域垂直居中
+      - PC 生产构建通过
+    verification:
+      status: passed
+      commands:
+        - npm run build
+        - Playwright 标签预览面板中心测量
+        - git diff --check
+      evidence:
+        - 优化前标签卡片中心相对空白区域中心向上偏移约 26.75px
+        - 优化后垂直中心偏移为 0.5px
+        - 标签卡片水平中心与面板中心一致
+        - PC TypeScript 和 Vite 生产构建通过
+      limitations: []
+    result:
+      summary: 标签预览卡片已在右侧标题下方空白区域水平、垂直居中。
+      changed_files:
+        - pc/src/styles/global.css
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12T13:54:00Z"
+    updated_at: "2026-09-12T13:54:00Z"
+  - id: TASK-062
+    title: 增加 PC 与 APP BUG 反馈及固定邮箱通知
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 在电脑端和平板端提供 BUG 反馈入口，支持文字和多张图片，并由后端通过邮件发送到固定维护邮箱。
+    status: done
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags:
+      - pc
+      - app
+      - bug-report
+      - email
+    related_business_logic:
+      - BL-SUPPORT-001
+    acceptance_refs:
+      - AC-SUPPORT-001
+    related_decisions:
+      - DEC-035
+    depends_on:
+      - TASK-061
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户要求 PC 顶部状态栏铃铛左侧增加 BUG 入口
+      - 用户要求 APP 选择合适位置增加 BUG 入口
+      - 反馈支持文字和最多多张图片
+      - 后端邮件固定发送到 1218740205@qq.com
+    outputs:
+      - PC BUG 反馈弹窗和顶栏入口
+      - APP BUG 反馈弹窗和右下角悬浮入口
+      - 后端 BugReport 表与 POST /api/v1/bug-reports
+      - SMTP 邮件发送、发送状态和审计记录
+    plan:
+      - 复用 evidence/files 多图上传和当前用户文件归属校验
+      - 后端固定收件地址并通过本地 env 读取发件账号和授权码
+      - PC 在铃铛左侧增加图标入口并实现多图弹窗
+      - APP 增加右下角悬浮入口和可滚动反馈弹窗
+      - 增加 SMTP fake-server、未配置错误和图片越权回归测试
+    done_when:
+      - PC 入口位于铃铛左侧且可打开反馈弹窗
+      - APP 有全局可访问的反馈入口
+      - 两端支持文字、多图选择、预览和删除
+      - 后端只向固定邮箱发送并保存成功或失败记录
+      - 未配置 SMTP 时返回明确错误
+      - 后端测试、PC 构建和 Android 构建通过
+    verification:
+      status: passed
+      commands:
+        - conda run -n milk env PYTHONPATH= PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q
+        - npm run build
+        - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug
+        - git diff --check
+        - Playwright BUG 入口顺序与提交成功态回归
+        - curl POST /api/v1/bug-reports 未配置 SMTP 联调
+      evidence:
+        - 后端完整测试集 47 passed
+        - fake SMTP 验证邮件收件人为 1218740205@qq.com、正文包含描述且附件包含两张图片
+        - 未配置 SMTP 时真实接口返回 503 BUG_REPORT_EMAIL_NOT_CONFIGURED 并记录 failed
+        - 图片上传人越权测试返回 422 BUG_IMAGE_NOT_FOUND
+        - PC TypeScript 和 Vite 生产构建通过
+        - Android debug APK 构建通过
+        - Playwright 测得 BUG 按钮 x=1125，通知铃铛 x=1179，按钮位于左侧
+        - Playwright 完成弹窗填写、拦截提交请求和成功态显示
+        - 2026-09-12 使用本地 pc/server/.env 中的专用发件账号完成真实 QQ SMTP 登录和测试邮件提交，SMTP 服务器接受邮件
+      limitations:
+        - QQ SMTP 已接受测试邮件，但尚未确认维护邮箱在收件箱和垃圾箱中的最终展示位置
+        - APP 反馈流程已通过编译检查，尚未在真实 Android 平板执行最终点击回归
+    result:
+      summary: PC 和平板已增加 BUG 反馈入口，后端可保存反馈并发送固定邮箱，SMTP 凭据保持在后端本地配置。
+      changed_files:
+        - pc/server/app/core/config.py
+        - pc/server/app/db/models.py
+        - pc/server/app/api/bug_reports.py
+        - pc/server/app/main.py
+        - pc/server/tests/test_bug_reports.py
+        - pc/src/layouts/AppShell.tsx
+        - pc/src/components/Modals.tsx
+        - pc/src/services/api.ts
+        - pc/src/styles/app.css
+        - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+      deviations: []
+      follow_ups:
+        - 确认测试邮件已到达 1218740205@qq.com，并在聊天中暴露过的授权码测试后重新生成
+        - 在真实 Android 平板确认反馈弹窗、图片选择和提交成功态
+    created_at: "2026-09-12T14:05:00Z"
+    updated_at: "2026-09-12T14:45:00Z"
+  - id: TASK-063
+    title: Windows 安装包内置 SMTP 配置并实现零输入部署
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 在构建 Windows 安装包时自动注入发件邮箱、固定收件邮箱和 SMTP 授权码，安装过程无人值守写入客户机配置并启动服务。
+    status: pending
+    priority: high
+    risk: high
+    authority: C
+    owner: agent
+    tags:
+      - windows
+      - installer
+      - email
+      - deployment
+      - security
+    related_business_logic:
+      - BL-SUPPORT-001
+    acceptance_refs:
+      - AC-SUPPORT-001
+    related_decisions:
+      - DEC-036
+    depends_on:
+      - TASK-010
+      - TASK-062
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 本机未跟踪的 pc/server/.env 中的 SMTP 配置
+      - DEC-036 零输入安装和安装包内嵌凭据取舍
+      - Windows 安装包与后台服务部署方案
+    outputs:
+      - 构建时 SMTP 配置注入脚本
+      - 安装包内置配置资源
+      - 安装时配置落盘和服务启动逻辑
+      - 安装后 SMTP 非阻塞测试与脱敏日志
+    plan:
+      - 定义安装包配置资源和 %ProgramData% 配置目录格式
+      - 打包脚本从本机 .env 读取邮箱和授权码并生成临时配置资源
+      - 安装程序自动复制配置、设置 ACL 并启动后端服务
+      - 安装结束后执行 SMTP 测试，失败只提示并保留本地记录
+      - 增加构建日志、安装日志和异常日志的凭据脱敏检查
+      - 验证全新安装、覆盖升级和授权码轮换后重新打包
+    done_when:
+      - 安装包不显示 SMTP 输入页面，客户无需输入任何邮箱或授权码
+      - 全新安装后后端自动读取内置发件邮箱和收件邮箱
+      - 安装结束后 SMTP 测试成功，或失败时明确显示警告且不阻断安装
+      - Git 仓库、构建输出和日志中没有明文授权码
+      - 覆盖升级保留数据库，并按规则更新或保留邮件配置
+      - 授权码轮换后重新打包的新安装包使用新凭据
+    verification:
+      status: not-run
+      commands: []
+      evidence: []
+      limitations:
+        - Windows 安装环境尚未实现，当前只在 Linux 开发环境完成 SMTP 真实登录验证
+    result:
+      summary: null
+      changed_files: []
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12T14:50:00Z"
+    updated_at: "2026-09-12T14:50:00Z"

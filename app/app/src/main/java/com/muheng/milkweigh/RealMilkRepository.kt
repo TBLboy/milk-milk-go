@@ -51,6 +51,23 @@ class RealMilkRepository(
 
     override suspend fun uploadImage(uri: String): String = uploadFile(uri)
 
+    override suspend fun submitBugReport(description: String, imageUris: List<String>) {
+        if (description.isBlank()) error("请填写问题描述")
+        if (imageUris.size > 8) error("最多上传 8 张图片")
+        val fileIds = JSONArray()
+        imageUris.forEach { uri ->
+            fileIds.put(uploadFile(uri))
+        }
+        jsonObjectRequest(
+            path = "bug-reports",
+            method = "POST",
+            body = JSONObject()
+                .put("source", "app")
+                .put("description", description.trim())
+                .put("image_file_ids", fileIds),
+        )
+    }
+
     override suspend fun updateProfile(displayName: String, phone: String, avatarFileId: String?): AppUser {
         val body = JSONObject()
             .put("display_name", displayName)
