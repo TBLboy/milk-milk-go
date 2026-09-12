@@ -1845,3 +1845,53 @@ tasks:
       follow_ups: []
     created_at: "2026-09-12T13:50:00Z"
     updated_at: "2026-09-12T13:50:00Z"
+  - id: TASK-038
+    title: APP 右上角头像菜单点击无响应修复
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 修复点击右上角头像后不出现用户下拉菜单的问题，保证头像自身和外层按钮都能触发菜单。
+    status: done
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [app, android, profile, menu]
+    related_business_logic: [BL-AUTH-002]
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: [TASK-037]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户反馈点击右上角头像没反应，不再出现下拉列表
+    outputs:
+      - 头像点击不挂禁用态 Clickable
+      - 头像自身可打开菜单且外层按钮可切换菜单
+    plan:
+      - 头像组件仅在 onClick 非空时挂 Clickable，避免禁用态点击遮挡外层按钮
+      - UserMenu 中头像直接设置 onClick 打开下拉，外层 IconButton 同时保留切换能力
+    done_when:
+      - 点击右上角头像可打开用户下拉菜单
+      - 点击菜单外可关闭
+      - Android debug APK 构建通过
+    verification:
+      status: passed
+      commands:
+        - cd /home/tbl/Project/辅料称重防错系统/app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
+      evidence:
+        - AvatarImage 不再在无回调时添加 Clickable 修饰
+        - UserMenu 头像与 IconButton 都具备打开菜单能力
+        - Android debug APK 构建成功
+      limitations:
+        - 真机点击和下拉展开效果需重新安装 APK 后确认
+    result:
+      summary: 右上角头像菜单点击无响应的潜在遮挡问题已修复，头像和外层按钮均可打开菜单。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12T14:00:00Z"
+    updated_at: "2026-09-12T14:00:00Z"
