@@ -129,6 +129,9 @@ export const api = {
       description: app.description,
       time: app.time || '刚刚',
       type: app.type || ('photo' as const),
+      fileId: app.file_id || null,
+      orderNo: app.order_no || null,
+      stepNo: app.step_no || null,
     }))
     const inProgressCount = workOrders.filter((w) => w.status === '执行中').length
     const completedCount = workOrders.filter((w) => w.status === '已完成').length

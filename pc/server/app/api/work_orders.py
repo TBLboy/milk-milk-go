@@ -6,7 +6,7 @@ from sqlalchemy import case, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.auth import current_user, require_admin
-from app.db.models import Product, Recipe, RecipeItem, User, WorkOrder, WorkOrderStep
+from app.db.models import Product, Recipe, RecipeItem, SystemSetting, User, WorkOrder, WorkOrderStep
 from app.db.session import get_db
 
 router = APIRouter(prefix="/work-orders", tags=["work-orders"])
@@ -30,12 +30,52 @@ def order_view(order: WorkOrder, users: dict[int, User] | None = None) -> dict:
         "created_by": order.created_by,
         "created_at": order.created_at.isoformat(),
         "updated_at": order.updated_at.isoformat(),
-        "steps": [{"step_no": step.step_no, "material_id": step.material_id_snapshot, "material_code": step.material_code_snapshot, "material_name": step.material_name_snapshot, "required_weight_kg": step.required_weight_kg, "tolerance_kg": step.tolerance_kg, "status": step.status} for step in order.steps],
+        "steps": [{
+            "step_no": step.step_no,
+            "material_id": step.material_id_snapshot,
+            "material_code": step.material_code_snapshot,
+            "material_name": step.material_name_snapshot,
+            "required_weight_kg": step.required_weight_kg,
+            "tolerance_kg": step.tolerance_kg,
+            "status": step.status,
+            "confirmations": [{
+                "id": item.id,
+                "method": item.method,
+                "status": item.status,
+                "scanned_material_id": item.scanned_material_id,
+                "reason": item.reason,
+                "evidence_file_id": item.evidence_file_id,
+                "created_at": item.created_at.isoformat() if item.created_at else None,
+            } for item in step.confirmations],
+            "weighing_attempts": [{
+                "id": item.id,
+                "weight_kg": item.weight_kg,
+                "weight_source": item.weight_source,
+                "scale_photo_file_id": item.scale_photo_file_id,
+                "passed": item.passed,
+                "created_at": item.created_at.isoformat() if item.created_at else None,
+            } for item in step.weighing_attempts],
+        } for step in order.steps],
     }
 
 
+def _setting_float(db: Session, key: str, default: float) -> float:
+    value = db.scalar(select(SystemSetting.value).where(SystemSetting.key == key))
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _load_step_evidence(query):
+    return query.options(
+        selectinload(WorkOrder.steps).selectinload(WorkOrderStep.confirmations),
+        selectinload(WorkOrder.steps).selectinload(WorkOrderStep.weighing_attempts),
+    )
+
+
 def _load_order(db: Session, order_no: str) -> WorkOrder | None:
-    return db.scalar(select(WorkOrder).options(selectinload(WorkOrder.steps)).where(WorkOrder.order_no == order_no))
+    return db.scalar(_load_step_evidence(select(WorkOrder)).where(WorkOrder.order_no == order_no))
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
@@ -49,7 +89,9 @@ def create_work_order(body: WorkOrderInput, user: User = Depends(current_user), 
     now = datetime.now(timezone.utc)
     order = WorkOrder(order_no=f"WO-{now.strftime('%Y%m%d%H%M%S')}-{now.microsecond // 1000:03d}", product_name_snapshot=product.name, target_weight_kg=body.target_weight_kg, status="approved" if user.role == "admin" else "pending_approval", operator_id=operator_id if user.role == "admin" else None, created_by=user.id)
     tons = body.target_weight_kg / 1000
-    order.steps = [WorkOrderStep(step_no=index + 1, material_id_snapshot=item.material.material_id, material_code_snapshot=item.material.material_code, material_name_snapshot=item.material.name_zh, required_weight_kg=round(item.quantity_per_ton_kg * tons, 6), tolerance_kg=max(round(item.quantity_per_ton_kg * tons * 0.01, 6), 0.005)) for index, item in enumerate(product.recipe.items)]
+    tolerance_percent = _setting_float(db, "default_tolerance_percent", 1.0)
+    min_absolute_kg = _setting_float(db, "min_absolute_tolerance_grams", 5.0) / 1000
+    order.steps = [WorkOrderStep(step_no=index + 1, material_id_snapshot=item.material.material_id, material_code_snapshot=item.material.material_code, material_name_snapshot=item.material.name_zh, required_weight_kg=round(item.quantity_per_ton_kg * tons, 6), tolerance_kg=max(round(item.quantity_per_ton_kg * tons * tolerance_percent / 100, 6), min_absolute_kg)) for index, item in enumerate(product.recipe.items)]
     db.add(order)
     db.commit()
     db.refresh(order)
@@ -59,7 +101,7 @@ def create_work_order(body: WorkOrderInput, user: User = Depends(current_user), 
 @router.get("")
 def list_work_orders(user: User = Depends(current_user), db: Session = Depends(get_db)) -> list[dict]:
     cancelled_last = case((WorkOrder.status == "cancelled", 1), else_=0)
-    query = select(WorkOrder).options(selectinload(WorkOrder.steps)).order_by(cancelled_last.asc(), WorkOrder.created_at.desc())
+    query = _load_step_evidence(select(WorkOrder)).order_by(cancelled_last.asc(), WorkOrder.created_at.desc())
     if user.role != "admin":
         query = query.where((WorkOrder.operator_id == user.id) | (WorkOrder.created_by == user.id))
     orders = db.scalars(query).all()

@@ -3,7 +3,7 @@ import { Check, ChevronRight, CircleAlert, Download, Edit, FileSpreadsheet, Imag
 import QRCode from 'qrcode'
 import { StatusBadge } from '../components/StatusBadge'
 import { api } from '../services/api'
-import { CreateMaterialModal, CreateOrderModal, CreateProductModal, CreateUserModal, MaterialImageModal, Modal, OrderDetailModal, RecipeDetailModal } from '../components/Modals'
+import { CreateMaterialModal, CreateOrderModal, CreateProductModal, CreateUserModal, EvidenceThumb, MaterialImageModal, Modal, OrderDetailModal, RecipeDetailModal } from '../components/Modals'
 import { StatusFilter } from '../components/StatusFilter'
 import { Pagination } from '../components/Pagination'
 
@@ -49,7 +49,7 @@ export function WorkOrdersPage({ approvals = false }: { approvals?: boolean }) {
         {!approvals && <StatusFilter options={filterOptions} value={statusFilter} onChange={setStatusFilter} />}
         {!approvals && <button className="outline-button" onClick={handleExport}><Download size={15} />导出</button>}
       </div>
-      {approvals ? <ApprovalTable /> : <OrdersTable key={refreshKey} onOpen={setSelectedOrderNo} query={query} statusFilter={statusFilter} />}
+      {approvals ? <ApprovalTable onOpen={setSelectedOrderNo} /> : <OrdersTable key={refreshKey} onOpen={setSelectedOrderNo} query={query} statusFilter={statusFilter} />}
 
       {showCreateModal && (
         <CreateOrderModal
@@ -151,7 +151,7 @@ function OrdersTable({ onOpen, query, statusFilter }: { onOpen: (orderNo: string
   )
 }
 
-function ApprovalTable() {
+function ApprovalTable({ onOpen }: { onOpen?: (orderNo: string) => void }) {
   const [items, setItems] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
@@ -207,6 +207,10 @@ function ApprovalTable() {
                 <small>{item.id} · {item.time}</small>
                 <strong>{item.title}</strong>
                 <span>{item.description}</span>
+                {item.fileId && <EvidenceThumb fileId={item.fileId} className="approval-evidence" />}
+                {item.orderNo && (
+                  <button className="text-button" onClick={() => onOpen?.(item.orderNo)}>查看工单</button>
+                )}
               </div>
               <div className="approval-actions">
                 <>

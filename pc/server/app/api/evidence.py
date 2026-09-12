@@ -98,7 +98,6 @@ def request_photo_confirmation(order_no: str, step_no: int, body: PhotoRequest, 
     db.add(confirmation)
     step.status = "type_confirmation"
     db.commit()
-    db.commit()
     return {"confirmation_id": confirmation.id, "status": "pending", "message": "已提交拍照放行申请"}
 
 
