@@ -502,6 +502,51 @@
   border-radius: 5px;
   background: #f3f6f4;
 }
+.evidence-thumb-button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  padding: 0;
+  line-height: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  cursor: zoom-in;
+}
+.evidence-thumb-button:hover .evidence-thumb {
+  border-color: #79b89d;
+  box-shadow: 0 0 0 2px rgba(45, 139, 102, 0.12);
+}
+.evidence-thumb-button:focus-visible {
+  outline: 2px solid #2d8b66;
+  outline-offset: 2px;
+}
+.image-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  background: rgba(8, 15, 12, 0.9);
+  cursor: zoom-out;
+  animation: imageLightboxIn 0.12s ease-out;
+}
+.image-lightbox img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 94vw;
+  max-height: 94vh;
+  object-fit: contain;
+  background: #111714;
+  border-radius: 6px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.48);
+}
+@keyframes imageLightboxIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 .approval-copy .approval-evidence {
   width: 64px;
   height: 64px;

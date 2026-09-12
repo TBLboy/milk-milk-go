@@ -12,7 +12,7 @@ router = APIRouter(prefix="/approvals", tags=["approvals"])
 
 @router.get("")
 def list_pending_approvals(user: User = Depends(current_user), db: Session = Depends(get_db)) -> list[dict]:
-    # Returns pending photo approvals and any takeover/cancellation requests
+    # Returns pending work orders, photo approvals, user registrations and order requests.
     items = []
     user_query = select(User).where(User.status == "pending").order_by(User.id.desc())
     for pending_user in db.scalars(user_query).all():
@@ -26,6 +26,25 @@ def list_pending_approvals(user: User = Depends(current_user), db: Session = Dep
             "step_no": None,
             "file_id": None,
             "time": pending_user.created_at.strftime("%H:%M") if pending_user.created_at else "刚刚",
+            "status": "pending",
+        })
+    pending_order_query = (
+        select(WorkOrder, User)
+        .join(User, WorkOrder.created_by == User.id)
+        .where(WorkOrder.status == "pending_approval")
+        .order_by(WorkOrder.created_at.desc())
+    )
+    for order, creator in db.execute(pending_order_query).all():
+        items.append({
+            "id": f"AP-WO-{order.order_no}",
+            "order_id": order.id,
+            "type": "work_order",
+            "title": f"工单审批 · {order.product_name_snapshot}",
+            "description": f"工单 {order.order_no} · 申请人 {creator.display_name} · 目标 {order.target_weight_kg:g}kg",
+            "order_no": order.order_no,
+            "step_no": None,
+            "file_id": None,
+            "time": order.created_at.strftime("%H:%M") if order.created_at else "刚刚",
             "status": "pending",
         })
     # 1. Photo confirmations pending
@@ -59,7 +78,7 @@ def list_pending_approvals(user: User = Depends(current_user), db: Session = Dep
     type_titles = {
         "takeover": "工单接管申请",
         "cancel": "工单撤销申请",
-        "delete": "工单删除申请",
+        "delete": "历史工单删除申请",
     }
     for request, order, requester in db.execute(request_query).all():
         items.append({

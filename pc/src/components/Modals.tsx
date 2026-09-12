@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { CheckCircle2, CircleDashed, Clock3, ImagePlus, PackageCheck, PlayCircle, X, Plus, Trash2 } from 'lucide-react'
 import { api } from '../services/api'
 
@@ -180,7 +181,7 @@ export function OrderDetailModal({ orderNo, onClose, onSuccess }: { orderNo: str
             {order.requests.map((request: any) => (
               <div className="step-row request-row" key={request.id}>
                 <div className="step-copy">
-                  <strong>{request.request_type === 'takeover' ? '接管申请' : request.request_type === 'cancel' ? '撤销申请' : '删除申请'} · {request.requester_name || `用户 #${request.requested_by}`}</strong>
+                  <strong>{request.request_type === 'takeover' ? '接管申请' : request.request_type === 'cancel' ? '撤销申请' : '历史删除申请'} · {request.requester_name || `用户 #${request.requested_by}`}</strong>
                   <span>{request.reason}</span>
                 </div>
                 <span className={`request-status ${request.status}`}>{request.status === 'pending' ? '待审批' : request.status === 'approved' ? '已通过' : '已驳回'}</span>
@@ -254,6 +255,7 @@ function StepEvidence({ step }: { step: any }) {
 
 export function EvidenceThumb({ fileId, className = '' }: { fileId: string; className?: string }) {
   const [src, setSrc] = useState<string | null>(null)
+  const [previewOpen, setPreviewOpen] = useState(false)
   useEffect(() => {
     let cancelled = false
     api.getFileUrl(fileId).then((url) => {
@@ -263,7 +265,39 @@ export function EvidenceThumb({ fileId, className = '' }: { fileId: string; clas
     })
     return () => { cancelled = true }
   }, [fileId])
-  return src ? <img className={`evidence-thumb ${className}`.trim()} src={src} alt="现场证据图片" /> : null
+  useEffect(() => {
+    if (!previewOpen) return
+    const previousOverflow = document.body.style.overflow
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPreviewOpen(false)
+    }
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [previewOpen])
+
+  if (!src) return null
+  return (
+    <>
+      <button
+        type="button"
+        className="evidence-thumb-button"
+        onClick={() => setPreviewOpen(true)}
+        aria-label="放大查看现场证据图片"
+      >
+        <img className={`evidence-thumb ${className}`.trim()} src={src} alt="现场证据图片" />
+      </button>
+      {previewOpen && createPortal(
+        <div className="image-lightbox" onClick={() => setPreviewOpen(false)}>
+          <img src={src} alt="放大后的现场证据图片" onClick={(event) => event.stopPropagation()} />
+        </div>,
+        document.body,
+      )}
+    </>
+  )
 }
 
 export function RecipeDetailModal({ product, onClose }: { product: any; onClose: () => void }) {

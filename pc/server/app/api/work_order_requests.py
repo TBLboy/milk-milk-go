@@ -12,12 +12,11 @@ from app.db.session import get_db
 
 router = APIRouter(prefix="/work-orders", tags=["work-order-requests"])
 
-REQUEST_TYPES = ("takeover", "cancel", "delete")
 ACTIVE_STATUSES = {"pending_approval", "approved", "in_progress"}
 
 
 class WorkOrderRequestInput(BaseModel):
-    request_type: Literal["takeover", "cancel", "delete"]
+    request_type: Literal["takeover", "cancel"]
     reason: str = Field(min_length=1, max_length=500)
 
 
@@ -73,12 +72,9 @@ def create_work_order_request(
             raise HTTPException(status_code=409, detail={"code": "ALREADY_BOUND", "message": "当前账号已是该工单的执行人"})
         if order.status not in ACTIVE_STATUSES:
             raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STATE_CONFLICT", "message": "当前工单状态不能申请接管"})
-    elif body.request_type == "cancel":
+    else:
         if order.status not in ACTIVE_STATUSES:
             raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STATE_CONFLICT", "message": "当前工单状态不能申请撤销"})
-    else:
-        if order.status in {"cancelled", "deleted"}:
-            raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STATE_CONFLICT", "message": "当前工单状态不能申请删除"})
 
     request = WorkOrderRequest(
         work_order_id=order.id,
@@ -130,9 +126,7 @@ def approve_work_order_request(
             raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STATE_CONFLICT", "message": "工单当前状态不能撤销"})
         order.status = "cancelled"
     else:
-        if order.status in {"cancelled", "deleted"}:
-            raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STATE_CONFLICT", "message": "工单当前状态不能删除"})
-        order.status = "deleted"
+        raise HTTPException(status_code=409, detail={"code": "REQUEST_TYPE_RETIRED", "message": "工单删除申请已停用，请驳回该历史申请"})
 
     request.status = "approved"
     request.decided_by = user.id
@@ -159,17 +153,3 @@ def reject_work_order_request(
     db.commit()
     db.refresh(request)
     return request_view(request, None, {user.id: user})
-
-
-@router.post("/{order_no}/delete")
-def delete_work_order(
-    order_no: str,
-    user: User = Depends(require_admin),
-    db: Session = Depends(get_db),
-) -> dict:
-    order = _order_with_request_or_404(db, order_no)
-    if order.status in {"cancelled", "deleted"}:
-        raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STATE_CONFLICT", "message": "工单当前状态不能删除"})
-    order.status = "deleted"
-    db.commit()
-    return {"order_no": order.order_no, "status": order.status, "message": "工单已删除并保留历史记录"}

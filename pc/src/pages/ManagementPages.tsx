@@ -13,7 +13,7 @@ export function WorkOrdersPage({ approvals = false }: { approvals?: boolean }) {
   const [selectedOrderNo, setSelectedOrderNo] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('全部状态')
-  const filterOptions = ['全部状态', '待审批', '已批准', '执行中', '已完成', '已撤销', '已删除']
+  const filterOptions = ['全部状态', '待审批', '已批准', '执行中', '已完成', '已撤销']
 
   const handleExport = async () => {
     const orders = await api.getWorkOrders().catch(() => [])

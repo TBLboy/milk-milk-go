@@ -1,6 +1,7 @@
 package com.muheng.milkweigh
 
 import android.content.Context
+import org.json.JSONArray
 import org.json.JSONObject
 
 enum class UserRole { OPERATOR, ADMIN }
@@ -15,6 +16,7 @@ data class AppUser(
     val idCard: String = "",
     val accountStatus: String = "active",
     val mustChangePassword: Boolean = false,
+    val id: Int = 0,
 )
 
 data class RegistrationResult(
@@ -43,6 +45,8 @@ data class WorkOrder(
     val updatedAt: String,
     val steps: List<WorkOrderStep> = emptyList(),
     val pendingRequest: String? = null,
+    val operatorId: Int? = null,
+    val createdBy: Int? = null,
 )
 
 enum class StepStatus(val label: String) {
@@ -117,13 +121,12 @@ interface MilkRepository {
     suspend fun setProductActive(productId: Int, enabled: Boolean): ProductRecipe
     suspend fun createWorkOrder(productId: Int, targetWeightKg: Double): WorkOrder
     suspend fun startWorkOrder(orderNo: String): WorkOrder
-    suspend fun confirmStepQr(orderNo: String, stepNo: Int, materialId: String): WorkOrder
-    suspend fun requestStepPhotoApproval(orderNo: String, stepNo: Int, reason: String, photoName: String): WorkOrder
+    suspend fun confirmStepQr(orderNo: String, stepNo: Int, materialId: String, evidenceUri: String): WorkOrder
+    suspend fun requestStepPhotoApproval(orderNo: String, stepNo: Int, reason: String, evidenceUri: String): WorkOrder
     suspend fun approveStepPhotoApproval(orderNo: String, stepNo: Int): WorkOrder
-    suspend fun submitStepWeight(orderNo: String, stepNo: Int, weightKg: Double, photoName: String): WeightSubmitResult
+    suspend fun submitStepWeight(orderNo: String, stepNo: Int, weightKg: Double, evidenceUri: String): WeightSubmitResult
     suspend fun requestTakeover(orderNo: String, reason: String): WorkOrder
     suspend fun requestCancel(orderNo: String, reason: String): WorkOrder
-    suspend fun requestDelete(orderNo: String, reason: String): WorkOrder
     suspend fun completeWorkOrder(orderNo: String): WorkOrder
 }
 
@@ -154,7 +157,70 @@ class SessionStore(context: Context) {
             .put("id_card", user.idCard)
             .put("account_status", user.accountStatus)
             .put("must_change_password", user.mustChangePassword)
+            .put("id", user.id)
         prefs.edit().putString("user", json.toString()).apply()
+    }
+
+    fun rememberedLogins(): List<RememberedLogin> {
+        val raw = settings.getString(REMEMBERED_LOGINS_KEY, null) ?: return emptyList()
+        return runCatching {
+            val array = JSONArray(raw)
+            (0 until array.length()).mapNotNull { index ->
+                val item = array.optJSONObject(index) ?: return@mapNotNull null
+                val username = item.optString("username").trim()
+                if (username.isEmpty()) {
+                    null
+                } else {
+                    RememberedLogin(
+                        username = username,
+                        password = item.optString("password").ifBlank { null },
+                    )
+                }
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    fun saveRememberedLogin(username: String, password: String, rememberPassword: Boolean) {
+        val normalized = username.trim()
+        if (normalized.isEmpty()) return
+        val next = rememberedLogins().filterNot { it.username == normalized }.toMutableList()
+        if (rememberPassword) {
+            next.add(0, RememberedLogin(normalized, password))
+        } else {
+            next.add(0, RememberedLogin(normalized, null))
+        }
+        val array = JSONArray()
+        next.take(MAX_REMEMBERED_LOGINS).forEach { item ->
+            array.put(
+                JSONObject()
+                    .put("username", item.username)
+                    .put("password", item.password ?: JSONObject.NULL)
+            )
+        }
+        settings.edit().putString(REMEMBERED_LOGINS_KEY, array.toString()).apply()
+    }
+
+    fun removeRememberedLogin(username: String) {
+        val normalized = username.trim()
+        if (normalized.isEmpty()) return
+        val next = rememberedLogins().filterNot { it.username == normalized }
+        if (next.isEmpty()) {
+            settings.edit().remove(REMEMBERED_LOGINS_KEY).apply()
+        } else {
+            val array = JSONArray()
+            next.forEach { item ->
+                array.put(
+                    JSONObject()
+                        .put("username", item.username)
+                        .put("password", item.password ?: JSONObject.NULL)
+                )
+            }
+            settings.edit().putString(REMEMBERED_LOGINS_KEY, array.toString()).apply()
+        }
+    }
+
+    fun clearRememberedLogins() {
+        settings.edit().remove(REMEMBERED_LOGINS_KEY).apply()
     }
 
     fun load(): AppUser? {
@@ -171,6 +237,7 @@ class SessionStore(context: Context) {
                 idCard = json.optString("id_card"),
                 accountStatus = json.optString("account_status", "active"),
                 mustChangePassword = json.optBoolean("must_change_password"),
+                id = json.optInt("id"),
             )
         }.getOrNull()
     }
@@ -181,8 +248,15 @@ class SessionStore(context: Context) {
 
     private companion object {
         const val SERVER_URL_KEY = "server_url"
+        const val REMEMBERED_LOGINS_KEY = "remembered_logins"
+        const val MAX_REMEMBERED_LOGINS = 5
     }
 }
+
+data class RememberedLogin(
+    val username: String,
+    val password: String? = null,
+)
 
 class MockMilkRepository : MilkRepository {
     private var mockUser: AppUser? = null
@@ -196,6 +270,8 @@ class MockMilkRepository : MilkRepository {
             operatorName = "李师傅",
             status = WorkOrderStatus.IN_PROGRESS,
             updatedAt = "10:42",
+            operatorId = 2,
+            createdBy = 1,
             steps = (1..9).map { step ->
                 WorkOrderStep(
                     stepNo = step,
@@ -217,6 +293,8 @@ class MockMilkRepository : MilkRepository {
             operatorName = "王师傅",
             status = WorkOrderStatus.COMPLETED,
             updatedAt = "10:18",
+            operatorId = 3,
+            createdBy = 1,
             steps = (1..8).map { step ->
                 WorkOrderStep(
                     stepNo = step,
@@ -238,6 +316,8 @@ class MockMilkRepository : MilkRepository {
             operatorName = "赵师傅",
             status = WorkOrderStatus.PENDING_APPROVAL,
             updatedAt = "09:56",
+            operatorId = 4,
+            createdBy = 1,
             steps = (1..10).map { step ->
                 WorkOrderStep(
                     stepNo = step,
@@ -297,6 +377,7 @@ class MockMilkRepository : MilkRepository {
             username = username,
             role = role,
             token = "mock-${username}-${System.currentTimeMillis()}",
+            id = if (username == "admin") 1 else 2,
         ).also { mockUser = it }
     }
 
@@ -429,12 +510,13 @@ class MockMilkRepository : MilkRepository {
         return updated
     }
 
-    override suspend fun confirmStepQr(orderNo: String, stepNo: Int, materialId: String): WorkOrder {
+    override suspend fun confirmStepQr(orderNo: String, stepNo: Int, materialId: String, evidenceUri: String): WorkOrder {
         val index = orderStore.indexOfFirst { it.orderNo == orderNo }
         if (index < 0) error("工单不存在")
         val order = orderStore[index]
         val step = order.steps.firstOrNull { it.stepNo == stepNo } ?: error("步骤不存在")
         if (step.status == StepStatus.COMPLETED || step.status == StepStatus.WEIGHING) error("该辅料已完成类型确认")
+        if (evidenceUri.isBlank()) error("请先拍照并上传类型确认证据")
         if (materialId.isBlank() || materialId.trim() != step.materialId) error("扫描到的辅料与当前步骤要求不一致")
         val steps = order.steps.map { if (it.stepNo == stepNo) it.copy(status = StepStatus.WEIGHING) else it }
         val updated = order.copy(
@@ -446,14 +528,14 @@ class MockMilkRepository : MilkRepository {
         return updated
     }
 
-    override suspend fun requestStepPhotoApproval(orderNo: String, stepNo: Int, reason: String, photoName: String): WorkOrder {
+    override suspend fun requestStepPhotoApproval(orderNo: String, stepNo: Int, reason: String, evidenceUri: String): WorkOrder {
         val index = orderStore.indexOfFirst { it.orderNo == orderNo }
         if (index < 0) error("工单不存在")
         val order = orderStore[index]
         val step = order.steps.firstOrNull { it.stepNo == stepNo } ?: error("步骤不存在")
         if (step.status == StepStatus.COMPLETED || step.status == StepStatus.WEIGHING) error("该辅料无需拍照审批")
         if (reason.isBlank()) error("请填写放行原因")
-        if (photoName.isBlank()) error("请选择包装照片")
+        if (evidenceUri.isBlank()) error("请先拍照并上传包装证据")
         val steps = order.steps.map { if (it.stepNo == stepNo) it.copy(status = StepStatus.TYPE_CONFIRMATION) else it }
         val updated = order.copy(steps = steps, updatedAt = "刚刚")
         orderStore[index] = updated
@@ -472,14 +554,14 @@ class MockMilkRepository : MilkRepository {
         return updated
     }
 
-    override suspend fun submitStepWeight(orderNo: String, stepNo: Int, weightKg: Double, photoName: String): WeightSubmitResult {
+    override suspend fun submitStepWeight(orderNo: String, stepNo: Int, weightKg: Double, evidenceUri: String): WeightSubmitResult {
         val index = orderStore.indexOfFirst { it.orderNo == orderNo }
         if (index < 0) error("工单不存在")
         val order = orderStore[index]
         val step = order.steps.firstOrNull { it.stepNo == stepNo } ?: error("步骤不存在")
         if (step.status != StepStatus.WEIGHING) error("请先完成辅料类型确认")
         if (weightKg <= 0) error("请输入正确的称重重量")
-        if (photoName.isBlank()) error("请上传电子秤读数照片")
+        if (evidenceUri.isBlank()) error("请拍摄电子秤读数照片")
         val withinTolerance = weightKg >= step.requiredWeightKg - step.toleranceKg &&
             weightKg <= step.requiredWeightKg + step.toleranceKg
         if (!withinTolerance) {
@@ -532,14 +614,4 @@ class MockMilkRepository : MilkRepository {
         return updated
     }
 
-    override suspend fun requestDelete(orderNo: String, reason: String): WorkOrder {
-        val index = orderStore.indexOfFirst { it.orderNo == orderNo }
-        if (index < 0) error("工单不存在")
-        val order = orderStore[index]
-        if (order.pendingRequest != null) error("该工单已有待审批申请")
-        if (reason.isBlank()) error("请填写删除原因")
-        val updated = order.copy(pendingRequest = "删除申请待审批", updatedAt = "刚刚")
-        orderStore[index] = updated
-        return updated
-    }
 }

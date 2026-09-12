@@ -183,17 +183,18 @@ class RealMilkRepository(
         return orderFromJson(jsonObjectRequest("work-orders/$orderNo/start", "POST", null))
     }
 
-    override suspend fun confirmStepQr(orderNo: String, stepNo: Int, materialId: String): WorkOrder {
+    override suspend fun confirmStepQr(orderNo: String, stepNo: Int, materialId: String, evidenceUri: String): WorkOrder {
+        val fileId = uploadImage(evidenceUri)
         jsonObjectRequest(
             path = "evidence/work-orders/$orderNo/steps/$stepNo/qr",
             method = "POST",
-            body = JSONObject().put("material_id", materialId),
+            body = JSONObject().put("material_id", materialId).put("evidence_file_id", fileId),
         )
         return getWorkOrder(orderNo)
     }
 
-    override suspend fun requestStepPhotoApproval(orderNo: String, stepNo: Int, reason: String, photoName: String): WorkOrder {
-        val fileId = uploadImage(photoName)
+    override suspend fun requestStepPhotoApproval(orderNo: String, stepNo: Int, reason: String, evidenceUri: String): WorkOrder {
+        val fileId = uploadImage(evidenceUri)
         jsonObjectRequest(
             path = "evidence/work-orders/$orderNo/steps/$stepNo/photo-request",
             method = "POST",
@@ -223,8 +224,8 @@ class RealMilkRepository(
         return getWorkOrder(orderNo)
     }
 
-    override suspend fun submitStepWeight(orderNo: String, stepNo: Int, weightKg: Double, photoName: String): WeightSubmitResult {
-        val fileId = uploadImage(photoName)
+    override suspend fun submitStepWeight(orderNo: String, stepNo: Int, weightKg: Double, evidenceUri: String): WeightSubmitResult {
+        val fileId = uploadImage(evidenceUri)
         val response = jsonObjectRequest(
             path = "evidence/work-orders/$orderNo/steps/$stepNo/weight",
             method = "POST",
@@ -245,9 +246,6 @@ class RealMilkRepository(
 
     override suspend fun requestCancel(orderNo: String, reason: String): WorkOrder =
         createRequest(orderNo, "cancel", reason)
-
-    override suspend fun requestDelete(orderNo: String, reason: String): WorkOrder =
-        createRequest(orderNo, "delete", reason)
 
     override suspend fun completeWorkOrder(orderNo: String): WorkOrder {
         return orderFromJson(jsonObjectRequest("work-orders/$orderNo/complete", "POST", null))
@@ -387,6 +385,7 @@ class RealMilkRepository(
             idCard = user.optString("id_card"),
             accountStatus = user.optString("status", "active"),
             mustChangePassword = user.optBoolean("must_change_password"),
+            id = user.optInt("id"),
         )
     }
 
@@ -404,7 +403,7 @@ class RealMilkRepository(
                 pendingRequest = when (request.optString("request_type")) {
                     "takeover" -> "接管申请待审批"
                     "cancel" -> "撤销申请待审批"
-                    "delete" -> "删除申请待审批"
+                    "delete" -> "历史删除申请待审批"
                     else -> "工单申请待审批"
                 }
                 break
@@ -421,6 +420,8 @@ class RealMilkRepository(
             updatedAt = formatTime(json.optString("updated_at")),
             steps = steps,
             pendingRequest = pendingRequest,
+            operatorId = if (json.isNull("operator_id")) null else json.optInt("operator_id"),
+            createdBy = if (json.isNull("created_by")) null else json.optInt("created_by"),
         )
     }
 

@@ -577,6 +577,71 @@ atoms:
     created_at: "2026-09-08T09:27:42Z"
     updated_at: "2026-09-09T06:40:00Z"
     last_verified_at: null
+  - id: BL-EVID-001
+    title: 生产证据照片仅允许现场拍摄并添加操作水印
+    kind: rule
+    domain: evidence
+    status: active
+    priority: critical
+    risk: medium
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-12 统一现场拍照证据要求"
+    description: 除头像和辅料主数据图片等非生产业务图片外，类型确认、重量确认及其他生产步骤需要上传的证据照片只能由平板相机现场拍摄，不能从系统相册选择；类型确认使用统一的“拍照扫码”动作，系统从同一张现场照片解析二维码并添加操作水印。
+    actors:
+      - 生产/称重操作员
+    trigger: 操作员执行需要照片证据的类型确认或重量确认步骤
+    preconditions:
+      - 当前工单步骤处于需要现场拍照的业务阶段
+      - 平板已获得相机权限
+    inputs:
+      - 现场拍摄照片
+      - 操作员身份
+      - 工单和步骤信息
+      - 类型确认步骤中的二维码
+    rule:
+      statement: 生产流程证据只能通过应用内相机现场拍摄；类型确认统一为“拍照扫码”，从拍摄照片解析二维码并将照片绑定为类型确认证据；重量确认必须拍摄电子秤读数照片后才能提交；系统在照片上添加操作员、拍摄时间、工单和步骤/辅料水印后上传后台。
+    outputs:
+      - 带操作水印的现场照片证据
+      - 类型确认二维码解析结果
+      - 重量确认电子秤读数照片
+    side_effects:
+      - 类型确认照片、二维码匹配结果、称重照片和操作人员信息共同留痕
+    exceptions:
+      - 相机权限被拒绝
+      - 照片拍摄或处理失败
+      - 拍摄照片中未识别到二维码
+      - 重量确认未拍摄电子秤读数照片
+    failure_handling:
+      - 相机权限或拍照失败时阻止提交并提示重试
+      - 类型确认未识别到二维码时允许填写理由后提交后台拍照审批
+      - 重量确认缺少现场照片时禁用提交
+    invariants:
+      - 生产流程证据照片不得来自系统相册
+      - 类型确认的二维码解析和证据照片来自同一次现场拍摄
+      - 所有生产流程证据照片至少带有操作员、拍摄时间、工单和步骤/辅料水印
+    acceptance:
+      - id: AC-EVID-001
+        given: 当前步骤需要进行类型确认或重量确认
+        when: 操作员提交该步骤
+        then: 系统只接受应用内相机现场拍摄的证据照片，并在类型确认时从该照片解析二维码、在重量确认时要求电子秤读数照片
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-RECOG-001
+      - BL-WEIGH-002
+      - BL-WEIGH-006
+    baseline_refs: []
+    decision_refs: []
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: 头像和辅料主数据图片不属于生产流程证据，仍允许在平板相册选择；生产流程照片是否来自真实相机最终仍需真机验收。
+    created_at: "2026-09-12T09:30:00Z"
+    updated_at: "2026-09-12T09:30:00Z"
+    last_verified_at: null
   - id: BL-WO-001
     title: 工单与操作员账号绑定
     kind: rule
@@ -863,7 +928,7 @@ atoms:
     updated_at: "2026-09-08T09:52:19Z"
     last_verified_at: null
   - id: BL-WO-006
-    title: 平板申请撤销/删除工单需后台审批
+    title: 工单撤销需后台审批并保留历史记录
     kind: flow
     domain: work-order
     status: active
@@ -872,24 +937,24 @@ atoms:
     authority: user-confirmed
     source:
       type: user-statement
-      reference: "2026-09-08 Q-009"
-    description: 平板端可申请撤销/删除工单，但必须经过后台审批；电脑后台也可以直接撤销/删除工单。所有撤销/删除均保留历史记录，不物理删除工单和证据。
+      reference: "2026-09-12 用户反馈"
+    description: 平板端可申请撤销工单，但必须经过后台审批；电脑后台也可以直接撤销工单。撤销后保留全部历史记录，不物理删除工单和证据；系统不再向用户提供新的删除操作。
     actors:
       - 生产/称重操作员
       - 电脑后台管理员
-    trigger: 平板端申请撤销/删除工单，或后台直接执行撤销/删除
+    trigger: 平板端申请撤销工单，或后台直接执行撤销
     preconditions:
       - 工单已存在
       - 操作员登录账号有效或后台管理员已登录
     inputs:
       - 工单
       - 申请账号或后台账号
-      - 撤销/删除原因
+      - 撤销原因
       - 审批结果
     rule:
-      statement: 平板端提交的撤销/删除申请必须先经后台审批；审批通过后工单生效为已撤销/已删除状态。后台可直接撤销/删除，但必须记录原因和操作人；所有记录保留，不物理删除。
+      statement: 平板端提交的撤销申请必须先经后台审批；审批通过后工单生效为已撤销状态。后台可直接撤销，但必须记录原因和操作人；所有记录保留，不物理删除。系统不再提供新的删除申请或删除操作。
     outputs:
-      - 撤销/删除审批结果
+      - 撤销审批结果
       - 工单状态变更
     side_effects:
       - 工单不再作为可执行工单出现
@@ -897,18 +962,18 @@ atoms:
     exceptions:
       - 后台驳回申请
       - 工单已完成
-      - 工单已被撤销/删除
+      - 工单已被撤销
     failure_handling:
       - 驳回时保持原状态，并保留申请记录
     invariants:
-      - 撤销/删除申请和审批均保留操作记录
+      - 撤销申请和审批均保留操作记录
       - 已完成工单不能重新变为可执行工单
-      - 撤销/删除后的工单和证据仍保留在系统中
+      - 撤销后的工单和证据仍保留在系统中
     acceptance:
       - id: AC-WO-006
-        given: 绑定操作员在平板端申请撤销/删除工单
+        given: 绑定操作员在平板端申请撤销工单
         when: 后台审批通过
-        then: 工单状态变为已撤销/已删除，平板端不再显示为可执行工单，后台仍保留完整记录
+        then: 工单状态变为已撤销，平板端不再显示为可执行工单，后台仍保留完整记录
         method: null
         evidence: null
         status: not-verified
@@ -918,12 +983,13 @@ atoms:
     decision_refs:
       - DEC-009
       - DEC-010
+      - DEC-029
     implementation_refs: []
     test_refs: []
     supersedes: []
-    notes: Q-010 已确认删除也保留记录，采用撤销/作废和逻辑删除。
+    notes: 2026-09-12 用户确认撤销与删除功能重复，仅保留撤销；删除操作停用，历史已删除数据仅保留兼容展示。
     created_at: "2026-09-08T09:52:19Z"
-    updated_at: "2026-09-08T09:58:19Z"
+    updated_at: "2026-09-12T10:25:23Z"
     last_verified_at: null
   - id: BL-AUTH-001
     title: 平板注册账号为普通操作员，后台账号为预置管理员
@@ -1340,7 +1406,7 @@ atoms:
     source:
       type: user-statement
       reference: "2026-09-08 Q-012"
-    description: 工单、称重记录、扫码/图片和审批证据长期保存，不因撤销/删除或时间原因物理删除。
+    description: 工单、称重记录、扫码/图片和审批证据长期保存，不因撤销或时间原因物理删除。
     actors:
       - 系统用户/管理员
     trigger: 保存或追溯称重记录
@@ -1358,7 +1424,7 @@ atoms:
     exceptions: []
     failure_handling: []
     invariants:
-      - 撤销/删除后的工单和证据仍可追溯
+      - 撤销后的工单和证据仍可追溯
       - 不因时间到期自动删除
     acceptance:
       - id: AC-DATA-002

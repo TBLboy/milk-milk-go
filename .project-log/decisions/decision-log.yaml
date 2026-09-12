@@ -1,5 +1,58 @@
 version: "0.2"
 decisions:
+  - id: DEC-029
+    title: 工单仅保留撤销操作并隐藏非必要的接管入口
+    category: business
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks:
+      - TASK-047
+    related_business_logic:
+      - BL-WO-003
+      - BL-WO-006
+    context: 用户指出工单撤销和删除功能重复，要求只保留一个；同时当前执行人自己的工单仍显示申请接管，容易造成误操作。
+    hypothesis: 保留“申请撤销”可以覆盖停止工单的业务需求，同时继续保留完整历史记录；仅当当前账号既不是执行人也不是创建人时才显示接管入口。
+    options:
+      - name: 保留撤销，停用删除
+        benefits:
+          - 操作语义清晰
+          - 历史记录和证据继续保留
+          - 与现有撤销审批链路一致
+        costs:
+          - 需要兼容历史已删除数据
+        risks:
+          - 旧客户端仍可能调用删除接口，需要后端拒绝
+      - name: 保留删除，停用撤销
+        benefits:
+          - 可表达误建工单
+        costs:
+          - “删除”容易与物理删除混淆
+          - 需要调整现有撤销审批和状态语义
+        risks:
+          - 用户误以为记录会被清除
+    decision: 工单仅保留“申请撤销”作为停止工单操作，不再提供新的删除申请或后台删除接口；历史已删除数据只做兼容展示。平板端仅当当前账号不是工单执行人且不是创建人时显示“申请接管”。
+    reason_summary:
+      - 用户明确要求撤销和删除二选一
+      - 撤销能够满足停止工单需求并保留历史
+      - 当前执行人无需申请接管自己的工单
+    conditions:
+      - 新工单申请接口不再接受 delete 类型
+      - 后台不再提供工单删除接口
+      - 历史已删除状态不迁移、不物理删除
+      - 平板端按 operator_id 和 created_by 判断是否显示接管入口
+    action: 更新 REQ-001、BL-WO-006，修改平板端和删除接口，并增加删除入口停用回归测试。
+    expected_result: 用户只能申请撤销工单；自己的工单不显示接管入口；历史删除数据仍可追溯。
+    reversal_plan: 如后续确需区分作废和误建，再恢复删除操作并重新定义其与撤销的状态边界。
+    observation: 用户要求“撤销和删除留下一个”，并指出负责人是自己的工单不应显示申请接管。
+    actual_result: 撤销保留为唯一操作，删除入口停用，接管入口增加归属判断。
+    outcome_status: successful
+    lesson: 同一状态终点的多个用户操作应合并为一个稳定业务语义，历史兼容层不应继续暴露为新操作。
+    evidence:
+      - user-statement/2026-09-12 工单操作与平板分页优化
+    supersedes: []
+    created_at: "2026-09-12T10:25:23Z"
+    updated_at: "2026-09-12T10:25:23Z"
   - id: DEC-028
     title: 第一批先开发 PC 端前端，后端接口保留为适配层
     category: process
