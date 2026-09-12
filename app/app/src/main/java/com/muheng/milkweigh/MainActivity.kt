@@ -12,6 +12,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +22,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -119,6 +122,7 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
     var agreed by remember { mutableStateOf(false) }
     var showForgotDialog by remember { mutableStateOf(false) }
     var showAgreementDialog by remember { mutableStateOf(false) }
+    var showServerDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     Box(modifier = Modifier.fillMaxSize()) {
         Image(
@@ -128,7 +132,7 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
             contentScale = ContentScale.Crop,
         )
         Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.58f)))
-        Row(modifier = Modifier.fillMaxSize().padding(48.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(modifier = Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(48.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f).padding(end = 72.dp)) {
                 Text("牧衡", color = Green, fontSize = 34.sp, fontWeight = FontWeight.Bold)
                 Text("辅料称重防错系统", color = Ink, fontSize = 28.sp, fontWeight = FontWeight.Bold)
@@ -140,7 +144,6 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
                     Text(if (registerMode) "注册普通账号" else "登录工作台", color = Ink, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                     Text(if (registerMode) "创建现场操作员账号" else "使用现场账号进入称量任务", color = Muted, fontSize = 15.sp)
                     OutlinedTextField(username, { username = it }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("账号") }, singleLine = true)
-                    OutlinedTextField(serverUrl, { serverUrl = it }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("http://电脑局域网IP:8011/api/v1/") }, singleLine = true)
                     if (registerMode) {
                         OutlinedTextField(displayName, { displayName = it }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("姓名") }, singleLine = true)
                     }
@@ -149,12 +152,13 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
                         OutlinedTextField(confirmPassword, { confirmPassword = it }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("确认密码") }, visualTransformation = PasswordVisualTransformation(), singleLine = true)
                     }
                     error?.let { Text(it, color = Color(0xFFC7473C), fontSize = 14.sp) }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
                         if (registerMode) {
                             TextButton(onClick = { registerMode = false; error = null }, modifier = Modifier.padding(start = 0.dp)) { Text("已有账号？返回登录", color = Green) }
                         } else {
                             TextButton(onClick = { showForgotDialog = true }, modifier = Modifier.padding(start = 0.dp)) { Text("忘记密码", color = Green) }
                         }
+                        TextButton(onClick = { showServerDialog = true }) { Text("服务器设置", color = Green) }
                         TextButton(onClick = { showAgreementDialog = true }) { Text("用户协议", color = Green) }
                     }
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -177,13 +181,11 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
                                 return@Button
                             }
                             scope.launch {
-                                sessionStore.saveServerUrl(serverUrl)
                                 runCatching { repository.register(username.trim(), displayName.trim(), password) }
                                     .onSuccess { sessionStore.save(it); onLoggedIn(it) }
                                     .onFailure { error = it.message }
                             }
                         } else {
-                            sessionStore.saveServerUrl(serverUrl)
                             scope.launch {
                                 runCatching { repository.login(username.trim(), password) }
                                     .onSuccess { sessionStore.save(it); onLoggedIn(it) }
@@ -194,7 +196,6 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
                     if (!registerMode) {
                         TextButton(onClick = { registerMode = true; error = null }, modifier = Modifier.align(Alignment.End)) { Text("没有账号？注册普通账号", color = Green) }
                     }
-                    Text(if (registerMode) "注册成功后自动登录，账号为普通操作员" else "管理员初始账号：admin；普通账号由管理员创建", color = Muted, fontSize = 12.sp)
                 }
             }
         }
@@ -205,6 +206,34 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
             title = { Text("忘记密码") },
             text = { Text("请联系系统管理员重置密码。管理员在后台可以创建和管理普通账户。") },
             confirmButton = { TextButton(onClick = { showForgotDialog = false }) { Text("知道了") } }
+        )
+    }
+    if (showServerDialog) {
+        AlertDialog(
+            onDismissRequest = { showServerDialog = false },
+            title = { Text("服务器设置") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        serverUrl,
+                        { serverUrl = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("后端服务地址") },
+                        placeholder = { Text("http://电脑局域网IP:8011/api/v1/") },
+                        singleLine = true,
+                    )
+                    Text("平板将通过该地址连接电脑端的后端服务。", color = Muted, fontSize = 13.sp)
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    sessionStore.saveServerUrl(serverUrl)
+                    showServerDialog = false
+                }) { Text("保存") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showServerDialog = false }) { Text("取消") }
+            },
         )
     }
     if (showAgreementDialog) {
