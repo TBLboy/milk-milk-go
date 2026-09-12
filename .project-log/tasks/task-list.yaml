@@ -1741,3 +1741,55 @@ tasks:
       follow_ups: []
     created_at: "2026-09-12T13:20:00Z"
     updated_at: "2026-09-12T13:20:00Z"
+  - id: TASK-036
+    title: APP 用户资料头像即时预览
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 用户在用户资料中选择相册头像或拍照头像后，头像位置立即显示新图片，不需要先点击保存才能看到效果。
+    status: done
+    priority: medium
+    risk: low
+    authority: B
+    owner: agent
+    tags: [app, android, profile, avatar]
+    related_business_logic: [BL-AUTH-002]
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: [TASK-032]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 用户反馈选择或拍照头像后，头像位置没有立即刷新
+    outputs:
+      - 头像组件支持本地新头像 URI 即时预览
+      - 用户资料弹窗头像随选择结果实时更新
+    plan:
+      - 扩展 AvatarImage 支持 previewUri 参数
+      - 用户资料弹窗把 selectedAvatarUri 传入预览
+      - 保存逻辑仍使用新头像上传结果，不改后端流程
+    done_when:
+      - 相册选择头像后预览立即变化
+      - 拍照成功后预览立即变化
+      - 未选择新头像时仍显示后台当前头像
+      - Android debug APK 构建通过
+    verification:
+      status: passed
+      commands:
+        - cd /home/tbl/Project/辅料称重防错系统/app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
+      evidence:
+        - AvatarImage 已接收本地 previewUri，优先展示新选择图片
+        - 用户资料弹窗传入 selectedAvatarUri，选择/拍照后即时刷新
+        - Android debug APK 构建成功
+      limitations:
+        - 真机相册与相机返回图片后的即时预览需重新安装 APK 后确认
+    result:
+      summary: 用户资料头像已支持本地新头像即时预览，点击保存前就能看到选择或拍摄效果。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-12T13:35:00Z"
+    updated_at: "2026-09-12T13:35:00Z"

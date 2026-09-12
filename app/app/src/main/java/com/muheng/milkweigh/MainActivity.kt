@@ -366,10 +366,26 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
 }
 
 @Composable
-private fun AvatarImage(avatarFileId: String?, displayName: String, repository: MilkRepository, size: Dp = 38.dp) {
-    var bitmap by remember(avatarFileId) { mutableStateOf<ImageBitmap?>(null) }
-    androidx.compose.runtime.LaunchedEffect(avatarFileId) {
+private fun AvatarImage(
+    avatarFileId: String?,
+    displayName: String,
+    repository: MilkRepository,
+    previewUri: String? = null,
+    size: Dp = 38.dp,
+) {
+    val context = LocalContext.current
+    var bitmap by remember(avatarFileId, previewUri) { mutableStateOf<ImageBitmap?>(null) }
+    androidx.compose.runtime.LaunchedEffect(avatarFileId, previewUri) {
         bitmap = null
+        if (!previewUri.isNullOrBlank()) {
+            val bytes = runCatching {
+                context.contentResolver.openInputStream(Uri.parse(previewUri))?.use { it.readBytes() }
+            }.getOrNull()
+            bitmap = bytes
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() }
+            return@LaunchedEffect
+        }
         if (avatarFileId.isNullOrBlank()) return@LaunchedEffect
         val bytes = runCatching { repository.loadFileBytes(avatarFileId) }.getOrNull()
         bitmap = bytes
@@ -452,7 +468,13 @@ private fun UserProfileDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    AvatarImage(user.avatarFileId, displayName, repository, size = 46.dp)
+                    AvatarImage(
+                        avatarFileId = user.avatarFileId,
+                        displayName = displayName,
+                        repository = repository,
+                        previewUri = selectedAvatarUri,
+                        size = 46.dp,
+                    )
                     OutlinedButton(onClick = { photoPicker.launch("image/*") }, modifier = Modifier.weight(1f)) { Text("相册头像") }
                     OutlinedButton(
                         onClick = launchCamera,
