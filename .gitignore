@@ -7,3 +7,5 @@
 /app/app/build/
 /app/local.properties
 /app/.kotlin/
+pc/data/*.sqlite3
+pc/data/backups/

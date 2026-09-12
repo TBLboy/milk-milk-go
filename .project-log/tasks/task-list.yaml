@@ -1031,17 +1031,17 @@ tasks:
         - 未完成全部步骤时不能提交工单完成
         - Android debug APK 构建通过
       limitations:
-        - 当前为 MockRepository，真实后端状态转换未联调
-        - 未在模拟器/真机执行交互验证
+        - 已接入真实工单详情、开始执行和完成接口
+        - 未在真机上执行完整状态流转和并发刷新验证
     result:
       summary: 平板工单详情已接入步骤模型，点击正确的工单会打开对应详情，并按当前步骤展示类型确认或称重入口。
       changed_files:
         - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
         - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
       deviations: []
       follow_ups:
-        - 真机验证工单详情与步骤交互
-        - 后续接入真实后端接口
+        - 真机验证工单详情、状态刷新和步骤流转
     created_at: "2026-09-11T14:00:00Z"
     updated_at: "2026-09-12T04:00:00Z"
   - id: TASK-023
@@ -1093,18 +1093,18 @@ tasks:
         - 待审批状态可模拟后台审批通过后进入称重
         - Android debug APK 构建通过
       limitations:
-        - 真实二维码摄像头扫码尚未接入
-        - 当前为 MockRepository，真实 /evidence 接口联调未完成
+        - 已接入 ZXing 摄像头扫码、拍照/相册图片上传和真实类型确认接口
+        - 未在真机上执行完整扫码、审批和上传流程验证
     result:
       summary: 平板类型确认 Mock 流程已完成，覆盖扫码匹配、辅料不匹配拦截、无码拍照申请和待审批到称重转换。
       changed_files:
         - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
         - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
       deviations:
-        - 第一版先实现模拟扫码与照片选择，真实摄像头扫码与图片识别后续接入
+        - 真机扫码画面和相机兼容性仍需真机验证
       follow_ups:
-        - 真机验证相册选择与申请流程
-        - 后续接入真实扫码 SDK 和后端审批接口
+        - 真机验证扫码、相机输出、图片上传和后台审批联动
     created_at: "2026-09-11T14:00:00Z"
     updated_at: "2026-09-12T04:00:00Z"
   - id: TASK-024
@@ -1157,18 +1157,18 @@ tasks:
         - 允差通过后步骤变为已完成，超差时提示重试
         - Android debug APK 构建通过
       limitations:
-        - 当前仅支持相册选择照片，摄像头拍摄后续接入
-        - 当前为 MockRepository，真实照片上传和允差校验接口联调未完成
+        - 已接入拍照/相册选择和真实重量提交接口
+        - 未在真机上验证相机输出、图片上传和允差超差重试流程
     result:
       summary: 平板重量确认 Mock 流程已完成，重量与读数照片相互绑定，允差通过才完成当前步骤。
       changed_files:
         - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
         - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
       deviations:
-        - 拍照能力第一版先以相册选择代替，真机摄像头拍摄后续补充
+        - 真机相机功能尚未执行
       follow_ups:
-        - 真机验证相册选择与称重结果
-        - 后续接入真实后端 /weight 接口
+        - 真机验证拍照称重证据上传和允差判断
     created_at: "2026-09-11T14:00:00Z"
     updated_at: "2026-09-12T04:00:00Z"
   - id: TASK-025
@@ -1220,17 +1220,18 @@ tasks:
         - 提交后在工单详情展示待审批状态
         - Android debug APK 构建通过
       limitations:
-        - 接管/撤销/删除后端接口尚未实现，真实审批联调后续完成
-        - 未在模拟器/真机执行申请流程验证
+        - 后端申请接口已实现并接入 RealMilkRepository，后台审批结果可同步查看
+        - 未在真机上执行多账号接管、审批和删除保留记录流程
     result:
       summary: 平板接管、撤销/删除申请 Mock 页面已完成，申请状态保存在 MockRepository 并在详情页展示。
       changed_files:
         - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
         - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - pc/server/app/api/work_order_requests.py
       deviations: []
       follow_ups:
-        - 后端补齐接管/撤销/删除审批接口后联调
-        - 真机验证申请流程
+        - 真机验证操作员申请、PC 审批和状态同步
     created_at: "2026-09-11T14:00:00Z"
     updated_at: "2026-09-12T04:20:00Z"
   - id: TASK-026
@@ -1283,17 +1284,17 @@ tasks:
         - 普通操作员看不到“辅料与配方”导航
         - Android debug APK 构建通过
       limitations:
-        - 当前仅支持相册多选图片，真实摄像头拍摄和图片上传后端联调未完成
-        - 当前为 MockRepository，真实 /master-data API 联调未完成
+        - 已接入真实主数据接口和图片文件上传
+        - 未在真机上验证管理员主数据编辑和产品图片保留
     result:
       summary: 平板管理员主数据 Mock 已完成，辅料和产品配方可在平板创建编辑，并且新建工单直接复用配方明细。
       changed_files:
         - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
         - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
       deviations:
-        - 图片管理第一版以相册多选代替摄像头拍摄，真实图片上传后续接入
+        - 平板端产品图片上传暂保持 PC 端能力，平板配方编辑会保留已有产品图片
       follow_ups:
-        - 真机验证辅料图片多选和配方编辑
-        - 后续接入真实主数据 API
+        - 真机验证辅料图片多选、编码冲突提示和配方启停
     created_at: "2026-09-11T14:00:00Z"
     updated_at: "2026-09-12T05:00:00Z"

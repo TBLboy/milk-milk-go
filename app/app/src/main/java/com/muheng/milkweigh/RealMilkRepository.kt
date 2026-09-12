@@ -1,0 +1,432 @@
+package com.muheng.milkweigh
+
+import android.content.Context
+import android.net.Uri
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+
+class RealMilkRepository(
+    private val context: Context,
+    initialToken: String = "",
+) : MilkRepository {
+    private var token = initialToken
+    private fun currentBaseUrl(): String = SessionStore(context).serverUrl().trimEnd('/') + "/"
+
+    override suspend fun login(username: String, password: String): AppUser {
+        val response = jsonObjectRequest(
+            path = "auth/login",
+            method = "POST",
+            body = JSONObject().put("username", username).put("password", password),
+        )
+        token = response.getString("access_token")
+        val user = response.getJSONObject("user")
+        val role = if (user.optString("role") == "admin") UserRole.ADMIN else UserRole.OPERATOR
+        return AppUser(
+            displayName = user.optString("display_name").ifBlank { username },
+            username = user.optString("username").ifBlank { username },
+            role = role,
+            token = token,
+        )
+    }
+
+    override suspend fun register(username: String, displayName: String, password: String): AppUser {
+        jsonObjectRequest(
+            path = "auth/register",
+            method = "POST",
+            body = JSONObject()
+                .put("username", username)
+                .put("display_name", displayName)
+                .put("password", password),
+        )
+        return login(username, password)
+    }
+
+    override suspend fun listWorkOrders(): List<WorkOrder> {
+        val body = jsonArrayRequest("work-orders", "GET", null)
+        return buildList {
+            for (index in 0 until body.length()) {
+                add(orderFromJson(body.getJSONObject(index)))
+            }
+        }
+    }
+
+    override suspend fun listProducts(): List<Product> {
+        val body = jsonArrayRequest("master-data/products", "GET", null)
+        return buildList {
+            for (index in 0 until body.length()) {
+                add(productFromJson(body.getJSONObject(index)))
+            }
+        }
+    }
+
+    override suspend fun listMaterials(): List<Material> {
+        val body = jsonArrayRequest("master-data/materials", "GET", null)
+        return buildList {
+            for (index in 0 until body.length()) {
+                add(materialFromJson(body.getJSONObject(index)))
+            }
+        }
+    }
+
+    override suspend fun saveMaterial(material: Material): Material {
+        val imageIds = material.existingImageFileIds.toMutableList()
+        material.imageNames.filter { isImageUri(it) }.forEach { uri ->
+            imageIds.add(uploadImage(uri))
+        }
+        val payload = JSONObject()
+            .put("material_code", material.materialCode.uppercase())
+            .put("name_zh", material.nameZh)
+            .put("name_en", material.nameEn.ifBlank { JSONObject.NULL })
+            .put("shelf_life_months", material.shelfLifeMonths)
+            .put("image_file_ids", JSONArray(imageIds))
+        val response = if (material.materialId.isNotBlank()) {
+            jsonObjectRequest("master-data/materials/${material.materialId}", "PUT", payload)
+        } else {
+            jsonObjectRequest("master-data/materials", "POST", payload)
+        }
+        return materialFromJson(response)
+    }
+
+    override suspend fun listRecipes(): List<ProductRecipe> = listProducts().map {
+        ProductRecipe(it.id, it.name, it.enabled, it.items, it.imageFileId)
+    }
+
+    override suspend fun saveProductRecipe(recipe: ProductRecipe): ProductRecipe {
+        val items = JSONArray()
+        recipe.items.forEach { item ->
+            items.put(
+                JSONObject()
+                    .put("material_id", item.materialId)
+                    .put("quantity_per_ton_kg", item.quantityPerTonKg),
+            )
+        }
+        val payload = JSONObject().put("name", recipe.name).put("items", items)
+        if (recipe.imageFileId.isNullOrBlank()) {
+            payload.put("image_file_id", JSONObject.NULL)
+        } else {
+            payload.put("image_file_id", recipe.imageFileId)
+        }
+        val response = if (recipe.id > 0) {
+            jsonObjectRequest("master-data/products/${recipe.id}", "PUT", payload)
+        } else {
+            jsonObjectRequest("master-data/products", "POST", payload)
+        }
+        return ProductRecipe(
+            id = response.optInt("id"),
+            name = response.optString("name"),
+            enabled = response.optBoolean("recipe_enabled", recipe.enabled),
+            items = recipeItemsFromJson(response.optJSONArray("items")),
+            imageFileId = response.optString("image_file_id").ifBlank { null },
+        )
+    }
+
+    override suspend fun setProductActive(productId: Int, enabled: Boolean): ProductRecipe {
+        val response = jsonObjectRequest(
+            path = "master-data/products/$productId/active",
+            method = "PATCH",
+            body = JSONObject().put("is_active", enabled),
+        )
+        return ProductRecipe(
+            id = response.optInt("id"),
+            name = response.optString("name"),
+            enabled = response.optBoolean("recipe_enabled", enabled),
+            items = recipeItemsFromJson(response.optJSONArray("items")),
+            imageFileId = response.optString("image_file_id").ifBlank { null },
+        )
+    }
+
+    override suspend fun createWorkOrder(productId: Int, targetWeightKg: Double): WorkOrder {
+        val response = jsonObjectRequest(
+            path = "work-orders",
+            method = "POST",
+            body = JSONObject().put("product_id", productId).put("target_weight_kg", targetWeightKg),
+        )
+        return orderFromJson(response)
+    }
+
+    override suspend fun startWorkOrder(orderNo: String): WorkOrder {
+        return orderFromJson(jsonObjectRequest("work-orders/$orderNo/start", "POST", null))
+    }
+
+    override suspend fun confirmStepQr(orderNo: String, stepNo: Int, materialId: String): WorkOrder {
+        jsonObjectRequest(
+            path = "evidence/work-orders/$orderNo/steps/$stepNo/qr",
+            method = "POST",
+            body = JSONObject().put("material_id", materialId),
+        )
+        return getWorkOrder(orderNo)
+    }
+
+    override suspend fun requestStepPhotoApproval(orderNo: String, stepNo: Int, reason: String, photoName: String): WorkOrder {
+        val fileId = uploadImage(photoName)
+        jsonObjectRequest(
+            path = "evidence/work-orders/$orderNo/steps/$stepNo/photo-request",
+            method = "POST",
+            body = JSONObject().put("reason", reason).put("file_id", fileId),
+        )
+        return getWorkOrder(orderNo)
+    }
+
+    override suspend fun approveStepPhotoApproval(orderNo: String, stepNo: Int): WorkOrder {
+        val detail = jsonObjectRequest("work-orders/$orderNo", "GET", null)
+        val steps = detail.optJSONArray("steps") ?: JSONArray()
+        var confirmationId = 0
+        for (index in 0 until steps.length()) {
+            val step = steps.getJSONObject(index)
+            if (step.optInt("step_no") != stepNo) continue
+            val confirmations = step.optJSONArray("confirmations") ?: JSONArray()
+            for (confirmIndex in 0 until confirmations.length()) {
+                val confirmation = confirmations.getJSONObject(confirmIndex)
+                if (confirmation.optString("status") == "pending") {
+                    confirmationId = confirmation.optInt("id")
+                    break
+                }
+            }
+        }
+        if (confirmationId <= 0) error("当前步骤没有待审批的拍照申请")
+        jsonObjectRequest("evidence/confirmations/$confirmationId/approve", "POST", null)
+        return getWorkOrder(orderNo)
+    }
+
+    override suspend fun submitStepWeight(orderNo: String, stepNo: Int, weightKg: Double, photoName: String): WeightSubmitResult {
+        val fileId = uploadImage(photoName)
+        val response = jsonObjectRequest(
+            path = "evidence/work-orders/$orderNo/steps/$stepNo/weight",
+            method = "POST",
+            body = JSONObject().put("weight_kg", weightKg).put("scale_photo_file_id", fileId),
+        )
+        val passed = response.optString("status") == "passed"
+        val order = getWorkOrder(orderNo)
+        val message = if (passed) {
+            "称重通过，步骤已完成。"
+        } else {
+            "称重 ${weightKg} kg，超出允差范围 ${response.optString("required_weight_kg")} ± ${response.optString("tolerance_kg")} kg，请重新称重。"
+        }
+        return WeightSubmitResult(passed, message, order)
+    }
+
+    override suspend fun requestTakeover(orderNo: String, reason: String): WorkOrder =
+        createRequest(orderNo, "takeover", reason)
+
+    override suspend fun requestCancel(orderNo: String, reason: String): WorkOrder =
+        createRequest(orderNo, "cancel", reason)
+
+    override suspend fun requestDelete(orderNo: String, reason: String): WorkOrder =
+        createRequest(orderNo, "delete", reason)
+
+    override suspend fun completeWorkOrder(orderNo: String): WorkOrder {
+        return orderFromJson(jsonObjectRequest("work-orders/$orderNo/complete", "POST", null))
+    }
+
+    private suspend fun createRequest(orderNo: String, requestType: String, reason: String): WorkOrder {
+        jsonObjectRequest(
+            path = "work-orders/$orderNo/requests",
+            method = "POST",
+            body = JSONObject().put("request_type", requestType).put("reason", reason),
+        )
+        return getWorkOrder(orderNo)
+    }
+
+    private suspend fun getWorkOrder(orderNo: String): WorkOrder =
+        orderFromJson(jsonObjectRequest("work-orders/$orderNo", "GET", null))
+
+    private suspend fun jsonObjectRequest(path: String, method: String, body: JSONObject?): JSONObject =
+        withContext(Dispatchers.IO) {
+            val text = executeRequest(path, method, body)
+            if (text.isBlank()) JSONObject() else JSONObject(text)
+        }
+
+    private suspend fun jsonArrayRequest(path: String, method: String, body: JSONObject?): JSONArray =
+        withContext(Dispatchers.IO) {
+            val text = executeRequest(path, method, body)
+            if (text.isBlank()) JSONArray() else JSONArray(text)
+        }
+
+    private fun executeRequest(path: String, method: String, body: JSONObject?): String {
+        val connection = URL(currentBaseUrl() + path).openConnection() as HttpURLConnection
+        try {
+            connection.requestMethod = method
+            connection.connectTimeout = 8000
+            connection.readTimeout = 8000
+            if (token.isNotBlank()) {
+                connection.setRequestProperty("Authorization", "Bearer $token")
+            }
+            if (body != null) {
+                connection.doOutput = true
+                connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                connection.outputStream.use { output ->
+                    output.write(body.toString().toByteArray(Charsets.UTF_8))
+                }
+            }
+            val code = connection.responseCode
+            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+            val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            if (code !in 200..299) throw Exception(errorMessage(text, connection.responseMessage))
+            return text
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private suspend fun uploadImage(uri: String): String {
+        if (!isImageUri(uri)) error("请选择真实图片")
+        return withContext(Dispatchers.IO) {
+            val bytes = context.contentResolver.openInputStream(Uri.parse(uri))
+                ?.use { it.readBytes() }
+                ?: error("无法读取所选图片")
+            val boundary = "MilkBoundary-${System.currentTimeMillis()}"
+            val connection = URL(currentBaseUrl() + "evidence/files").openConnection() as HttpURLConnection
+            try {
+                connection.requestMethod = "POST"
+                connection.connectTimeout = 12000
+                connection.readTimeout = 30000
+                connection.doOutput = true
+                if (token.isNotBlank()) {
+                    connection.setRequestProperty("Authorization", "Bearer $token")
+                }
+                connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+                val filename = "photo_${System.currentTimeMillis()}.jpg"
+                val header = "--$boundary\r\n" +
+                    "Content-Disposition: form-data; name=\"file\"; filename=\"$filename\"\r\n" +
+                    "Content-Type: image/jpeg\r\n\r\n"
+                val footer = "\r\n--$boundary--\r\n"
+                connection.outputStream.use { output ->
+                    output.write(header.toByteArray(Charsets.UTF_8))
+                    output.write(bytes)
+                    output.write(footer.toByteArray(Charsets.UTF_8))
+                }
+                val code = connection.responseCode
+                val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+                val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                if (code !in 200..299) throw Exception(errorMessage(text, connection.responseMessage))
+                JSONObject(text).getString("file_id")
+            } finally {
+                connection.disconnect()
+            }
+        }
+    }
+
+    private fun isImageUri(value: String): Boolean =
+        value.startsWith("content://") || value.startsWith("file://")
+
+    private fun errorMessage(body: String, fallback: String): String {
+        return runCatching {
+            val json = JSONObject(body)
+            val detail = json.optJSONObject("detail")
+            detail?.optString("message")?.takeIf { it.isNotBlank() }
+                ?: json.optString("message").takeIf { it.isNotBlank() }
+                ?: fallback
+        }.getOrDefault(fallback)
+    }
+
+    private fun orderFromJson(json: JSONObject): WorkOrder {
+        val steps = stepsFromJson(json.optJSONArray("steps"))
+        val completed = steps.count { it.status == StepStatus.COMPLETED }
+        val status = runCatching {
+            WorkOrderStatus.valueOf(json.optString("status").uppercase())
+        }.getOrDefault(WorkOrderStatus.PENDING_APPROVAL)
+        val requests = json.optJSONArray("requests") ?: JSONArray()
+        var pendingRequest: String? = null
+        for (index in 0 until requests.length()) {
+            val request = requests.getJSONObject(index)
+            if (request.optString("status") == "pending") {
+                pendingRequest = when (request.optString("request_type")) {
+                    "takeover" -> "接管申请待审批"
+                    "cancel" -> "撤销申请待审批"
+                    "delete" -> "删除申请待审批"
+                    else -> "工单申请待审批"
+                }
+                break
+            }
+        }
+        return WorkOrder(
+            orderNo = json.optString("order_no"),
+            productName = json.optString("product_name"),
+            targetWeightKg = json.optDouble("target_weight_kg"),
+            completedSteps = completed,
+            totalSteps = steps.size,
+            operatorName = json.optString("operator_name").ifBlank { "待指派" },
+            status = status,
+            updatedAt = formatTime(json.optString("updated_at")),
+            steps = steps,
+            pendingRequest = pendingRequest,
+        )
+    }
+
+    private fun stepsFromJson(array: JSONArray?): List<WorkOrderStep> {
+        if (array == null) return emptyList()
+        return buildList {
+            for (index in 0 until array.length()) {
+                val item = array.getJSONObject(index)
+                val stepStatus = runCatching {
+                    StepStatus.valueOf(item.optString("status").uppercase())
+                }.getOrDefault(StepStatus.PENDING)
+                add(
+                    WorkOrderStep(
+                        stepNo = item.optInt("step_no"),
+                        materialId = item.optString("material_id"),
+                        materialCode = item.optString("material_code"),
+                        materialName = item.optString("material_name"),
+                        requiredWeightKg = item.optDouble("required_weight_kg"),
+                        toleranceKg = item.optDouble("tolerance_kg"),
+                        status = stepStatus,
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun productFromJson(json: JSONObject): Product {
+        return Product(
+            id = json.optInt("id"),
+            name = json.optString("name"),
+            materialCount = json.optJSONArray("items")?.length() ?: 0,
+            items = recipeItemsFromJson(json.optJSONArray("items")),
+            enabled = json.optBoolean("recipe_enabled", true),
+            imageFileId = json.optString("image_file_id").ifBlank { null },
+        )
+    }
+
+    private fun recipeItemsFromJson(array: JSONArray?): List<RecipeItem> {
+        if (array == null) return emptyList()
+        return buildList {
+            for (index in 0 until array.length()) {
+                val item = array.getJSONObject(index)
+                add(
+                    RecipeItem(
+                        materialId = item.optString("material_id"),
+                        quantityPerTonKg = item.optDouble("quantity_per_ton_kg"),
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun materialFromJson(json: JSONObject): Material {
+        val images = json.optJSONArray("images") ?: JSONArray()
+        val fileIds = buildList {
+            for (index in 0 until images.length()) {
+                val fileId = images.getJSONObject(index).optString("file_id")
+                if (fileId.isNotBlank()) add(fileId)
+            }
+        }
+        return Material(
+            materialId = json.optString("material_id"),
+            materialCode = json.optString("material_code"),
+            nameZh = json.optString("name_zh"),
+            nameEn = json.optString("name_en"),
+            shelfLifeMonths = json.optInt("shelf_life_months", 24),
+            imageNames = fileIds.mapIndexed { index, _ -> "包装图片 ${index + 1}" },
+            existingImageFileIds = fileIds,
+        )
+    }
+
+    private fun formatTime(value: String): String {
+        if (value.isBlank()) return "刚刚"
+        return value.replace("T", " ").take(16)
+    }
+}

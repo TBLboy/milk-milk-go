@@ -133,7 +133,7 @@ def list_work_orders(user: User = Depends(current_user), db: Session = Depends(g
 @router.get("/{order_no}")
 def get_work_order(order_no: str, user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
     order = _load_order(db, order_no)
-    if order is None or (user.role != "admin" and order.operator_id != user.id and order.created_by != user.id):
+    if order is None or (user.role != "admin" and order.status == "deleted"):
         raise HTTPException(status_code=404, detail={"code": "WORK_ORDER_NOT_FOUND", "message": "工单不存在"})
     user_ids = {order.created_by}
     if order.operator_id:
