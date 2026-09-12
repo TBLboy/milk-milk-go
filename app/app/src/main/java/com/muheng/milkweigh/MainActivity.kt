@@ -243,7 +243,7 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                     ) {
                         Text("192.168.", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Medium)
                         OutlinedTextField(
