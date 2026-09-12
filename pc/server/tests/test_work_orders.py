@@ -20,6 +20,17 @@ def test_work_order_keeps_recipe_snapshot_and_calculates_weight(client):
     assert order["steps"][0]["tolerance_kg"] == 0.25
 
 
+def test_work_order_uses_configured_tolerance(client):
+    headers = admin_headers(client)
+    product_id = create_product(client, headers)
+    client.put("/api/v1/settings", headers=headers, json={
+        "values": {"default_tolerance_percent": "2.0", "min_absolute_tolerance_grams": "100"}
+    })
+    order = client.post("/api/v1/work-orders", headers=headers, json={"product_id": product_id, "target_weight_kg": 2000}).json()
+    assert order["steps"][0]["required_weight_kg"] == 25
+    assert order["steps"][0]["tolerance_kg"] == 0.5
+
+
 def test_operator_order_requires_admin_approval(client):
     headers = admin_headers(client)
     product_id = create_product(client, headers)

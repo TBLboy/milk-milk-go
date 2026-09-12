@@ -16,5 +16,14 @@ export type WorkOrder = {
 export type DashboardData = {
   workOrders: WorkOrder[]
   stats: { label: string; value: string; detail: string; tone: 'blue' | 'orange' | 'green' | 'slate' }[]
-  pendingApprovals: { id: string; title: string; description: string; time: string; type: 'photo' | 'takeover' | 'cancel' }[]
+  pendingApprovals: {
+    id: string
+    title: string
+    description: string
+    time: string
+    type: 'photo' | 'takeover' | 'cancel'
+    fileId?: string | null
+    orderNo?: string | null
+    stepNo?: number | null
+  }[]
 }

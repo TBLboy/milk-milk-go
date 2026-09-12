@@ -168,6 +168,7 @@ export function OrderDetailModal({ orderNo, onClose, onSuccess }: { orderNo: str
               <div className="step-copy">
                 <strong>步骤 {step.step_no} · {step.material_name}</strong>
                 <span>内部代号 {step.material_code} · 应称 {step.required_weight_kg} kg · 允差 ±{step.tolerance_kg} kg</span>
+                <StepEvidence step={step} />
               </div>
               <span className="step-status">{step.status === 'completed' ? '已完成' : step.status === 'weighing' ? '待称重' : step.status === 'type_confirmation' ? '待审批' : '待确认'}</span>
             </div>
@@ -209,6 +210,46 @@ export function OrderDetailModal({ orderNo, onClose, onSuccess }: { orderNo: str
       </div>
     </Modal>
   )
+}
+
+function StepEvidence({ step }: { step: any }) {
+  const confirmations = step.confirmations || []
+  const attempts = step.weighing_attempts || []
+  if (confirmations.length === 0 && attempts.length === 0) return null
+  const statusText: Record<string, string> = { passed: '通过', rejected: '未通过', pending: '待审批' }
+  return (
+    <div className="step-evidence-list">
+      {confirmations.map((conf: any) => (
+        <div className="step-evidence-item" key={`conf-${conf.id}`}>
+          <span>类型确认 · {conf.method === 'qr' ? '扫码' : '拍照'} · {statusText[conf.status] || conf.status}</span>
+          {conf.scanned_material_id && <small>扫码：{conf.scanned_material_id}</small>}
+          {conf.reason && <small>理由：{conf.reason}</small>}
+          {conf.evidence_file_id && <EvidenceThumb fileId={conf.evidence_file_id} />}
+        </div>
+      ))}
+      {attempts.map((item: any) => (
+        <div className="step-evidence-item" key={`weight-${item.id}`}>
+          <span>称重 {item.weight_kg} kg · {item.passed ? '通过' : '超差'}</span>
+          <small>{item.weight_source === 'manual' ? '手动读数' : item.weight_source}</small>
+          <EvidenceThumb fileId={item.scale_photo_file_id} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export function EvidenceThumb({ fileId, className = '' }: { fileId: string; className?: string }) {
+  const [src, setSrc] = useState<string | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    api.getFileUrl(fileId).then((url) => {
+      if (!cancelled) setSrc(url)
+    }).catch(() => {
+      if (!cancelled) setSrc(null)
+    })
+    return () => { cancelled = true }
+  }, [fileId])
+  return src ? <img className={`evidence-thumb ${className}`.trim()} src={src} alt="现场证据图片" /> : null
 }
 
 export function RecipeDetailModal({ product, onClose }: { product: any; onClose: () => void }) {

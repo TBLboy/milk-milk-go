@@ -130,6 +130,8 @@ class WorkOrderStep(Base):
     tolerance_kg: Mapped[float] = mapped_column(Float, nullable=False)
     status: Mapped[str] = mapped_column(String(32), default="pending", nullable=False)
     work_order: Mapped[WorkOrder] = relationship(back_populates="steps")
+    confirmations: Mapped[list["TypeConfirmation"]] = relationship(back_populates="step", cascade="all, delete-orphan", order_by="TypeConfirmation.id")
+    weighing_attempts: Mapped[list["WeighingAttempt"]] = relationship(back_populates="step", cascade="all, delete-orphan", order_by="WeighingAttempt.id")
 
 
 class EvidenceFile(Base):
@@ -156,6 +158,7 @@ class TypeConfirmation(Base):
     decided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     created_by: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+    step: Mapped[WorkOrderStep] = relationship(back_populates="confirmations")
 
 
 class WeighingAttempt(Base):
@@ -168,6 +171,7 @@ class WeighingAttempt(Base):
     passed: Mapped[bool] = mapped_column(Boolean, nullable=False)
     created_by: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+    step: Mapped[WorkOrderStep] = relationship(back_populates="weighing_attempts")
 
 
 class PrintBatch(Base):

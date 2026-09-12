@@ -21,6 +21,15 @@ def test_qr_confirmation_and_weight_evidence(client):
     assert weight.status_code == 200
     assert weight.json()["status"] == "passed"
 
+    detail = client.get(f"/api/v1/work-orders/{order_no}", headers=headers).json()
+    step = detail["steps"][0]
+    assert step["confirmations"]
+    assert step["confirmations"][0]["method"] == "qr"
+    assert step["confirmations"][0]["status"] == "passed"
+    assert step["weighing_attempts"]
+    assert step["weighing_attempts"][0]["scale_photo_file_id"] == file_id
+    assert step["weighing_attempts"][0]["passed"] is True
+
 
 def test_photo_approval_is_required_before_weight(client):
     headers, order_no, _ = setup_order(client)

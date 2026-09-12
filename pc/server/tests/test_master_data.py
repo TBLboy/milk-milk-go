@@ -134,9 +134,22 @@ def test_material_can_be_edited_and_images_replaced(client):
     assert body["shelf_life_months"] == 36
     assert [item["file_id"] for item in body["images"]] == ["new-one"]
 
-    duplicate = client.put(f"/api/v1/master-data/materials/{created['material_id']}", headers=headers, json={
+    same_code = client.put(f"/api/v1/master-data/materials/{created['material_id']}", headers=headers, json={
         "material_code": "EDIT_MAT2",
         "name_zh": "重名",
+        "shelf_life_months": 12,
+    })
+    assert same_code.status_code == 200
+    assert same_code.json()["material_code"] == "EDIT_MAT2"
+
+    other = client.post("/api/v1/master-data/materials", headers=headers, json={
+        "material_code": "EDIT_MAT_OTHER",
+        "name_zh": "其他辅料",
+        "shelf_life_months": 12,
+    }).json()
+    duplicate = client.put(f"/api/v1/master-data/materials/{other['material_id']}", headers=headers, json={
+        "material_code": "EDIT_MAT2",
+        "name_zh": "冲突辅料",
         "shelf_life_months": 12,
     })
     assert duplicate.status_code == 409
