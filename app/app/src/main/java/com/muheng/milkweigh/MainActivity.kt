@@ -393,15 +393,20 @@ private fun AvatarImage(
             ?.takeIf { it.isNotEmpty() }
             ?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() }
     }
-    Box(
-        modifier = Modifier
+    val avatarModifier = if (onClick == null) {
+        Modifier
             .size(size)
             .clip(CircleShape)
             .background(if (bitmap != null) Color.Transparent else Color(0xFFEAF6F0))
-            .clickable(
-                enabled = onClick != null,
-                onClick = { onClick?.invoke() },
-            ),
+    } else {
+        Modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(if (bitmap != null) Color.Transparent else Color(0xFFEAF6F0))
+            .clickable { onClick.invoke() }
+    }
+    Box(
+        modifier = avatarModifier,
         contentAlignment = Alignment.Center,
     ) {
         if (bitmap != null) {
@@ -427,8 +432,13 @@ private fun UserMenu(
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { expanded = true }) {
-            AvatarImage(user.avatarFileId, user.displayName, repository)
+        IconButton(onClick = { expanded = !expanded }) {
+            AvatarImage(
+                avatarFileId = user.avatarFileId,
+                displayName = user.displayName,
+                repository = repository,
+                onClick = { expanded = true },
+            )
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
