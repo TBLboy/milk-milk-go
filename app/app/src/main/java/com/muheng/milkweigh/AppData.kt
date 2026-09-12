@@ -113,11 +113,18 @@ interface MilkRepository {
 
 class SessionStore(context: Context) {
     private val prefs = context.getSharedPreferences("milk_session", Context.MODE_PRIVATE)
+    private val settings = context.getSharedPreferences("milk_settings", Context.MODE_PRIVATE)
 
-    fun serverUrl(): String = prefs.getString("server_url", BuildConfig.BASE_URL) ?: BuildConfig.BASE_URL
+    fun serverUrl(): String {
+        return settings.getString(SERVER_URL_KEY, null)
+            ?: prefs.getString(SERVER_URL_KEY, BuildConfig.BASE_URL)
+            ?: BuildConfig.BASE_URL
+    }
 
     fun saveServerUrl(url: String) {
-        prefs.edit().putString("server_url", url.trim().ifBlank { BuildConfig.BASE_URL }).apply()
+        val normalized = url.trim().ifBlank { BuildConfig.BASE_URL }
+        settings.edit().putString(SERVER_URL_KEY, normalized).apply()
+        prefs.edit().remove(SERVER_URL_KEY).apply()
     }
 
     fun save(user: AppUser) {
@@ -144,6 +151,10 @@ class SessionStore(context: Context) {
 
     fun clear() {
         prefs.edit().clear().apply()
+    }
+
+    private companion object {
+        const val SERVER_URL_KEY = "server_url"
     }
 }
 
