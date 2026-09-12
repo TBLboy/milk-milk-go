@@ -981,6 +981,242 @@ atoms:
     created_at: "2026-09-08T10:32:39Z"
     updated_at: "2026-09-08T10:32:39Z"
     last_verified_at: null
+  - id: BL-AUTH-002
+    title: 账号资料、头像与维护权限
+    kind: constraint
+    domain: account
+    status: active
+    priority: high
+    risk: high
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-12 头像与用户资料澄清"
+    description: 账号资料扩展头像、身份证和电话；头像作为后台账号资料跨平板同步；普通用户可维护自己的头像、姓名和电话，身份证仅可查看，管理员可维护普通用户资料；账号列表等非本人场景对身份证脱敏显示。
+    actors:
+      - 平板端普通操作员
+      - 平板端管理员
+      - 电脑后台管理员
+    trigger: 创建账号、登录平板或进入用户资料管理
+    preconditions:
+      - 当前账号已登录
+      - 账号资料已持久化到后台
+    inputs:
+      - 头像图片
+      - 显示名
+      - 电话
+      - 身份证
+    rule:
+      statement: 头像、显示名、电话和身份证作为后台账号资料保存；头像跨平板同步；普通用户可修改自己的头像、显示名和电话，身份证只能查看；管理员可维护普通用户的头像、显示名、电话和身份证；身份证在账号列表和普通可见场景中脱敏显示。
+    outputs:
+      - 用户资料预览
+      - 后台账号资料变更
+    side_effects:
+      - 头像文件以 file_id 关联到用户资料并长期保存
+      - 用户资料修改记录可追溯
+    exceptions:
+      - 头像图片不存在或上传失败
+      - 电话或身份证格式非法
+      - 非本人或无管理员权限修改受限字段
+    failure_handling:
+      - 阻止保存并提示格式或权限错误
+    invariants:
+      - 头像作为后台账号资料，不存储在单一平板本地
+      - 身份证不得明文展示给非本人场景
+    acceptance:
+      - id: AC-AUTH-002
+        given: 用户在平板或后台修改头像并保存
+        when: 另一台平板登录同一账号
+        then: 头像显示与后台保存结果一致
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-AUTH-001
+    baseline_refs: []
+    decision_refs: []
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: 身份证和电话不纳入平板注册必填项；管理员可在后台补充和维护。
+    created_at: "2026-09-12"
+    updated_at: "2026-09-12"
+    last_verified_at: null
+  - id: BL-AUTH-003
+    title: 平板注册账号需后台审批
+    kind: flow
+    domain: account
+    status: active
+    priority: high
+    risk: high
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-12 平板注册与审批澄清"
+    description: 平板端提交的新账号使用注册时输入的密码，但账号不能立即登录；管理员审批通过后账号变为可用，驳回后不能登录；管理员在后台直接创建的账号默认可直接登录。
+    actors:
+      - 平板端注册人
+      - 电脑后台管理员
+    trigger: 平板端提交新账号注册申请
+    preconditions:
+      - 注册账号和密码已按要求填写
+    inputs:
+      - 用户名
+      - 显示名
+      - 密码
+      - 头像
+    rule:
+      statement: 平板提交的账号先进入待审批状态；管理员审批通过后账号才可登录；驳回后账号不可登录；后台管理员直接创建的普通账号默认直接可用。
+    outputs:
+      - 待审批账号记录
+      - 审批结果
+    side_effects:
+      - 注册成功后不自动登录
+      - 账号状态、审批人和审批时间留痕
+    exceptions:
+      - 用户名重复
+      - 管理员驳回
+    failure_handling:
+      - 重复账号提示用户调整
+      - 驳回后允许重新提交或由管理员后台创建
+    invariants:
+      - 待审批和已驳回账号不能通过登录接口进入系统
+      - 后台创建或审批通过的普通账号才可登录
+    acceptance:
+      - id: AC-AUTH-003
+        given: 用户从平板提交注册申请
+        when: 申请尚未审批
+        then: 平板提示等待审批且不自动登录
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-AUTH-001
+      - BL-AUTH-002
+    baseline_refs: []
+    decision_refs: []
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: 管理员直接创建的账号不走待审批。
+    created_at: "2026-09-12"
+    updated_at: "2026-09-12"
+    last_verified_at: null
+  - id: BL-AUTH-004
+    title: 管理员重置密码为一次性随机初始密码
+    kind: flow
+    domain: account
+    status: active
+    priority: high
+    risk: high
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-12 密码重置方案澄清"
+    description: 管理员不能手动指定或查看用户正式密码；忘记密码时管理员仅可执行重置，系统随机生成临时初始密码并一次性展示，弹窗提供一键复制；关闭后不可再次查看；重置后用户首次登录必须修改密码。
+    actors:
+      - 电脑后台管理员
+      - 平板端用户
+    trigger: 用户在电脑后台执行账号密码重置
+    preconditions:
+      - 管理员已登录
+      - 目标普通账号存在
+    inputs:
+      - 目标账号
+    rule:
+      statement: 系统随机生成一次性初始密码，管理员弹窗展示账号和初始密码并提供复制；关闭后管理员无法再次查看；用户使用初始密码首次登录后必须修改密码，修改前不能继续业务操作。
+    outputs:
+      - 一次性初始密码
+      - must_change_password 标记
+    side_effects:
+      - 初始密码只允许生成时展示一次
+      - 重置后用户旧密码立即失效
+    exceptions:
+      - 管理员账号不能通过此功能重置
+      - 用户已重置后再次重置需重新执行
+    failure_handling:
+      - 管理员账号重置入口保持 blocked
+    invariants:
+      - 管理员不能主动设置用户的正式密码
+      - 管理员不能查看用户当前正式密码
+      - 重置后必须强制修改密码
+    acceptance:
+      - id: AC-AUTH-004
+        given: 管理员对普通账号执行重置
+        when: 系统返回初始密码
+        then: 初始密码只展示一次，用户首次登录后必须修改
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-AUTH-001
+    baseline_refs: []
+    decision_refs: []
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: 初始密码不需要规律；采用系统随机生成。
+    created_at: "2026-09-12"
+    updated_at: "2026-09-12"
+    last_verified_at: null
+  - id: BL-AUTH-005
+    title: 用户使用当前密码自助修改密码
+    kind: flow
+    domain: account
+    status: active
+    priority: high
+    risk: medium
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-12 密码自助修改澄清"
+    description: 用户可在平板端用户资料中的密码管理里修改自己的密码；必须输入正确当前密码、新密码和确认密码，验证通过后直接更新，不需要管理员审批。
+    actors:
+      - 平板端用户
+    trigger: 用户进入密码管理并提交修改
+    preconditions:
+      - 用户已登录
+      - 当前密码正确
+      - 新密码符合长度要求
+    inputs:
+      - 当前密码
+      - 新密码
+      - 确认密码
+    rule:
+      statement: 用户凭正确的当前密码修改自己的密码；当前密码正确且两次新密码一致时直接修改成功，无需管理员审批；修改后使用新密码登录。
+    outputs:
+      - 密码更新结果
+    side_effects:
+      - 新密码立即生效
+      - 用户会话按登录态规则继续或重新登录
+    exceptions:
+      - 当前密码错误
+      - 两次新密码不一致
+      - 新密码不符合长度要求
+    failure_handling:
+      - 阻止修改并提示对应错误
+    invariants:
+      - 修改密码必须验证当前密码
+      - 不经过管理员审批
+    acceptance:
+      - id: AC-AUTH-005
+        given: 用户输入正确当前密码和新密码
+        when: 提交密码修改
+        then: 系统保存新密码并提示成功
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-AUTH-004
+    baseline_refs: []
+    decision_refs: []
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: null
+    created_at: "2026-09-12"
+    updated_at: "2026-09-12"
+    last_verified_at: null
   - id: BL-SCOPE-001
     title: 系统独立运行且不连接金蝶
     kind: constraint

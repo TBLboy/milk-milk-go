@@ -10,8 +10,8 @@
 ## 当前状态
 
 - 当前阶段：task-decomposition
-- 当前任务：TASK-010 Windows 安装包、后台服务和自动备份
-- 当前状态：TASK-004 至 TASK-009 已完成并通过测试；审计和数据库备份接口已实现，Windows 部署待补
+- 当前任务：账号资料、头像、平板注册审批、随机密码重置与 APP 头像菜单
+- 当前状态：后端账号/资料/审批/密码模块已完成并通过测试；PC 账号管理已接入资料和一次性随机密码弹窗；APP 已实现注册待审批、头像菜单、资料页和密码管理；Windows 部署仍延后
 - 最近验证：`validate_project.py` 通过；`loopctl validate` 通过
 - 下一步：
   - 已确认 FastAPI + SQLite + Android 原生 + 浏览器管理端
