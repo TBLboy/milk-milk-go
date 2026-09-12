@@ -1,10 +1,13 @@
 package com.muheng.milkweigh
 
+import android.Manifest
 import android.app.Activity
 import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -68,6 +71,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -85,6 +89,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import androidx.core.content.ContextCompat
 import com.google.zxing.integration.android.IntentIntegrator
 import java.io.File
 import kotlinx.coroutines.launch
@@ -93,6 +98,26 @@ private fun createPhotoUri(context: Context): Uri {
     val directory = File(context.cacheDir, "evidence").apply { mkdirs() }
     val file = File.createTempFile("photo_", ".jpg", directory)
     return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+}
+
+@Composable
+private fun cameraPermissionLauncher(onGranted: () -> Unit): () -> Unit {
+    val context = LocalContext.current
+    val latestOnGranted = rememberUpdatedState(onGranted)
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            latestOnGranted.value()
+        } else {
+            Toast.makeText(context, "需要相机权限才能拍照或扫码", Toast.LENGTH_SHORT).show()
+        }
+    }
+    return {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            latestOnGranted.value()
+        } else {
+            permissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
 }
 
 private val Green = Color(0xFF1F9469)
@@ -415,6 +440,12 @@ private fun UserProfileDialog(
         val uri = cameraOutputUri
         if (saved && uri != null) selectedAvatarUri = uri.toString()
     }
+    val launchCamera = cameraPermissionLauncher {
+        val uri = createPhotoUri(context)
+        cameraOutputUri = uri
+        runCatching { cameraLauncher.launch(uri) }
+            .onFailure { error = "无法启动相机：${it.message}" }
+    }
     AlertDialog(
         onDismissRequest = { if (!working) onDismiss() },
         title = { Text("用户资料") },
@@ -424,11 +455,7 @@ private fun UserProfileDialog(
                     AvatarImage(user.avatarFileId, displayName, repository, size = 46.dp)
                     OutlinedButton(onClick = { photoPicker.launch("image/*") }, modifier = Modifier.weight(1f)) { Text("相册头像") }
                     OutlinedButton(
-                        onClick = {
-                            val uri = createPhotoUri(context)
-                            cameraOutputUri = uri
-                            cameraLauncher.launch(uri)
-                        },
+                        onClick = launchCamera,
                         modifier = Modifier.weight(1f),
                     ) { Text("拍照头像") }
                 }
@@ -894,6 +921,21 @@ private fun TypeConfirmationDialog(
             }
         }
     }
+    val launchPhotoCamera = cameraPermissionLauncher {
+        val uri = createPhotoUri(context)
+        cameraOutputUri = uri
+        runCatching { cameraLauncher.launch(uri) }
+            .onFailure { error = "无法启动相机：${it.message}" }
+    }
+    val launchScanCamera = cameraPermissionLauncher {
+        val activity = context as? Activity
+        if (activity == null) {
+            error = "无法启动扫码"
+        } else {
+            runCatching { scanLauncher.launch(IntentIntegrator(activity).createScanIntent()) }
+                .onFailure { error = "无法启动扫码：${it.message}" }
+        }
+    }
     AlertDialog(
         onDismissRequest = { if (!working) onDismiss() },
         title = { Text("类型确认 · 步骤 ${step.stepNo}") },
@@ -908,11 +950,7 @@ private fun TypeConfirmationDialog(
                     "scan" -> {
                         OutlinedTextField(materialId, { materialId = it }, modifier = Modifier.fillMaxWidth(), label = { Text("扫码结果 / 辅料 ID") }, singleLine = true)
                         OutlinedButton(
-                            onClick = {
-                                (context as? Activity)?.let { activity ->
-                                    scanLauncher.launch(IntentIntegrator(activity).createScanIntent())
-                                } ?: run { error = "无法启动扫码" }
-                            },
+                            onClick = launchScanCamera,
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Icon(Icons.Default.QrCodeScanner, null)
@@ -924,11 +962,7 @@ private fun TypeConfirmationDialog(
                                 Text(if (photoName.isBlank()) "相册照片" else "已选相册")
                             }
                             OutlinedButton(
-                                onClick = {
-                                    val uri = createPhotoUri(context)
-                                    cameraOutputUri = uri
-                                    cameraLauncher.launch(uri)
-                                },
+                                onClick = launchPhotoCamera,
                                 modifier = Modifier.weight(1f),
                             ) {
                                 Icon(Icons.Default.CameraAlt, null)
@@ -944,11 +978,7 @@ private fun TypeConfirmationDialog(
                                 Text(if (photoName.isBlank()) "相册照片" else "已选相册")
                             }
                             OutlinedButton(
-                                onClick = {
-                                    val uri = createPhotoUri(context)
-                                    cameraOutputUri = uri
-                                    cameraLauncher.launch(uri)
-                                },
+                                onClick = launchPhotoCamera,
                                 modifier = Modifier.weight(1f),
                             ) {
                                 Icon(Icons.Default.CameraAlt, null)
@@ -1044,6 +1074,12 @@ private fun WeightDialog(
             }
         }
     }
+    val launchPhotoCamera = cameraPermissionLauncher {
+        val uri = createPhotoUri(context)
+        cameraOutputUri = uri
+        runCatching { cameraLauncher.launch(uri) }
+            .onFailure { error = "无法启动相机：${it.message}" }
+    }
     AlertDialog(
         onDismissRequest = { if (!working) onDismiss() },
         title = { Text("称重记录 · 步骤 ${step.stepNo}") },
@@ -1057,11 +1093,7 @@ private fun WeightDialog(
                         Text(if (photoName.isBlank()) "相册照片" else "已选相册")
                     }
                     OutlinedButton(
-                        onClick = {
-                            val uri = createPhotoUri(context)
-                            cameraOutputUri = uri
-                            cameraLauncher.launch(uri)
-                        },
+                        onClick = launchPhotoCamera,
                         modifier = Modifier.weight(1f),
                     ) {
                         Icon(Icons.Default.CameraAlt, null)
