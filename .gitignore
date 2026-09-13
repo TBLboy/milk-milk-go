@@ -7,6 +7,8 @@
 /app/app/build/
 /app/local.properties
 /app/.kotlin/
+/.build/
+/发布版本/
 pc/data/*.sqlite3
 pc/data/backups/
 pc/server/.env

@@ -415,3 +415,95 @@ evidence:
   recorded_at: '2026-09-12T14:45:04Z'
   invalidated_at: null
   invalidation_reason: null
+- id: EV-20260912-001
+  kind: build
+  subject: Windows 1.0.0 安装器构建及结构校验
+  status: candidate
+  command: ./pc/scripts/build-windows-installer.sh && file 发布版本/牧衡辅料称重防错系统-Windows-1.0.0-Setup.exe
+  result_ref: 发布版本/牧衡辅料称重防错系统-Windows-1.0.0-Setup.exe; SHA256 2e29209789c430afa1120eaec126127aef85f6ef2393b570caf1cb6c3d0d741e;
+    尚未进行 Windows 11 实机安装
+  covers:
+    files:
+    - pc/scripts/build-windows-installer.sh
+    - pc/packaging/windows/installer.nsi
+    - pc/packaging/windows/MilkWeighService.py
+    requirements: []
+    tasks:
+    - TASK-010
+  version_binding:
+    git_commit: e8d0d6bdf71b4967c664e92eb4dfa733f399635e
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      pc/scripts/build-windows-installer.sh: c0361a441bfb1e6bc01a7f95a199587bf43213328db0a53347f76a85fac2e312
+      pc/packaging/windows/installer.nsi: 085c53d9b6a5604443a30e79278569cba467d278e1fcdae02c52e4f53f0c4585
+      pc/packaging/windows/MilkWeighService.py: 6577c7271d45095c49b382869e3c84b8ab70f75373fafc3aaeb80edb264e5cca
+  recorded_at: '2026-09-12T15:07:48Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-20260912-002
+  kind: build
+  subject: Android 1.0.0 发布签名 APK 构建与校验
+  status: candidate
+  command: JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk
+    ./app/packaging/build-apk.sh && apksigner verify --verbose 发布版本/牧衡辅料称重防错系统-Android-1.0.0.apk
+  result_ref: 发布版本/牧衡辅料称重防错系统-Android-1.0.0.apk; SHA256 4d87e57aed1ec9bed1248d30a6cc8e987b89c637b35c02a0e1d8b58094296bf2;
+    APK Signature Scheme v2/v3 通过
+  covers:
+    files:
+    - app/packaging/build-apk.sh
+    requirements: []
+    tasks:
+    - TASK-010
+  version_binding:
+    git_commit: e8d0d6bdf71b4967c664e92eb4dfa733f399635e
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      app/packaging/build-apk.sh: 658eee7cf69d3eb4f5a2bad12104557ab3ed0841057e97608a68031230432733
+  recorded_at: '2026-09-12T15:07:48Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-20260912-003
+  kind: configuration
+  subject: Windows 安装包零输入 SMTP 配置注入
+  status: candidate
+  command: ./pc/scripts/build-windows-installer.sh && test -f .build/windows-installer/config/.env
+  result_ref: 安装包已内置 pc/server/.env；安装时写入 %ProgramData%\\MilkWeigh\\config\\.env；尚未在
+    Windows 11 实机验证零输入和服务读取
+  covers:
+    files:
+    - pc/scripts/build-windows-installer.sh
+    - pc/packaging/windows/installer.nsi
+    requirements: []
+    tasks:
+    - TASK-063
+  version_binding:
+    git_commit: e8d0d6bdf71b4967c664e92eb4dfa733f399635e
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      pc/scripts/build-windows-installer.sh: c0361a441bfb1e6bc01a7f95a199587bf43213328db0a53347f76a85fac2e312
+      pc/packaging/windows/installer.nsi: 085c53d9b6a5604443a30e79278569cba467d278e1fcdae02c52e4f53f0c4585
+  recorded_at: '2026-09-12T15:07:56Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-064-APK
+  kind: build
+  subject: Android 1.0.1 完整 IPv4 设置构建与签名
+  status: stale
+  command: JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk
+    ./app/packaging/build-apk.sh
+  result_ref: BUILD SUCCESSFUL; APK v2/v3 signature verified; versionCode=2 versionName=1.0.1;
+    sha256=7adecf2b220acff0dd8cffdb2187645cbe8fe23028f8a957df67b74f99096652
+  covers:
+    files:
+    - 发布版本/牧衡辅料称重防错系统-Android-1.0.1.apk
+    requirements: []
+    tasks:
+    - TASK-064
+  version_binding:
+    git_commit: e8d0d6bdf71b4967c664e92eb4dfa733f399635e
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      发布版本/牧衡辅料称重防错系统-Android-1.0.1.apk: 7adecf2b220acff0dd8cffdb2187645cbe8fe23028f8a957df67b74f99096652
+  recorded_at: '2026-09-12T15:21:03Z'
+  invalidated_at: '2026-09-13T01:10:56Z'
+  invalidation_reason: 用户确认平板连接失败根因是校园网客户端隔离，不是 APP 地址限制；完整 IPv4 修改和 1.0.1 发布包已撤销

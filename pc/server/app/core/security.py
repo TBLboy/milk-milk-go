@@ -2,8 +2,11 @@ import base64
 import hashlib
 import hmac
 import json
+import os
 import secrets
 import time
+
+from app.core.config import get_settings
 
 
 ITERATIONS = 240_000
@@ -55,5 +58,24 @@ def decode_token(token: str) -> dict:
 
 
 def _secret() -> bytes:
-    # Replace with a persisted installation secret before production deployment.
-    return b"milk-weigh-development-secret-change-before-release"
+    settings = get_settings()
+    if settings.token_secret:
+        return settings.token_secret.encode("utf-8")
+
+    secret_path = settings.data_dir / "token_secret"
+    try:
+        stored = secret_path.read_text(encoding="utf-8").strip()
+        if stored:
+            return stored.encode("utf-8")
+    except FileNotFoundError:
+        pass
+
+    generated = secrets.token_urlsafe(48)
+    try:
+        descriptor = os.open(secret_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        return secret_path.read_text(encoding="utf-8").strip().encode("utf-8")
+
+    with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+        stream.write(generated)
+    return generated.encode("utf-8")

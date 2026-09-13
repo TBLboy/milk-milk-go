@@ -9,10 +9,11 @@
 
 ## 当前状态
 
-  - 当前阶段：implementation / PC 与平板联调
-  - 当前目标：按用户要求先完成 PC 端和平板端整体调试，Windows 安装包任务延后
-  - 当前任务：TASK-062 PC 与 APP BUG 反馈及固定邮箱通知
-  - 当前状态：TASK-004 至 TASK-062 已完成；PC 铃铛左侧和平板右下角已提供 BUG 反馈入口，后端支持文字、多图、SMTP 邮件和发送审计
+  - 当前阶段：implementation / 发布打包
+  - 当前目标：产出可安装的 Windows 安装包和 Android APK
+  - 当前任务：TASK-010 Windows 服务部署与 TASK-063 零输入 SMTP 配置打包
+  - 当前状态：已生成 Windows 1.0.0 安装包和 Android 1.0.0 发布签名 APK，产物位于 `发布版本/`
+  - 当前状态补记：2026-09-13 确认平板连接失败根因是校园网客户端隔离，切换手机热点后可正常连接；针对完整 IPv4 输入的 1.0.1 修改已按用户要求撤销，恢复 Android 1.0.0 原有服务器设置方案
   - 当前状态补记：PC 管理端使用 `/auth/admin/login` 专用入口；前端恢复持久化会话时再次确认 `role=admin`，普通操作员会被明确拒绝并清理本地登录态
   - 当前状态补记：账号资料、注册审批和密码安全业务逻辑已固化到 REQ-001 v6，TASK-027 至 TASK-032 验证记录已回填；新增 TASK-033/TASK-034 等待平板和 PC 端到端人工验收；APP 注册按钮已修正为“提交注册申请”
   - 当前状态补记：APP 拍照/扫码闪退根因已修复，AndroidManifest 补充 CAMERA 权限并增加运行时授权和启动异常保护；TASK-035 已完成并通过 APK 构建，待真机复验
@@ -52,7 +53,7 @@
 - 待确认点：架构设计前输入已整理到 `.project-log/docs/solution-research-input-questions.md`
 - 标签打印机调研：已完成，结论见 `.project-log/docs/printer-research-prc-2026-09-11.md`
   - 阻塞项：无
-  - 最近验证：后端 47 项测试、PC 生产构建、Android debug APK 构建和 BUG 入口 Playwright 回归通过；SMTP 真实投递等待配置发件授权码
+  - 最近验证：后端 47 项测试、PC 生产构建、Windows NSIS 安装器编译、APK v2/v3 签名校验和 `git diff --check` 通过
 - 本轮架构和任务拆解产出：
   1. 增加后端领域服务层和文件证据服务边界
   2. 增加认证、主数据、工单、证据、导入导出、标签、健康运维接口分组及幂等契约
@@ -70,12 +71,18 @@
   14. TASK-005 至 TASK-009 已完成；完整后端测试集当前 15 passed
   15. 已实现标签批次/Excel 校验、审计日志和数据库备份接口
 - 下一步：
-1. 在 `pc/server/.env` 配置发件 QQ 邮箱和 SMTP 授权码后发送一封真实 BUG 测试邮件
-2. 在真实 Android 平板回归 BUG 反馈弹窗、多图选择和提交成功态
-3. 按 TASK-033 在真实 Android 平板上验收注册待审批、审批后登录、头像同步、首次改密和自助改密
-4. 按 TASK-034 在浏览器中验收 PC 账号资料编辑、随机密码复制弹窗、注册审批和驳回登录拦截
-5. 确认后再补 Windows 安装包、服务注册和自动备份调度等 TASK-010
-6. SMTP 安装配置方案已确认：Windows 安装包构建时从本机 `.env` 注入专用发件邮箱、固定收件邮箱和授权码，安装时自动落盘，实现零输入；用户接受安装包内嵌凭据风险
+1. 在真实 Windows 11 电脑执行一次全新安装，确认服务注册、防火墙、浏览器管理端和 SMTP 配置自动生效
+2. 覆盖安装一次，确认 `%ProgramData%\MilkWeigh\data` 中数据库和证据文件保留
+3. 在真实 Android 平板安装发布签名 APK，回归登录、扫码、称重证据和 BUG 反馈
+4. 补充安装后 SMTP 非阻塞测试、自动备份调度和 Windows 实机升级验证
+
+## 2026-09-12 1.0.0 发布包构建
+
+- PC：生成 `牧衡辅料称重防错系统-Windows-1.0.0-Setup.exe`，内置 Windows Python 3.11、FastAPI、前端静态文件、pywin32 服务宿主、SMTP 配置和种子数据。
+- PC 安装器：注册 `MilkWeighBackend` 自动启动服务，写入 `%ProgramData%\MilkWeigh\config\.env`，开放 TCP 8011，创建桌面和开始菜单入口；升级不删除数据目录。
+- Android：生成 `牧衡辅料称重防错系统-Android-1.0.0.apk`，使用固定发布证书签名，APK Signature Scheme v2/v3 校验通过。
+- 发布目录同时包含 `安装说明.txt`、单文件校验和与 `SHA256SUMS.txt`。
+- 已知限制：当前构建机为 Linux，安装器已完成编译和结构检查，但尚未在真实 Windows 11 上执行安装；安装后 SMTP 测试和自动备份调度尚未实现。
 
 ## 2026-09-12 SMTP 授权码有效期与 Windows 安装一键配置调研
 
