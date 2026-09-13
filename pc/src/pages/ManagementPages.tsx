@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronRight, CircleAlert, Copy, Download, Edit, FileSpreadsheet, Image, Plus, Printer, Search, Settings2, Trash2, X } from 'lucide-react'
+import { Check, ChevronRight, CircleAlert, Copy, Download, Edit, FileSpreadsheet, Image, Network, Plus, Printer, Search, Settings2, Trash2, X } from 'lucide-react'
 import QRCode from 'qrcode'
 import { StatusBadge } from '../components/StatusBadge'
 import { api } from '../services/api'
@@ -740,6 +740,22 @@ function UserAvatar({ user }: { user: any }) {
   return <span className="operator-dot">{user.display_name.slice(0, 1)}</span>
 }
 
+function networkKindLabel(kind: string) {
+  if (kind === 'hotspot') return '移动热点'
+  if (kind === 'wireless') return '无线网卡'
+  if (kind === 'ethernet') return '有线网卡'
+  if (kind === 'virtual') return '虚拟网卡'
+  return '其他网卡'
+}
+
+function tabletAddressHint(ipv4: string) {
+  const parts = ipv4.split('.')
+  if (parts.length === 4 && parts[0] === '192' && parts[1] === '168') {
+    return `当前平板服务器设置填写后两段：${parts[2]} / ${parts[3]}`
+  }
+  return '该地址不在当前平板固定支持的 192.168 网段，请开启电脑热点并选择 192.168 地址。'
+}
+
 export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
   const [showModal, setShowModal] = useState(false)
   const [editUser, setEditUser] = useState<any | null>(null)
@@ -748,6 +764,10 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
   const [users, setUsers] = useState<any[]>([])
   const [settings, setSettings] = useState<Record<string, string>>({})
   const [backupMessage, setBackupMessage] = useState<string | null>(null)
+  const [networkInfo, setNetworkInfo] = useState<Awaited<ReturnType<typeof api.getNetworkAddresses>> | null>(null)
+  const [networkError, setNetworkError] = useState<string | null>(null)
+  const [detectingIp, setDetectingIp] = useState(false)
+  const [networkCopied, setNetworkCopied] = useState(false)
   const [backups, setBackups] = useState<any[]>([])
   const [accountPage, setAccountPage] = useState(1)
   const [backupPage, setBackupPage] = useState(1)
@@ -779,6 +799,36 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
     } catch (e: any) {
       setBackupMessage(`备份失败：${e.message}`)
     }
+  }
+
+  const handleDetectIp = async () => {
+    setDetectingIp(true)
+    setNetworkError(null)
+    setNetworkCopied(false)
+    try {
+      setNetworkInfo(await api.getNetworkAddresses())
+    } catch (e: any) {
+      setNetworkInfo(null)
+      setNetworkError(`检测失败：${e.message}`)
+    } finally {
+      setDetectingIp(false)
+    }
+  }
+
+  const copyNetworkAddress = async () => {
+    const text = networkInfo?.recommended?.ipv4
+    if (!text) return
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      const area = document.createElement('textarea')
+      area.value = text
+      document.body.appendChild(area)
+      area.select()
+      document.execCommand('copy')
+      document.body.removeChild(area)
+    }
+    setNetworkCopied(true)
   }
 
   const handleResetPassword = async (user: any) => {
@@ -938,9 +988,56 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
             <Setting title="自动备份" description="数据库和证据文件的本地备份" value={settings.backup_enabled === 'true' ? '已启用' : '已停用'} onClick={() => handleEditSetting('backup_enabled', settings.backup_enabled ?? 'true', '自动备份（true/false）')} />
             <Setting title="服务端口" description="局域网访问端口" value={settings.server_port ?? '8011'} onClick={() => handleEditSetting('server_port', settings.server_port ?? '8011', '服务端口')} />
           </div>
-          <button className="primary-button" style={{ marginTop: 18 }} onClick={handleBackup}>
-            <DatabaseIcon />立即备份数据库
-          </button>
+          <div className="settings-actions">
+            <button className="primary-button" onClick={handleBackup}>
+              <DatabaseIcon />立即备份数据库
+            </button>
+            <button className="outline-button" disabled={detectingIp} onClick={handleDetectIp}>
+              <Network size={16} />{detectingIp ? '正在检测...' : '检测本机 IP'}
+            </button>
+          </div>
+          {networkError && <div className="network-message error"><CircleAlert size={16} />{networkError}</div>}
+          {networkInfo && (
+            <div className="network-result">
+              <div className="network-result-head">
+                <div>
+                  <strong>本机 IPv4 检测结果</strong>
+                  <span>检测时间：{new Date(networkInfo.detected_at).toLocaleString('zh-CN', { hour12: false })}</span>
+                </div>
+              </div>
+              {networkInfo.recommended ? (
+                <>
+                  <div className="network-recommendation">
+                    <div className="network-result-icon"><Network size={20} /></div>
+                    <div className="network-address-main">
+                      <span>建议平板连接</span>
+                      <code>{networkInfo.recommended.ipv4}</code>
+                      <small>{networkInfo.recommended.name} · {networkKindLabel(networkInfo.recommended.kind)}</small>
+                      <p>{tabletAddressHint(networkInfo.recommended.ipv4)}</p>
+                    </div>
+                    <button type="button" className="outline-button" onClick={copyNetworkAddress}>
+                      {networkCopied ? <Check size={15} /> : <Copy size={15} />}
+                      {networkCopied ? '已复制' : '复制地址'}
+                    </button>
+                  </div>
+                  {networkInfo.addresses.filter((item) => !item.is_recommended).length > 0 && (
+                    <div className="network-address-list">
+                      <span>其他检测到的地址</span>
+                      {networkInfo.addresses.filter((item) => !item.is_recommended).map((item) => (
+                        <div className="network-address-row" key={`${item.name}-${item.ipv4}`}>
+                          <span>{item.name}</span>
+                          <code>{item.ipv4}</code>
+                          <small>{networkKindLabel(item.kind)}{item.is_up ? '' : ' · 未连接'}</small>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="network-message"><CircleAlert size={16} />未检测到可供平板访问的局域网 IPv4，请确认电脑热点或网络连接已开启。</div>
+              )}
+            </div>
+          )}
           <div className="panel full-panel" style={{ marginTop: 24 }}>
             <div className="table-wrap">
               <table>

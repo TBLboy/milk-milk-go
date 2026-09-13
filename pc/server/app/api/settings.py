@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.auth import require_admin
+from app.core.network import detect_local_ipv4_addresses
 from app.db.models import SystemSetting, User
 from app.db.session import get_db
 
@@ -21,6 +22,14 @@ def _settings_dict(db: Session) -> dict[str, str]:
 @router.get("")
 def get_settings(_: User = Depends(require_admin), db: Session = Depends(get_db)) -> dict[str, str]:
     return _settings_dict(db)
+
+
+@router.get("/network-addresses")
+def get_network_addresses(_: User = Depends(require_admin)) -> dict:
+    try:
+        return detect_local_ipv4_addresses()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.put("")

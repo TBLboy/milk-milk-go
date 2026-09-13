@@ -27,3 +27,19 @@ export type DashboardData = {
     stepNo?: number | null
   }[]
 }
+
+export type NetworkAddress = {
+  name: string
+  ipv4: string
+  kind: 'hotspot' | 'wireless' | 'ethernet' | 'other' | 'virtual'
+  is_up: boolean
+  is_virtual: boolean
+  is_hotspot: boolean
+  is_recommended: boolean
+}
+
+export type NetworkAddressSnapshot = {
+  detected_at: string
+  recommended: NetworkAddress | null
+  addresses: NetworkAddress[]
+}

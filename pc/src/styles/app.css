@@ -1013,6 +1013,144 @@ button.preview-tag:hover {
   height: 250px;
 }
 
+/* Local network detection */
+.settings-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+.settings-actions .outline-button {
+  margin-top: 0;
+}
+.settings-actions button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+.network-result {
+  max-width: 850px;
+  margin-top: 16px;
+  padding: 18px;
+  background: #fff;
+  border: 1px solid #dfe8e3;
+  border-radius: 6px;
+}
+.network-result-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.network-result-head strong,
+.network-result-head span {
+  display: block;
+}
+.network-result-head strong {
+  color: #34443e;
+  font-size: 16px;
+}
+.network-result-head span {
+  margin-top: 5px;
+  color: #98a29d;
+  font-size: 13px;
+}
+.network-recommendation {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 15px;
+  background: #f3faf6;
+  border: 1px solid #d8eee3;
+  border-radius: 6px;
+}
+.network-result-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  color: #26825e;
+  background: #fff;
+  border: 1px solid #d9ebe2;
+  border-radius: 9px;
+}
+.network-address-main {
+  min-width: 0;
+  flex: 1;
+}
+.network-address-main > span,
+.network-address-main > code,
+.network-address-main > small {
+  display: block;
+}
+.network-address-main > span {
+  color: #678078;
+  font-size: 13px;
+}
+.network-address-main > code {
+  margin-top: 3px;
+  color: #176b4c;
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+  font-size: 24px;
+  font-weight: 700;
+}
+.network-address-main > small {
+  margin-top: 4px;
+  color: #8b9993;
+  font-size: 13px;
+}
+.network-address-main > p {
+  margin: 8px 0 0;
+  color: #537064;
+  font-size: 13px;
+}
+.network-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 850px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  color: #5c756a;
+  font-size: 14px;
+  background: #f3f8f5;
+  border: 1px solid #dcebe3;
+  border-radius: 6px;
+}
+.network-message.error {
+  color: #a44843;
+  background: #fff5f4;
+  border-color: #f4d4d1;
+}
+.network-address-list {
+  margin-top: 16px;
+  border-top: 1px solid #edf1ef;
+}
+.network-address-list > span {
+  display: block;
+  padding: 14px 0 7px;
+  color: #8d9993;
+  font-size: 13px;
+  font-weight: 700;
+}
+.network-address-row {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) auto minmax(110px, auto);
+  align-items: center;
+  gap: 12px;
+  min-height: 38px;
+  color: #66756e;
+  font-size: 13px;
+}
+.network-address-row code {
+  color: #3d6253;
+  font-size: 13px;
+}
+.network-address-row small {
+  color: #9aa49f;
+  text-align: right;
+}
+
 @media (max-width: 760px) {
   .login-brand {
     position: static;
@@ -1034,5 +1172,23 @@ button.preview-tag:hover {
   }
   .step-status {
     margin-left: 46px;
+  }
+  .settings-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .network-recommendation {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .network-recommendation .outline-button {
+    margin-left: 56px;
+  }
+  .network-address-row {
+    grid-template-columns: 1fr auto;
+  }
+  .network-address-row small {
+    grid-column: 1 / -1;
+    text-align: left;
   }
 }

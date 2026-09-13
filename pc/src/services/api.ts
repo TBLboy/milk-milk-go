@@ -1,4 +1,4 @@
-import type { DashboardData, WorkOrder } from '../types/domain'
+import type { DashboardData, NetworkAddressSnapshot, WorkOrder } from '../types/domain'
 import { emitDataSync } from './dataSync'
 
 const API_BASE = '/api/v1'
@@ -356,6 +356,10 @@ export const api = {
   // 设置与账号
   async getSettings(): Promise<Record<string, string>> {
     return request('/settings')
+  },
+
+  async getNetworkAddresses(): Promise<NetworkAddressSnapshot> {
+    return request('/settings/network-addresses')
   },
 
   async updateSettings(values: Record<string, string>): Promise<Record<string, string>> {
