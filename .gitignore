@@ -10,5 +10,7 @@
 /.build/
 /发布版本/
 pc/data/*.sqlite3
+pc/data/*.sqlite3-shm
+pc/data/*.sqlite3-wal
 pc/data/backups/
 pc/server/.env

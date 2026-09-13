@@ -6,18 +6,19 @@ def admin_headers(client):
 def setup_order(client):
     headers = admin_headers(client)
     material = client.post("/api/v1/master-data/materials", headers=headers, json={"material_code": "A1", "name_zh": "蔗糖", "shelf_life_months": 24}).json()
+    label = client.post("/api/v1/labels/print-batches", headers=headers, json={"material_id": material["material_id"], "quantity": 1}).json()["labels"][0]
     product = client.post("/api/v1/master-data/products", headers=headers, json={"name": "高钙奶", "items": [{"material_id": material["material_id"], "quantity_per_ton_kg": 10}]}).json()
     order = client.post("/api/v1/work-orders", headers=headers, json={"product_id": product["id"], "target_weight_kg": 1000}).json()
-    return headers, order["order_no"], material["material_id"]
+    return headers, order["order_no"], material["material_id"], label
 
 
 def test_qr_confirmation_and_weight_evidence(client):
-    headers, order_no, material_id = setup_order(client)
+    headers, order_no, material_id, label_id = setup_order(client)
     qr_file_id = client.post("/api/v1/evidence/files", headers=headers, files={"file": ("qr.jpg", b"qr-image", "image/jpeg")}).json()["file_id"]
     assert client.post(
         f"/api/v1/evidence/work-orders/{order_no}/steps/1/qr",
         headers=headers,
-        json={"material_id": material_id, "evidence_file_id": qr_file_id},
+        json={"label_id": label_id, "material_id": material_id, "evidence_file_id": qr_file_id},
     ).status_code == 200
     file_response = client.post("/api/v1/evidence/files", headers=headers, files={"file": ("scale.jpg", b"fake-image", "image/jpeg")})
     assert file_response.status_code == 201
@@ -31,6 +32,7 @@ def test_qr_confirmation_and_weight_evidence(client):
     assert step["confirmations"]
     assert step["confirmations"][0]["method"] == "qr"
     assert step["confirmations"][0]["status"] == "passed"
+    assert step["confirmations"][0]["scanned_label_id"] == label_id
     assert step["confirmations"][0]["evidence_file_id"] == qr_file_id
     assert step["weighing_attempts"]
     assert step["weighing_attempts"][0]["scale_photo_file_id"] == file_id
@@ -38,17 +40,74 @@ def test_qr_confirmation_and_weight_evidence(client):
 
 
 def test_qr_confirmation_requires_uploaded_evidence(client):
-    headers, order_no, material_id = setup_order(client)
+    headers, order_no, material_id, label_id = setup_order(client)
     response = client.post(
         f"/api/v1/evidence/work-orders/{order_no}/steps/1/qr",
         headers=headers,
-        json={"material_id": material_id},
+        json={"label_id": label_id, "material_id": material_id},
     )
     assert response.status_code == 422
 
 
+def test_qr_confirmation_requires_label_id(client):
+    headers, order_no, material_id, _ = setup_order(client)
+    file_id = client.post("/api/v1/evidence/files", headers=headers, files={"file": ("qr.jpg", b"qr-image", "image/jpeg")}).json()["file_id"]
+    response = client.post(
+        f"/api/v1/evidence/work-orders/{order_no}/steps/1/qr",
+        headers=headers,
+        json={"material_id": material_id, "evidence_file_id": file_id},
+    )
+    assert response.status_code == 422
+
+
+def test_qr_confirmation_rejects_unknown_label(client):
+    headers, order_no, material_id, _ = setup_order(client)
+    file_id = client.post("/api/v1/evidence/files", headers=headers, files={"file": ("qr.jpg", b"qr-image", "image/jpeg")}).json()["file_id"]
+    response = client.post(
+        f"/api/v1/evidence/work-orders/{order_no}/steps/1/qr",
+        headers=headers,
+        json={"label_id": "LBL-NOT-FOUND", "material_id": material_id, "evidence_file_id": file_id},
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "LABEL_NOT_FOUND"
+
+
+def test_qr_confirmation_rejects_void_label(client):
+    headers, order_no, material_id, label_id = setup_order(client)
+    from app.db.models import Label
+    from app.db.session import SessionLocal
+
+    with SessionLocal() as db:
+        label = db.query(Label).filter(Label.label_id == label_id).one()
+        label.status = "void"
+        db.commit()
+
+    file_id = client.post("/api/v1/evidence/files", headers=headers, files={"file": ("qr.jpg", b"qr-image", "image/jpeg")}).json()["file_id"]
+    response = client.post(
+        f"/api/v1/evidence/work-orders/{order_no}/steps/1/qr",
+        headers=headers,
+        json={"label_id": label_id, "material_id": material_id, "evidence_file_id": file_id},
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "LABEL_NOT_ACTIVE"
+
+
+def test_qr_confirmation_rejects_label_material_mismatch(client):
+    headers, order_no, material_id, _ = setup_order(client)
+    other = client.post("/api/v1/master-data/materials", headers=headers, json={"material_code": "A2", "name_zh": "乳粉", "shelf_life_months": 24}).json()
+    other_label = client.post("/api/v1/labels/print-batches", headers=headers, json={"material_id": other["material_id"], "quantity": 1}).json()["labels"][0]
+    file_id = client.post("/api/v1/evidence/files", headers=headers, files={"file": ("qr.jpg", b"qr-image", "image/jpeg")}).json()["file_id"]
+    response = client.post(
+        f"/api/v1/evidence/work-orders/{order_no}/steps/1/qr",
+        headers=headers,
+        json={"label_id": other_label, "material_id": material_id, "evidence_file_id": file_id},
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "LABEL_MATERIAL_MISMATCH"
+
+
 def test_photo_approval_is_required_before_weight(client):
-    headers, order_no, _ = setup_order(client)
+    headers, order_no, _, _ = setup_order(client)
     file_id = client.post("/api/v1/evidence/files", headers=headers, files={"file": ("material.jpg", b"fake-image", "image/jpeg")}).json()["file_id"]
     request = client.post(f"/api/v1/evidence/work-orders/{order_no}/steps/1/photo-request", headers=headers, json={"reason": "自制标签尚未粘贴", "file_id": file_id})
     assert request.status_code == 200
@@ -70,7 +129,7 @@ def test_uploaded_evidence_file_can_be_fetched(client):
     assert fetched.content == b"fake-image-bytes"
 
 def test_approvals_api_lists_and_rejects(client):
-    headers, order_no, _ = setup_order(client)
+    headers, order_no, _, _ = setup_order(client)
     file_id = client.post("/api/v1/evidence/files", headers=headers, files={"file": ("material.jpg", b"fake-image", "image/jpeg")}).json()["file_id"]
     request = client.post(f"/api/v1/evidence/work-orders/{order_no}/steps/1/photo-request", headers=headers, json={"reason": "模糊无法扫码", "file_id": file_id})
     conf_id = request.json()["confirmation_id"]

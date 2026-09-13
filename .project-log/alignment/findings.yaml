@@ -1,2 +1,37 @@
 version: "0.2"
-findings: []
+findings:
+  - id: ALN-001
+    title: Demo 标签界面和业务原子仍描述真实打印已完成
+    type: implementation-drift
+    severity: medium
+    confidence: high
+    status: resolved
+    authority: B
+    business_logic_refs:
+      - BL-LABEL-001
+      - BL-LABEL-002
+    code_refs:
+      - pc/src/pages/ManagementPages.tsx
+      - pc/src/layouts/AppShell.tsx
+      - pc/src/pages/Dashboard.tsx
+      - pc/src/components/Login.tsx
+      - .project-log/business-logic/atoms.yaml
+    test_refs:
+      - .build/verify_task094.py
+    evidence:
+      - DEC-037 明确当前 Demo 不接入真实标签打印机，只保留标签生成、二维码预览和标签记录
+      - PC 页面仍显示“生成并打印标签”“打印完成后粘贴”“最近打印批次”和“待打印”
+      - BL-LABEL-002 仍要求发送打印指令并依赖已连接打印机
+    recommended_action: 将当前 Demo 的界面和业务原子统一改为标签生成、标签记录和二维码预览语义，真实打印能力保留给 TASK-086
+    resolution: 当前 Demo 的页面、导航、仪表盘、登录说明和 BL-LABEL-002 已统一为标签生成与二维码预览语义；批次展示真实生成人，真实打印能力保留给 TASK-086。
+    resolution_evidence:
+      - EV-TASK-094-FOCUSED
+      - EV-TASK-094-BACKEND
+      - EV-TASK-094-PC-BUILD
+      - EV-TASK-094-UI
+      - EV-TASK-094-ALIGNMENT
+    related_tasks:
+      - TASK-094
+      - TASK-086
+    created_at: "2026-09-13T09:00:00Z"
+    updated_at: "2026-09-13T09:02:00Z"

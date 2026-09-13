@@ -57,7 +57,7 @@ export function Login({ onLogin }: { onLogin: (user: any) => void }) {
         <form className="login-panel" onSubmit={handleSubmit}>
           <div className="login-icon"><ShieldCheck size={26} /></div>
           <h1>管理员登录</h1>
-          <p>登录后管理产品、配方、工单、审批与标签打印。</p>
+          <p>登录后管理产品、配方、工单、审批与标签生成记录。</p>
           {error && <div className="modal-error">{error}</div>}
           <label>
             账号

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.api.auth import current_user
 from app.db.models import TypeConfirmation, User, WorkOrder, WorkOrderRequest, WorkOrderStep
 from app.db.session import get_db
+from app.services.audit import write_audit
 
 router = APIRouter(prefix="/approvals", tags=["approvals"])
 
@@ -105,7 +106,23 @@ def reject_photo_confirmation(confirmation_id: int, user: User = Depends(current
         raise HTTPException(status_code=404, detail={"code": "CONFIRMATION_NOT_FOUND", "message": "申请不存在"})
     if confirmation.status != "pending":
         raise HTTPException(status_code=409, detail={"code": "CONFIRMATION_STATE_CONFLICT", "message": "申请已处理"})
+    step = db.get(WorkOrderStep, confirmation.work_order_step_id)
+    order = db.get(WorkOrder, step.work_order_id) if step else None
     confirmation.status = "rejected"
     confirmation.decided_by = user.id
+    write_audit(
+        db,
+        actor_id=user.id,
+        action="type_confirmation.rejected",
+        resource_type="type_confirmation",
+        resource_id=confirmation.id,
+        work_order_no=order.order_no if order else None,
+        result="rejected",
+        detail={
+            "method": confirmation.method,
+            "step_no": step.step_no if step else None,
+            "reason": "ADMIN_REJECTED",
+        },
+    )
     db.commit()
     return {"status": "rejected", "message": "已驳回放行申请"}

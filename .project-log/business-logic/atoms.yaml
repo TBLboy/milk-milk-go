@@ -185,7 +185,7 @@ atoms:
       reference: "2026-09-09 Q-017 确认 + 外部设计说明"
     description: 第一版由电脑后台管理员生成和管理标签；系统以标签打印时间 printedAt 作为二维码标签日期，不录入实际生产日期；生成本系统二维码和唯一 labelId，后台保存标签记录。当前阶段不强制标签粘贴后的二次复核扫码。
     actors:
-      - 电脑后台管理员/标签打印人员
+      - 电脑后台管理员/标签生成人员
     trigger: 用户生成或打印自制辅料二维码标签
     preconditions:
       - 辅料主数据已存在
@@ -236,7 +236,7 @@ atoms:
     updated_at: "2026-09-13T05:00:00Z"
     last_verified_at: null
   - id: BL-LABEL-002
-    title: 后台选择辅料并批量打印自制二维码标签
+    title: 后台选择辅料并批量生成自制二维码标签记录（Demo 阶段）
     kind: flow
     domain: labeling
     status: active
@@ -245,57 +245,62 @@ atoms:
     authority: user-confirmed
     source:
       type: user-statement
-      reference: "2026-09-09 Q-021 标签打印流程"
-    description: 管理员在后台标签打印界面选择辅料和打印张数，点击打印后系统自动读取当前时间作为打印时间，生成对应数量的标签记录并发送打印指令；打印完成后操作员拿标签粘贴。
+      reference: "2026-09-09 Q-021 标签打印流程 + 2026-09-13 DEC-037 Demo 阶段调整"
+    description: 管理员在当前 Demo 的标签生成界面选择辅料和生成数量，点击生成后系统自动读取当前时间，生成对应数量的 labelId、标签记录和二维码预览。当前阶段不发送真实打印指令。
     actors:
       - 电脑后台管理员/标签打印人员
-    trigger: 管理员选择辅料并点击打印标签
+    trigger: 管理员选择辅料并点击生成标签记录
     preconditions:
-      - 辅料主数据已存在且启用
-      - 后台电脑已连接可用标签打印机
+      - 辅料主数据已存在
+      - 用户具备管理员标签生成权限
     inputs:
       - materialId
-      - 打印张数
-      - 打印人员
-      - 打印时间（系统自动读取）
+      - 生成张数
+      - 生成人员
+      - 生成时间（系统自动读取）
     rule:
-      statement: 系统按打印张数生成对应数量的 labelId 和标签记录，自动记录当前时间作为 printedAt（即标签日期），不录入实际生产日期，并向标签打印机发送打印指令；标签打印后由操作员粘贴。
+      statement: 当前 Demo 按生成张数创建对应数量的 labelId、标签记录和二维码预览，自动记录服务端当前时间作为 printedAt（即标签日期），不录入实际生产日期，也不发送真实打印指令。
     outputs:
-      - 标签打印指令
       - 对应张数的标签记录
+      - 二维码预览
     side_effects:
-      - 打印记录留痕，包含打印人、打印时间、辅料、张数
+      - 生成批次留痕，包含生成人、生成时间、辅料和数量
     exceptions:
-      - 打印机离线或打印指令发送失败
-      - 打印张数非法
+      - 辅料不存在
+      - 生成张数非法
     failure_handling:
-      - 阻止打印并提示检查打印机或修正张数
-      - 已生成但未成功打印的标签记录按失败处理，不视为已打印
+      - 阻止生成并提示检查辅料或修正张数
     invariants:
       - 每张标签都有独立 labelId
       - printedAt 为系统当前时间，不由手工录入
-      - 打印记录长期保存
+      - 标签记录长期保存
+      - 当前 Demo 不把标签记录展示为已经完成物理打印
     acceptance:
       - id: AC-LABEL-002
         given: 管理员选择 MAT-00023 并输入 10 张
-        when: 管理员点击打印
-        then: 系统生成 10 个 labelId 并向打印机发送打印指令，后台保存打印记录
+        when: 管理员点击生成标签记录
+        then: 系统生成 10 个 labelId、二维码预览和批次记录，但不发送打印指令
         method: null
         evidence: null
         status: not-verified
     dependencies:
       - BL-LABEL-001
-      - BL-DEVICE-002
     baseline_refs: []
     decision_refs:
       - DEC-021
-    implementation_refs: []
-    test_refs: []
+      - DEC-022
+      - DEC-037
+    implementation_refs:
+      - pc/src/pages/ManagementPages.tsx
+      - pc/server/app/api/labels.py
+    test_refs:
+      - pc/server/tests/test_labels.py
+      - .build/verify_task094.py
     supersedes: []
-    notes: 打印机需新购并配合系统接入，具体型号延后确定；Q-022 已确认打印时不录入实际生产日期，以标签打印日期为准。
+    notes: DEC-037 已确认当前 Demo 只生成标签记录和二维码预览；真实打印机连接、打印状态、重打和作废由 TASK-086 在 Demo 验收后实施。
     created_at: "2026-09-09T04:20:00Z"
-    updated_at: "2026-09-09T04:30:00Z"
-    last_verified_at: null
+    updated_at: "2026-09-13T09:00:00Z"
+    last_verified_at: "2026-09-13T09:01:04Z"
   - id: BL-WEIGH-003
     title: 按配置允差校验称重结果
     kind: rule
@@ -1464,21 +1469,26 @@ atoms:
         given: 用户上传符合模板的 Excel 主数据文件
         when: 系统执行批量导入
         then: 合法数据入库，错误行被拒绝并显示原因，导出文件可按模板再次编辑
-        method: null
-        evidence: null
-        status: not-verified
+        method: TASK-080 产品配方 Excel 模板、校验、原子导入、导出和权限专项测试；PC 浏览器模板下载、导出和错误行展示；导入后创建工单验证
+        evidence: EV-TASK-080-FOCUSED-TESTS, EV-TASK-080-PC-UI
+        status: passed
     dependencies: []
     baseline_refs: []
     decision_refs:
       - DEC-002
       - DEC-017
-    implementation_refs: []
-    test_refs: []
+    implementation_refs:
+      - pc/server/app/services/product_excel.py
+      - pc/server/app/api/master_data.py
+      - pc/src/services/api.ts
+      - pc/src/pages/ManagementPages.tsx
+    test_refs:
+      - pc/server/tests/test_product_excel.py
     supersedes: []
     notes: Q-018 已确认支持后台手工录入和 Excel 模板导入/导出。
     created_at: "2026-09-08T08:05:12Z"
-    updated_at: "2026-09-09T03:50:00Z"
-    last_verified_at: null
+    updated_at: "2026-09-13T06:29:28Z"
+    last_verified_at: "2026-09-13T06:29:28Z"
   - id: BL-DATA-002
     title: 称重记录与证据长期保存
     kind: rule

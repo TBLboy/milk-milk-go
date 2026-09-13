@@ -23,6 +23,9 @@ def test_print_batch_creates_unique_labels(client):
     assert body["printed_at"]
     assert body["status"] == "pending"
 
+    batches = client.get("/api/v1/labels/print-batches", headers=headers).json()
+    assert batches[0]["created_by_name"] == "系统管理员"
+
 
 def test_print_batch_accepts_legacy_material_enabled_flag(client):
     headers = admin_headers(client)

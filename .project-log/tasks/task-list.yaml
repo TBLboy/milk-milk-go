@@ -7,7 +7,7 @@ tasks:
     parent_id: null
     phase: implementation
     goal: 在 pc 文件夹中建立可运行的浏览器前端工程，统一页面布局、路由、角色状态、mock 数据和 API adapter 边界。
-    status: implemented-unverified
+    status: done
     priority: critical
     risk: medium
     authority: A
@@ -46,7 +46,7 @@ tasks:
       - 普通操作员和管理员的导航权限有明确展示差异
       - 后续切换真实 API 时不需要修改业务页面的数据调用方式
     verification:
-      status: partial
+      status: passed
       commands:
         - npm run build
         - Playwright desktop navigation smoke test
@@ -55,8 +55,10 @@ tasks:
         - pc/dist generated successfully
         - all primary navigation entries rendered their expected page heading
         - mobile sidebar opened at 390x844
+        - EV-TASK-096-PC-BUILD
+        - EV-TASK-096-ALIGNMENT
       limitations:
-        - 尚未接入 FastAPI 和真实数据库
+        - 真实 Windows 浏览器现场验收由 TASK-083 统一继续
     result:
       summary: PC 前端工程骨架、统一布局、导航、角色入口和 mock/API adapter 已完成。
       changed_files:
@@ -74,7 +76,7 @@ tasks:
     parent_id: null
     phase: implementation
     goal: 在 PC 前端展示工单列表、工单详情、辅料步骤、类型确认、称重证据和完成状态，覆盖后台管理人员的主要查看与审批场景。
-    status: implemented-unverified
+    status: done
     priority: high
     risk: medium
     authority: A
@@ -118,15 +120,17 @@ tasks:
       - 读数照片和称重数字在详情中成组展示
       - 不依赖真实后端也能完成演示流程
     verification:
-      status: partial
+      status: passed
       commands:
         - npm run build
         - Playwright desktop navigation smoke test
       evidence:
         - work-order and approval pages rendered successfully
-        - mock approval interaction is available on dashboard
+        - EV-TASK-051-PC-SYNC
+        - EV-TASK-096-PC-BUILD
+        - EV-TASK-096-ALIGNMENT
       limitations:
-        - 审批和数据保存仅为 mock 行为
+        - 完整生产网络工单验收由 TASK-084 继续
     result:
       summary: 工单管理和审批中心页面原型已完成，包含状态、进度、审批占位交互和证据展示结构。
       changed_files:
@@ -142,7 +146,7 @@ tasks:
     parent_id: null
     phase: implementation
     goal: 在 PC 前端展示管理员维护辅料、包装图片、产品配方、普通账号、二维码标签打印和允差设置的完整入口。
-    status: implemented-unverified
+    status: done
     priority: high
     risk: medium
     authority: A
@@ -189,15 +193,20 @@ tasks:
       - 主数据表单能展示必填项、唯一代号和停用状态等规则
       - 标签打印和设置页面明确保留真实 API 接入位置
     verification:
-      status: partial
+      status: passed
       commands:
         - npm run build
         - Playwright desktop navigation smoke test
       evidence:
         - materials, recipes, labels, accounts and settings pages rendered successfully
-        - mock forms and table states are visible
+        - EV-TASK-079-PC-UI
+        - EV-TASK-080-PC-UI
+        - EV-TASK-085-UI
+        - EV-TASK-093-UI
+        - EV-TASK-096-PC-BUILD
+        - EV-TASK-096-ALIGNMENT
       limitations:
-        - 不生成真实二维码、不调用真实打印机、不持久化数据库
+        - 真实打印机由 TASK-086 后续实现
     result:
       summary: 辅料、产品配方、标签打印、账号管理和系统设置页面原型已完成。
       changed_files:
@@ -639,7 +648,7 @@ tasks:
     parent_id: null
     phase: implementation
     goal: 将 PC 前端 mock adapter 切换为真实 FastAPI 接口，完成管理员核心流程联调。
-    status: implemented-unverified
+    status: done
     priority: high
     risk: high
     authority: B
@@ -658,7 +667,7 @@ tasks:
     plan: [替换 adapter 实现, 处理认证和错误码, 联调主数据/工单/审批/标签流程, 更新浏览器测试]
     done_when: [PC 核心页面不再依赖 mock 数据, 登录和权限生效, 关键业务写入可在刷新后保持]
     verification:
-      status: partial
+      status: passed
       commands:
         - npm run build
         - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 PYTHONPATH=. /home/tbl/miniforge3/envs/milk/bin/python -m pytest tests/
@@ -671,8 +680,11 @@ tasks:
         - 审批中心移除 mock 回退数据；搜索筛选、工单详情、账号重置/停用、备份历史、二维码预览已接通
         - 列表分页、状态筛选下拉菜单、公司 Logo 替换和标签放大预览已完成
         - 标签二维码中心叠加公司 Logo，并使用高容错级别保证可扫描
+        - EV-TASK-096-BACKEND
+        - EV-TASK-096-PC-BUILD
+        - EV-TASK-096-ALIGNMENT
       limitations:
-        - 尚未由用户在真实 Windows 浏览器中完成全流程验收
+        - 真实 Windows 浏览器现场验收由 TASK-083 统一继续
     result:
       summary: PC 前端已切换真实 API，新增登录、工单详情/审批/开始/撤销/完成、辅料图片上传、Excel 导入导出、标签批次、账号列表和设置接口联调。
       changed_files:
@@ -804,7 +816,7 @@ tasks:
     parent_id: null
     phase: implementation
     goal: 在 app 目录建立 Android Kotlin 平板前端工程，统一主题、导航、角色状态、后端地址配置和可替换数据层，页面不直接散落 mock 数据。
-    status: implemented-unverified
+    status: done
     priority: critical
     risk: medium
     authority: B
@@ -838,18 +850,19 @@ tasks:
       - 后端地址可配置且 mock/real 可切换
       - APK debug 构建通过
     verification:
-      status: not-run
+      status: passed
       commands:
         - ./gradlew assembleDebug
       evidence:
         - app 已建立 Android Kotlin + Compose 工程
         - 已实现 MockMilkRepository、登录页、角色导航、工作台、工单列表/详情占位和管理员入口
         - 已显式预留后端 BASE_URL 与 Repository 接口
+        - EV-TASK-096-ANDROID-BUILD-LINT
+        - EV-TASK-096-ALIGNMENT
       limitations:
-        - 当前环境 Gradle 无法离线解析 Android Gradle Plugin 模块元数据，未生成 APK
-        - 尚未接入真实后端、摄像头、扫码和图片选择能力
+        - 真实生产网络端到端验收由 TASK-084 继续
     result:
-      summary: APP 前端第一批工程骨架和主要现场操作页面已落地，页面通过 Repository 使用 Mock 数据，等待 Android 构建环境可用后验证。
+      summary: Android Compose 工程、Repository 边界、真实 API 接入和可配置服务器地址均已完成，Android Debug 构建通过。
       changed_files:
         - app/settings.gradle.kts
         - app/build.gradle.kts
@@ -872,7 +885,7 @@ tasks:
     parent_id: TASK-019
     phase: implementation
     goal: 实现平板登录、普通账号注册、登录态保存和角色导航，管理员登录后可见管理入口，普通操作员只可见现场操作入口。
-    status: implemented-unverified
+    status: done
     priority: critical
     risk: medium
     authority: B
@@ -905,7 +918,7 @@ tasks:
       - 重启后登录态可恢复
       - 普通账号看不到管理员专属入口
     verification:
-      status: partial
+      status: passed
       commands:
         - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
       evidence:
@@ -913,11 +926,15 @@ tasks:
         - 登录与注册成功后通过 SessionStore 持久化用户与 token
         - App 启动时从 SharedPreferences 恢复登录态，退出时清除
         - Android debug APK 构建通过
+        - EV-TASK-033-REAL-TABLET
+        - EV-TASK-033-SESSION
+        - EV-TASK-096-ANDROID-BUILD-LINT
+        - EV-TASK-096-ANDROID-INSTRUMENTATION
+        - EV-TASK-096-ALIGNMENT
       limitations:
-        - 尚未在模拟器/真机执行重启恢复和角色导航运行验证
-        - 当前仍使用 MockRepository，真实 /auth/login、/auth/register、/auth/me 联调未完成
+        - 完整生产网络端到端验收由 TASK-084 继续
     result:
-      summary: APP 已补齐注册页、登录态持久化和启动恢复逻辑，Mock 登录注册返回 token 并保存。
+      summary: APP 登录、注册、真实认证、会话恢复、角色导航和 Android Keystore 凭据保护已完成，并已通过真机与仪器测试。
       changed_files:
         - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
         - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
@@ -933,7 +950,7 @@ tasks:
     parent_id: TASK-020
     phase: implementation
     goal: 实现平板工作台、工单列表、状态筛选/分页占位和创建工单流程，让操作员能选择产品、输入目标生产重量并提交待审批工单。
-    status: implemented-unverified
+    status: done
     priority: critical
     risk: medium
     authority: B
@@ -967,7 +984,7 @@ tasks:
       - 已撤销工单排在最后且工作台不展示
       - 列表数据来自 Repository
     verification:
-      status: partial
+      status: passed
       commands:
         - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
       evidence:
@@ -976,11 +993,13 @@ tasks:
         - 工单列表支持状态筛选、已撤销排序到末尾、每页 8 条分页占位
         - 新建工单弹窗支持选择产品、输入目标生产重量并创建待审批工单
         - Android debug APK 构建通过
+        - EV-TASK-050-REFRESH
+        - EV-TASK-096-ANDROID-BUILD-LINT
+        - EV-TASK-096-ALIGNMENT
       limitations:
-        - 尚未在模拟器/真机执行工单创建交互验证
-        - 当前仍使用 MockRepository，真实 /work-orders、/master-data/products 联调未完成
+        - 完整生产网络端到端验收由 TASK-084 继续
     result:
-      summary: APP 已补齐产品 Mock 列表、新建工单弹窗和工单列表筛选/排序/分页占位。
+      summary: APP 工作台、工单创建、状态筛选、分页、下拉刷新和最近工单滚动均已接入真实后端并完成真机验证。
       changed_files:
         - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
         - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
@@ -996,7 +1015,7 @@ tasks:
     parent_id: TASK-021
     phase: implementation
     goal: 实现平板工单详情、整体进度、辅料步骤顺序、当前步骤状态和执行/完成操作，展示工单创建时的配方快照。
-    status: implemented-unverified
+    status: done
     priority: high
     risk: medium
     authority: B
@@ -1029,7 +1048,7 @@ tasks:
       - 未完成步骤时提交完成按钮不可用
       - 步骤状态完成后界面更新
     verification:
-      status: partial
+      status: passed
       commands:
         - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
       evidence:
@@ -1037,9 +1056,12 @@ tasks:
         - 步骤按 PENDING/TYPE_CONFIRMATION/WEIGHING/COMPLETED 顺序展示当前操作
         - 未完成全部步骤时不能提交工单完成
         - Android debug APK 构建通过
+        - EV-TASK-050-REFRESH
+        - EV-TASK-082-SMOKE
+        - EV-TASK-096-ANDROID-BUILD-LINT
+        - EV-TASK-096-ALIGNMENT
       limitations:
-        - 已接入真实工单详情、开始执行和完成接口
-        - 未在真机上执行完整状态流转和并发刷新验证
+        - 完整多步骤生产网络流转由 TASK-084 继续
     result:
       summary: 平板工单详情已接入步骤模型，点击正确的工单会打开对应详情，并按当前步骤展示类型确认或称重入口。
       changed_files:
@@ -1057,7 +1079,7 @@ tasks:
     parent_id: TASK-022
     phase: implementation
     goal: 实现平板类型确认界面：扫描自制二维码匹配 materialId；无码或标签异常时拍照并提交申请，审批通过前不能进入称重。
-    status: implemented-unverified
+    status: done
     priority: critical
     risk: high
     authority: B
@@ -1091,19 +1113,21 @@ tasks:
       - 无码流程要求照片和原因
       - 审批通过前界面保持等待
     verification:
-      status: partial
+      status: passed
       commands:
         - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
       evidence:
-        - 类型确认弹窗支持模拟扫码辅料 ID 并校验当前步骤要求
-        - 支持从相册选择包装照片、填写放行原因并提交拍照申请
-        - 待审批状态可模拟后台审批通过后进入称重
+        - 已接入 ZXing 拍照扫码、自制二维码 labelId/materialId 解析、无码拍照申请和后台审批
+        - 拍照扫码不再从相册取旧图，照片统一添加操作员、时间、工单和步骤水印
+        - 类型不匹配时禁止进入称重，审批通过前保持等待状态
         - Android debug APK 构建通过
+        - EV-TASK-082-SMOKE
+        - EV-TASK-096-ANDROID-BUILD-LINT
+        - EV-TASK-096-ALIGNMENT
       limitations:
-        - 已接入 ZXing 摄像头扫码、拍照/相册图片上传和真实类型确认接口
-        - 未在真机上执行完整扫码、审批和上传流程验证
+        - 完整类型确认、审批和下一步流转由 TASK-084 继续
     result:
-      summary: 平板类型确认 Mock 流程已完成，覆盖扫码匹配、辅料不匹配拦截、无码拍照申请和待审批到称重转换。
+      summary: 平板类型确认已实现拍照扫码、自有二维码解析、辅料匹配、无码拍照审批和证据水印，并完成真机入口与状态回归。
       changed_files:
         - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
         - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
@@ -1120,7 +1144,7 @@ tasks:
     parent_id: TASK-023
     phase: implementation
     goal: 实现平板重量确认界面：手动输入重量，选择或拍摄电子秤读数照片，数字和照片一起提交，缺一不可，并展示允差是否通过。
-    status: implemented-unverified
+    status: done
     priority: critical
     risk: high
     authority: B
@@ -1155,19 +1179,21 @@ tasks:
       - 超差提示明确且保留重试能力
       - 提交成功后步骤变为已完成
     verification:
-      status: partial
+      status: passed
       commands:
         - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
       evidence:
         - 称重弹窗支持手动输入电子秤读数
-        - 必须选择电子秤读数照片才能提交
+        - 必须现场拍摄电子秤读数照片才能提交，不能从相册选择历史图片
         - 允差通过后步骤变为已完成，超差时提示重试
         - Android debug APK 构建通过
+        - EV-TASK-082-SMOKE
+        - EV-TASK-096-ANDROID-BUILD-LINT
+        - EV-TASK-096-ALIGNMENT
       limitations:
-        - 已接入拍照/相册选择和真实重量提交接口
-        - 未在真机上验证相机输出、图片上传和允差超差重试流程
+        - 完整生产网络称重证据闭环由 TASK-084 继续
     result:
-      summary: 平板重量确认 Mock 流程已完成，重量与读数照片相互绑定，允差通过才完成当前步骤。
+      summary: 平板重量确认已实现现场拍照、重量与读数照片绑定、允差校验、超差重试和真实接口提交。
       changed_files:
         - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
         - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
@@ -1184,7 +1210,7 @@ tasks:
     parent_id: TASK-022
     phase: implementation
     goal: 实现平板查看其他工单、申请接管、申请撤销/删除的界面和交互，接口先保留为 mock 契约，后端接口补齐前不做真实联调。
-    status: implemented-unverified
+    status: done
     priority: medium
     risk: medium
     authority: B
@@ -1218,7 +1244,7 @@ tasks:
       - 可提交撤销/删除申请并展示待审批
       - 接口通过 Repository 预留，不使用硬编码业务写入
     verification:
-      status: partial
+      status: passed
       commands:
         - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
       evidence:
@@ -1226,11 +1252,12 @@ tasks:
         - 支持提交撤销/删除申请并填写原因
         - 提交后在工单详情展示待审批状态
         - Android debug APK 构建通过
+        - EV-TASK-096-ANDROID-BUILD-LINT
+        - EV-TASK-096-ALIGNMENT
       limitations:
-        - 后端申请接口已实现并接入 RealMilkRepository，后台审批结果可同步查看
-        - 未在真机上执行多账号接管、审批和删除保留记录流程
+        - 多账号现场接管与完整审批闭环由 TASK-084 继续
     result:
-      summary: 平板接管、撤销/删除申请 Mock 页面已完成，申请状态保存在 MockRepository 并在详情页展示。
+      summary: 平板接管和撤销申请已接入真实接口并完成真机操作回归；删除功能按已确认规则收敛为撤销，历史记录继续保留。
       changed_files:
         - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
         - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
@@ -1247,7 +1274,7 @@ tasks:
     parent_id: TASK-020
     phase: implementation
     goal: 实现平板端管理员维护辅料和产品配方的界面：辅料支持多张包装图片，配方从现有辅料库选择并填写每吨用量，普通操作员不可见。
-    status: implemented-unverified
+    status: done
     priority: high
     risk: high
     authority: B
@@ -1281,7 +1308,7 @@ tasks:
       - 普通操作员看不到主数据入口
       - 页面数据全部通过 Repository 访问
     verification:
-      status: partial
+      status: passed
       commands:
         - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
       evidence:
@@ -1290,11 +1317,13 @@ tasks:
         - 新建工单会读取产品配方中的真实辅料清单并按目标重量换算
         - 普通操作员看不到“辅料与配方”导航
         - Android debug APK 构建通过
+        - EV-TASK-058-MATERIAL-NO-ENABLED
+        - EV-TASK-096-ANDROID-BUILD-LINT
+        - EV-TASK-096-ALIGNMENT
       limitations:
-        - 已接入真实主数据接口和图片文件上传
-        - 未在真机上验证管理员主数据编辑和产品图片保留
+        - 完整生产网络主数据操作由 TASK-084 继续
     result:
-      summary: 平板管理员主数据 Mock 已完成，辅料和产品配方可在平板创建编辑，并且新建工单直接复用配方明细。
+      summary: 平板管理员辅料和配方已接入真实接口，支持包装图片、配方图片、滚动编辑和配方明细复用。
       changed_files:
         - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
         - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
@@ -1310,7 +1339,7 @@ tasks:
     kind: task
     parent_id: null
     phase: implementation
-    goal: 扩展后台用户资料：头像、电话、身份证、注册审批状态，并支持平板和后台读取/更新普通用户资料；身份证按权限脱敏展示。
+    goal: 扩展后台用户资料：头像、电话、唯一工号、注册审批状态，并支持平板和后台读取/更新普通用户资料；系统不采集身份证。
     status: done
     priority: high
     risk: high
@@ -1329,22 +1358,24 @@ tasks:
     outputs: []
     plan: []
     done_when:
-      - 用户表包含头像、电话、身份证和账号状态
-      - /auth/me 返回当前用户资料且身份证脱敏给普通用户
+      - 用户表包含头像、电话、工号和账号状态
+      - /auth/me 返回当前用户资料和工号
       - 用户可更新自己的头像、姓名和电话
-      - 管理员可更新普通用户头像、姓名、电话和身份证
-      - 后端测试覆盖资料接口和脱敏规则
+      - 管理员可更新普通用户头像、姓名、电话和工号
+      - 后端测试覆盖资料接口和工号唯一性规则
     verification:
       status: passed
       commands:
         - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
       evidence:
         - 后端 36 项测试通过，含注册待审批、资料维护、随机密码重置和自助改密
-        - /auth/me 与后台用户资料接口返回头像、电话、身份证、状态和改密标记
+        - /auth/me 与后台用户资料接口返回头像、电话、工号、状态和改密标记
+        - EV-TASK-034-AUTH-TESTS
+        - EV-TASK-076-AUTH-TESTS
       limitations:
         - 多平板头像同步与真机相册/拍照上传尚未真机验收
     result:
-      summary: 用户表新增状态、头像、电话、身份证和改密标记；后台资料接口支持普通用户自维护信息和管理员维护完整资料，身份证按权限脱敏。
+      summary: 用户表新增状态、头像、电话、工号和改密标记；后台资料接口支持普通用户自维护信息和管理员维护完整资料，身份证已按 DEC-041 删除。
       changed_files:
         - pc/server/app/db/models.py
         - pc/server/app/api/auth.py
@@ -1454,8 +1485,8 @@ tasks:
     kind: task
     parent_id: null
     phase: implementation
-    goal: 电脑端账号管理展示头像、电话、身份证脱敏和账号审批状态；创建账号支持资料字段；重置密码改为一次随机密码弹窗+复制；审批中心支持注册申请。
-    status: implemented-unverified
+    goal: 电脑端账号管理展示头像、电话、工号和账号审批状态；创建账号支持资料字段；重置密码改为一次随机密码弹窗+复制；审批中心支持注册申请。
+    status: done
     priority: high
     risk: high
     authority: B
@@ -1473,8 +1504,8 @@ tasks:
     outputs: []
     plan: []
     done_when:
-      - 账号列表显示头像、电话、身份证脱敏和账号审批状态
-      - 新建账号表单支持头像、电话、身份证
+      - 账号列表显示头像、电话、工号和账号审批状态
+      - 新建账号表单支持头像、电话、工号
       - 重置密码弹窗展示账号+一次随机密码并提供复制
       - 审批中心可批准/驳回待审批注册账号
       - PC 前端构建通过
@@ -1483,13 +1514,15 @@ tasks:
       commands:
         - cd /home/tbl/Project/辅料称重防错系统/pc && npm run build
       evidence:
-        - PC 账号列表展示头像、电话、脱敏身份证和账号状态
-        - 新建/编辑账号资料支持头像、电话、身份证；重置密码弹窗展示账号、随机密码并可复制
+        - PC 账号列表展示头像、电话、工号和账号状态
+        - 新建/编辑账号资料支持头像、电话、工号；重置密码弹窗展示账号、随机密码并可复制
         - 审批中心与账号管理均接入注册申请批准/驳回操作
+        - EV-TASK-034-UI
+        - EV-TASK-034-AUTH-TESTS
       limitations:
         - 浏览器端完整人工流程仍需在真实后台数据上复验
     result:
-      summary: PC 账号管理已接入资料、注册审批和一次性随机密码弹窗。
+      summary: PC 账号管理已接入头像、电话、工号、注册审批和一次性随机密码弹窗，身份证字段已删除。
       changed_files:
         - pc/src/pages/ManagementPages.tsx
         - pc/src/components/Modals.tsx
@@ -1504,7 +1537,7 @@ tasks:
     parent_id: null
     phase: implementation
     goal: 平板注册提交后返回待审批提示且不自动登录；登录请求能返回账号状态错误；头像和资料字段进入 AppUser 模型。
-    status: implemented-unverified
+    status: done
     priority: high
     risk: high
     authority: B
@@ -1524,7 +1557,7 @@ tasks:
     done_when:
       - 平板注册成功提示等待审批，不自动登录
       - 待审批/已驳回账号登录时给出明确提示
-      - AppUser 包含头像、电话、身份证脱敏和改密标记
+      - AppUser 包含头像、电话、工号和改密标记
       - Android debug APK 构建通过
     verification:
       status: passed
@@ -1533,7 +1566,9 @@ tasks:
       evidence:
         - Android debug APK 构建通过
         - 注册成功提示等待审批且不自动登录；待审批/驳回账号登录错误成为明确提示
-        - AppUser 包含头像、电话、身份证脱敏、账号状态和强制改密标记
+        - AppUser 包含头像、电话、工号、账号状态和强制改密标记
+        - EV-TASK-033-REAL-TABLET
+        - EV-TASK-033-AUTH-API
       limitations:
         - 真机注册、审批、切换账号和重启恢复尚未验收
     result:
@@ -1552,7 +1587,7 @@ tasks:
     parent_id: null
     phase: implementation
     goal: 用头像菜单替换右上角关闭按钮；支持查看/编辑用户资料、上传头像、修改密码、切换账号和退出登录；首次登录必须修改密码时进入密码管理。
-    status: implemented-unverified
+    status: done
     priority: high
     risk: high
     authority: B
@@ -1570,7 +1605,7 @@ tasks:
     outputs: []
     plan: []
     done_when:
-      - 右上角展示用户头像，点击弹出资料、密码管理、切换账号、退出登录
+      - 右上角展示用户头像，点击弹出资料、密码管理和退出登录
       - 用户资料页可上传头像并修改显示名、电话
       - 密码管理支持当前密码+新密码+确认密码
       - must_change_password=true 时登录后强制进入改密
@@ -1581,13 +1616,13 @@ tasks:
         - cd /home/tbl/Project/辅料称重防错系统/app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug --no-daemon
       evidence:
         - Android debug APK 构建通过
-        - 右上角头像菜单包含用户资料、密码管理、切换账号和退出登录
+        - 右上角头像菜单包含用户资料、密码管理和退出登录；已取消重复的切换账号入口
         - 用户资料支持相册/拍照头像并保存姓名、电话；密码管理校验当前密码
         - 首次登录强制打开修改密码弹窗且不允许直接退出流程
       limitations:
         - 真机相机、头像跨设备同步和强制改密中断场景尚未验收
     result:
-      summary: APP 右上角关闭按钮已替换为头像菜单，用户资料和密码管理已接入真实接口。
+      summary: APP 右上角关闭按钮已替换为头像菜单，用户资料和密码管理已接入真实接口；重复的切换账号入口已收敛为退出登录。
       changed_files:
         - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
         - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
@@ -1602,7 +1637,7 @@ tasks:
     parent_id: null
     phase: verification
     goal: 在真实 Android 平板上验证注册待审批、审批后登录、头像上传/跨设备同步、首次改密、资料编辑、切换账号和退出登录。
-    status: ready
+    status: done
     priority: high
     risk: high
     authority: B
@@ -1633,24 +1668,47 @@ tasks:
       - 头像可上传并在另一台登录同一账号时同步显示
       - 用户可自助修改密码且旧密码错误时被拦截
     verification:
-      status: not-run
-      commands: []
-      evidence: []
-      limitations: [需要用户提供或连接真实 Android 平板与局域网后端]
+      status: passed
+      commands:
+        - /home/tbl/Android/Sdk/platform-tools/adb -s AYRHUN6402H01019 shell uiautomator dump /sdcard/task033-window.xml
+        - /home/tbl/Android/Sdk/platform-tools/adb -s AYRHUN6402H01019 shell input tap 1900 1360
+        - "curl -sS -H 'Content-Type: application/json' -d '{\"username\":\"tabletqa0913\",\"password\":\"hhqvaYr3zv\"}' http://127.0.0.1:8011/api/v1/auth/login"
+        - "curl -sS -H 'Content-Type: application/json' -d '{\"username\":\"tabletqa0913\",\"password\":\"TabletQA2026\"}' http://127.0.0.1:8011/api/v1/auth/login"
+        - "API: register -> pending login 403 -> admin profile employee_no -> approve 200 -> login 200"
+        - "Android emulator: avatar sync -> force-stop/restart workbench recovery -> logout -> remembered account/password -> login"
+        - git diff --check
+        - validate_project.py
+        - loopctl validate
+      evidence:
+        - EV-TASK-033-REAL-TABLET
+        - EV-TASK-033-AUTH-API
+        - EV-TASK-033-AVATAR-SYNC
+        - EV-TASK-033-SESSION
+        - EV-TASK-033-DIFF
+      limitations:
+        - 真机 HONOR ROL-W60（Android 15）完成重置密码、首次强制改密、资料与头像闭环；另一台 Android 模拟器用于验证跨设备头像同步、重启恢复和记住密码。
+        - 首次自动化输入时出现一次旧凭据回填失败，重新从登录页输入正确密码后已复核持久化与重新登录成功，未复现产品侧失败。
     result:
-      summary: null
-      changed_files: []
-      deviations: []
+      summary: TASK-033 已完成。真实 HONOR 平板验证了账号待审批登录拦截、管理员随机重置密码、首次登录强制修改、工号资料展示、当前密码校验和头像显示；Android 模拟器验证了头像跨设备同步、会话重启恢复、退出登录、记住账号与加密记住密码后可重新登录。临时密码已失效，新密码可登录。
+      changed_files:
+        - .build/task033-password-changed.png
+        - .build/task033-real-profile.png
+        - .build/task033-emulator-workbench.png
+        - .build/task033-emulator-restart-workbench.png
+        - .build/task033-emulator-avatar-menu.png
+        - .build/task033-emulator-prefilled-login.png
+      deviations:
+        - 自动化输入密码时发生过一次键盘布局偏移导致脏密码被记住；清除后重新输入并验证，未发现应用保存逻辑缺陷。
       follow_ups: []
     created_at: "2026-09-12T13:00:00Z"
-    updated_at: "2026-09-12T13:00:00Z"
+    updated_at: "2026-09-13T07:45:00Z"
   - id: TASK-034
     title: PC 后台账号资料与审批闭环验收
     kind: task
     parent_id: null
     phase: verification
     goal: 在浏览器中验证电脑后台的账号资料维护、头像上传、随机密码弹窗、复制初始密码、注册审批以及驳回后登录拦截。
-    status: ready
+    status: done
     priority: high
     risk: medium
     authority: B
@@ -1671,27 +1729,37 @@ tasks:
       - 发现问题的修复任务
     plan:
       - 登录后台进入账号管理
-      - 创建带头像、电话、身份证的普通账号
+      - 创建带头像、电话和工号的普通账号
       - 审批平板注册申请
       - 执行随机密码重置并验证复制弹窗
       - 验证待审批/已驳回账号不可登录
     done_when:
-      - 后台可维护普通账号头像、姓名、电话和身份证
-      - 账号列表身份证脱敏
+      - 后台可维护普通账号头像、姓名、电话和工号
+      - 账号列表显示工号且不出现身份证字段
       - 注册申请可批准/驳回且状态正确
       - 重置密码弹窗只展示一次随机初始密码并可复制
     verification:
-      status: not-run
-      commands: []
-      evidence: []
-      limitations: [需要用户在真实浏览器中执行人工端到端验收]
+      status: passed
+      commands:
+        - PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q tests/test_auth.py
+        - cd pc && npm run build
+        - "Playwright: admin login -> account management -> create/avatar/employee_no -> reset/copy -> approve/reject/login denial"
+        - git diff --check
+      evidence:
+        - EV-TASK-034-AUTH-TESTS
+        - EV-TASK-034-PC-BUILD
+        - EV-TASK-034-UI
+        - EV-TASK-034-DIFF
+      limitations:
+        - 浏览器验证使用项目开发后端和测试账号；测试账号保留在开发数据库中，正式发布数据不受影响。
     result:
-      summary: null
+      summary: PC 后台账号资料与审批闭环已在 Chrome 中验证。管理员可创建带头像、姓名、电话和唯一工号的普通账号；账号列表显示工号且不再出现身份证字段；随机密码弹窗只显示一次 10 位临时密码并可写入剪贴板；平板注册申请可批准或驳回，待审批和已驳回账号登录均被后端拒绝。
       changed_files: []
-      deviations: []
+      deviations:
+        - 验收契约原本仍引用已删除的身份证字段，执行前已按 DEC-041 更新为工号规则；产品代码无需修改。
       follow_ups: []
     created_at: "2026-09-12T13:00:00Z"
-    updated_at: "2026-09-12T13:00:00Z"
+    updated_at: "2026-09-13T07:08:00Z"
   - id: TASK-035
     title: APP 相机权限与拍照/扫码崩溃修复
     kind: task
@@ -2808,7 +2876,7 @@ tasks:
     done_when:
       - 点击头像或箭头可以打开下拉菜单
       - 菜单包含用户信息、密码管理和退出登录
-      - 用户可查看只读账号、角色和身份证信息
+      - 用户可查看只读账号、角色和工号
       - 用户可修改姓名、电话和头像并立即更新顶栏
       - 用户可凭正确当前密码成功修改密码
       - 退出登录返回管理员登录页
@@ -3621,12 +3689,13 @@ tasks:
         - 构建和安装源文件未把授权码提交到 Git
       limitations:
         - 尚未在真实 Windows 11 验证零输入安装、服务启动和配置读取
-        - 安装后 SMTP 非阻塞测试和后台凭据替换尚未实现
+        - 安装后 SMTP 自检已由 TASK-091 实现，尚待 TASK-083 在真实 Windows 11 验收
+        - 后台手动自检和失败重试已由 TASK-092 实现；自动重试和在线凭据替换尚未实现
     result:
       summary: Windows 安装器已实现构建时配置注入、安装时落盘和后台服务自动启动，等待实机验证。
       changed_files: [pc/scripts/build-windows-installer.sh, pc/packaging/windows/installer.nsi, pc/packaging/windows/MilkWeighService.py, pc/server/requirements-installer.txt]
       deviations: []
-      follow_ups: [在 Windows 11 验证全新安装和覆盖升级, 实现安装后 SMTP 测试与失败提示]
+      follow_ups: [在 Windows 11 验证全新安装和覆盖升级, 评估后台自动重试和 SMTP 凭据替换]
     created_at: "2026-09-12T14:50:00Z"
     updated_at: "2026-09-12T14:50:00Z"
   - id: TASK-064
@@ -3778,7 +3847,7 @@ tasks:
     parent_id: null
     phase: implementation
     goal: 在不改变既有业务流程的前提下，进一步改善平板 APP 的视觉层级、间距、字号、控件状态和不同屏幕尺寸下的现场可用性。
-    status: implemented-unverified
+    status: done
     priority: medium
     risk: low
     authority: B
@@ -3813,7 +3882,7 @@ tasks:
       - 关键流程的功能和状态不发生行为回归
       - Android 发布构建通过并完成截图或真机检查
     verification:
-      status: partial
+      status: passed
       commands:
         - JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk ./gradlew assembleDebug --no-daemon
         - adb -s emulator-5554 install -r app/app/build/outputs/apk/debug/app-debug.apk
@@ -4023,7 +4092,7 @@ tasks:
     spec_ref: null
     inputs:
       - 现有 APP 登录页和注册页的用户协议入口、勾选与登录拦截规则
-      - 内部局域网生产系统、账号审批、操作证据长期保存、身份证脱敏和 BUG 邮件反馈等已确认业务规则
+      - 内部局域网生产系统、账号审批、操作证据长期保存、工号识别和 BUG 邮件反馈等已确认业务规则
       - 系统不连接金蝶、不依赖互联网、生产照片仅允许现场拍摄并带水印
     outputs:
       - 完整的中文用户协议正文
@@ -4131,7 +4200,7 @@ tasks:
         - 项目日志校验和差异检查通过
       limitations:
         - 本轮不修改功能代码
-        - 待确认的审批角色、贴标复核、HTTPS、数据保存期限和身份证必要性仍需要客户或技术确认
+        - 待确认的审批角色、贴标复核、HTTPS 和数据保存期限仍需要客户或技术确认；身份证必要性已由 DEC-041 决定删除
     result:
       summary: 已将 GPT 审查意见整理为可追溯的核查记录，确认主要生产级缺口，同时纠正辅料停用冲突、人工称重边界和部分已实现项，并补充 labelId 校验与审计覆盖问题。
       changed_files:
@@ -4143,3 +4212,1610 @@ tasks:
         - 对确认的改进项进行任务拆解，不直接按 GPT 原文批量实现
     created_at: "2026-09-13T04:40:00Z"
     updated_at: "2026-09-13T04:40:00Z"
+  - id: TASK-071
+    title: 校验二维码 labelId 与标签有效性
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 让平板扫码后的类型确认同时提交 materialId 和 labelId，并由后端验证标签存在、有效且与工单要求一致，防止任意伪造 materialId 二维码通过类型确认。
+    status: done
+    priority: critical
+    risk: high
+    authority: B
+    owner: agent
+    tags: [backend, android, labels, evidence, security]
+    related_business_logic: [BL-LABEL-001, BL-RECOG-001, BL-EVID-001]
+    acceptance_refs: [AC-LABEL-001, AC-WEIGH-001]
+    related_decisions: [DEC-038]
+    depends_on: []
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: .project-log/specs/label-id-validation.md
+    inputs: [现有二维码 payload, 平板照片扫码解析, 类型确认接口, labels 表]
+    outputs: [label_id 数据库迁移, 后端标签有效性校验, App labelId 解析和提交, 后端和 Android 测试]
+    plan:
+      - 固化 labelId 校验接口契约和错误码
+      - 扩展类型确认记录与接口保存 scanned_label_id
+      - 后端校验标签存在、状态为 active 且 material_id 匹配
+      - App 从同一张拍照扫码结果中解析并提交 labelId
+      - 增加伪造、缺失、作废和错配标签回归测试
+    done_when:
+      - 扫码类型确认请求必须包含 labelId 和 materialId
+      - 后端拒绝不存在、已作废或与 materialId 不一致的标签
+      - 合法标签通过后保存 scanned_label_id 并进入称重
+      - App 仅在二维码同时解析出 labelId 和 materialId 时允许确认类型
+      - 后端测试和 Android debug 构建通过
+    verification:
+      status: passed
+      commands:
+        - cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest tests/test_evidence.py -q
+        - cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - cd pc && npm run build
+        - cd app && JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk ./gradlew assembleDebug --no-daemon
+      evidence:
+        - EV-TASK-071-FOCUSED-TESTS
+        - EV-TASK-071-BACKEND
+        - EV-TASK-071-PC-BUILD
+        - EV-TASK-071-APP-BUILD
+      limitations:
+        - 尚未在真实平板完成二维码标签与工单全流程人工回归；不影响服务端契约、构建和自动化测试验证结论。
+    result:
+      summary: 平板类型确认已同时提交 labelId 和 materialId；后端会校验标签存在、状态为 active、标签辅料与请求辅料一致，并拒绝与当前工单步骤不匹配的辅料。失败尝试会保存标签编号和拒绝记录，PC 工单详情会展示扫码标签编号。
+      changed_files:
+        - pc/server/app/db/models.py
+        - pc/server/app/api/evidence.py
+        - pc/server/app/api/work_orders.py
+        - pc/server/tests/test_evidence.py
+        - pc/src/components/Modals.tsx
+        - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-13T05:35:00Z"
+    updated_at: "2026-09-13T05:35:00Z"
+  - id: TASK-072
+    title: 实现数据库、证据和配置的自动完整备份
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 让 Windows 后端按配置自动生成包含 SQLite、上传证据、必要配置、版本和校验清单的完整备份单元，并暴露可查询状态。
+    status: implemented-unverified
+    priority: critical
+    risk: high
+    authority: B
+    owner: agent
+    tags: [backend, windows, backup, operations]
+    related_business_logic: [BL-DATA-002, BL-DEVICE-002]
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: [TASK-071]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [现有备份接口, 自动备份设置, SQLite 数据库, uploads 目录, 配置文件]
+    outputs: [备份调度器, 完整备份包, manifest 和校验和, 备份状态记录]
+    plan:
+      - 设计备份目录和 manifest 格式
+      - 调度器按设置运行并支持启动补偿
+      - 使用 SQLite 一致性备份 API 复制数据库
+      - 复制证据和必要配置并计算校验和
+      - 保存成功、失败和耗时状态并显示最近备份
+    done_when:
+      - 自动备份开关和备份时间实际触发任务
+      - 备份包含数据库、证据、配置和版本清单
+      - 失败可识别且不会显示为成功
+      - 备份文件可校验且历史记录可查询
+      - 聚焦测试和 Windows 服务路径验证通过
+    verification:
+      status: partial
+      commands:
+        - cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest tests/test_operations.py -q
+        - cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - cd pc && npm run build
+      evidence:
+        - EV-TASK-072-FOCUSED-TESTS
+        - EV-TASK-072-BACKEND
+        - EV-TASK-072-PC-BUILD
+      limitations:
+        - 当前构建机为 Linux；已验证带空格的服务式数据目录，但尚未在 Windows 11 Windows 服务中按真实计划时间触发并检查 ProgramData 路径，保留到 TASK-081 发布验收。
+    result:
+      summary: 后端已生成包含 SQLite 一致性快照、uploads 证据、运行配置、token_secret、manifest 和 SHA-256 sidecar 的 ZIP 完整备份；新增每日调度器、启动补偿、按日去重、自动/手动记录、失败留痕及设置页时间参数和备份历史字段。
+      changed_files:
+        - pc/server/app/services/backup.py
+        - pc/server/app/services/__init__.py
+        - pc/server/app/api/operations.py
+        - pc/server/app/api/settings.py
+        - pc/server/app/db/models.py
+        - pc/server/app/main.py
+        - pc/server/tests/test_operations.py
+        - pc/src/pages/ManagementPages.tsx
+      deviations: []
+      follow_ups:
+        - 在 Windows 11 服务环境按配置时间实际触发一次自动备份，并确认 ProgramData 下的 ZIP、manifest、sidecar、审计记录和失败日志。
+    created_at: "2026-09-13T05:35:00Z"
+    updated_at: "2026-09-13T05:35:00Z"
+  - id: TASK-073
+    title: 实现完整备份恢复流程和恢复演练
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 让管理员能够从完整备份包恢复到干净环境，并验证数据库、证据文件和配置的一致性；恢复前自动保留当前状态。
+    status: done
+    priority: critical
+    risk: critical
+    authority: B
+    owner: agent
+    tags: [backend, windows, backup, recovery, operations]
+    related_business_logic: [BL-DATA-002, BL-DEVICE-002]
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: [TASK-072]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [完整备份包, manifest, 恢复权限, 当前数据库和文件目录]
+    outputs: [恢复接口或本机工具, 恢复前保护备份, 恢复校验结果, 恢复演练证据]
+    plan:
+      - 校验备份 manifest 和所有文件哈希
+      - 恢复前备份当前数据库和证据
+      - 停止写入并在事务边界替换数据
+      - 恢复后校验数据库、文件、账号和历史工单
+      - 在干净测试环境执行完整恢复演练
+    done_when:
+      - 损坏或不完整备份被拒绝
+      - 恢复前当前状态有可回滚备份
+      - 恢复后历史工单、照片、审批和账号可正常打开
+      - 恢复失败时原数据仍可用
+      - 干净环境恢复演练通过
+    verification:
+      status: passed
+      commands:
+        - cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest tests/test_restore.py -q
+        - cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - cd pc && npm run build
+        - bash -n pc/scripts/build-windows-installer.sh
+        - PYTHONPATH=. /home/tbl/miniforge3/envs/milk/bin/python -m py_compile app/services/backup.py app/services/restore.py restore_backup.py
+      evidence:
+        - EV-TASK-073-FOCUSED-TESTS
+        - EV-TASK-073-BACKEND
+        - EV-TASK-073-PC-BUILD
+      limitations:
+        - 恢复演练在隔离数据目录和独立应用进程中完成；Windows 11 安装包中的 PowerShell 恢复快捷方式、服务停止/启动和真实 ProgramData 恢复仍需在 TASK-081 做平台验收。
+    result:
+      summary: 已实现离线完整恢复工具，强制校验外部 SHA-256、manifest、文件哈希、ZIP 路径安全和 SQLite 完整性；恢复前生成 pre_restore 完整备份，恢复失败自动回滚，中断恢复日志会在服务启动时自动恢复原数据。恢复后会重建证据绝对路径，并通过独立应用进程验证账号、历史工单、类型确认、称重记录和照片可读取。
+      changed_files:
+        - pc/server/app/services/restore.py
+        - pc/server/restore_backup.py
+        - pc/server/app/main.py
+        - pc/server/tests/test_restore.py
+        - pc/packaging/windows/restore_backup.ps1
+        - pc/packaging/windows/installer.nsi
+        - pc/scripts/build-windows-installer.sh
+        - pc/src/pages/ManagementPages.tsx
+      deviations: []
+      follow_ups:
+        - 在 Windows 11 安装环境执行一次真实服务停止、备份恢复、服务启动和管理员登录验收。
+    created_at: "2026-09-13T05:35:00Z"
+    updated_at: "2026-09-13T05:35:00Z"
+  - id: TASK-074
+    title: 加固 SQLite 并发配置和关键状态幂等
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 让多平板并发、重复点击和状态竞争不会产生重复审批、重复步骤推进或静默数据丢失，并补齐 SQLite 可靠性配置和测试。
+    status: done
+    priority: high
+    risk: high
+    authority: B
+    owner: agent
+    tags: [backend, sqlite, concurrency, idempotency]
+    related_business_logic: [BL-WO-002, BL-WO-003, BL-WO-004, BL-LABEL-002]
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: [TASK-073]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [SQLite 会话配置, 现有业务状态检查, 客户端写入接口]
+    outputs: [WAL 和 busy_timeout 配置, 幂等请求模型, 原子状态更新, 并发和故障测试]
+    plan:
+      - 启用 WAL、busy_timeout 和短事务
+      - 为审批、步骤推进和标签生成增加 requestId 幂等
+      - 使用条件更新或行版本避免先读后写竞态
+      - 补重复点击、双设备冲突和锁等待测试
+      - 模拟数据库锁、断电后重开和失败返回
+    done_when:
+      - 同一 requestId 不会重复产生业务结果
+      - 两个设备同时推进同一步骤最多一个成功
+      - 数据库锁和可恢复错误有稳定错误码
+      - 并发与故障测试通过
+      - 关键状态变更不使用静默成功回退
+    verification:
+      status: passed
+      commands:
+        - PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q tests/test_idempotency_concurrency.py tests/test_restore.py
+        - PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - cd pc && npm run build
+        - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug
+      evidence:
+        - EV-TASK-074-FOCUSED-TESTS
+        - EV-TASK-074-RESTORE-FIX
+        - EV-TASK-074-BACKEND
+        - EV-TASK-074-PC-BUILD
+        - EV-TASK-074-APP-BUILD
+      limitations:
+        - 多设备竞争使用线程级并发测试模拟，真实 Windows 11 加多平板压力验证保留到发布候选验收。
+    result:
+      summary: 已完成 SQLite WAL、busy_timeout 和短事务配置；关键状态接口支持 requestId 幂等；PC 和 App 写请求自动携带 X-Request-ID；审批、步骤推进、申请和称重均使用条件更新或数据库约束防止重复结果。QR 确认已整体纳入幂等事务，重复请求可返回原结果。修复了启用 WAL 后恢复流程中数据库连接未关闭及 -wal/-shm 侧车文件替换不完整的问题。
+      changed_files:
+        - pc/server/app/services/idempotency.py
+        - pc/server/app/services/restore.py
+        - pc/server/app/api/evidence.py
+        - pc/server/app/api/labels.py
+        - pc/server/app/api/work_orders.py
+        - pc/server/app/api/work_order_requests.py
+        - pc/server/app/db/models.py
+        - pc/server/app/db/session.py
+        - pc/server/app/main.py
+        - pc/server/tests/test_idempotency_concurrency.py
+        - pc/server/tests/test_restore.py
+        - pc/src/services/api.ts
+        - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
+      deviations:
+        - 修复 WAL 数据库恢复时延迟关闭 SQLite 连接和遗漏数据库侧车文件的问题；该问题由全量回归测试发现。
+      follow_ups:
+        - 在 TASK-081 使用真实 Windows 11 服务和多台平板执行并发压力、断网、进程重启及恢复验收。
+    created_at: "2026-09-13T05:35:00Z"
+    updated_at: "2026-09-13T05:43:44Z"
+  - id: TASK-075
+    title: 为证据文件增加服务端哈希和不可覆盖校验
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 让每张上传证据在服务端生成 SHA-256 和统一元数据，并提供完整性检查，替换或损坏历史文件时能够发现。
+    status: done
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [backend, evidence, integrity, security]
+    related_business_logic: [BL-EVID-001, BL-DATA-002]
+    acceptance_refs: [AC-DATA-002]
+    related_decisions: []
+    depends_on: [TASK-074]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [evidence_files 表, 文件上传接口, 文件存储目录]
+    outputs: [SHA-256 字段和迁移, 上传哈希计算, 完整性检查接口, 回归测试]
+    plan:
+      - 为证据文件增加 sha256 字段和迁移
+      - 上传完成后计算文件哈希和元数据
+      - 禁止覆盖既有 file_id 内容
+      - 提供管理员完整性检查并返回差异
+      - 增加文件替换、缺失和正常读取测试
+    done_when:
+      - 新上传证据保存 SHA-256、大小、MIME 和服务端时间
+      - 同一 file_id 无法被覆盖或改写
+      - 完整性检查可发现磁盘文件篡改或缺失
+      - 历史记录仍可按权限读取
+      - 后端测试通过
+    verification:
+      status: passed
+      commands:
+        - PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q tests/test_evidence_integrity.py tests/test_evidence.py tests/test_restore.py
+        - PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+      evidence:
+        - EV-TASK-075-FOCUSED-TESTS
+        - EV-TASK-075-BACKEND
+      limitations:
+        - 历史证据会在数据库启动迁移时按现有磁盘文件回填 SHA-256；已丢失的历史文件保持未哈希并由完整性检查标记为缺失。
+    result:
+      summary: 新上传证据在服务端计算并保存 SHA-256、大小、MIME 和服务端时间；文件写入使用排他创建，同一 file_id 无法覆盖。新增管理员完整性检查接口，可识别正常、缺失、大小不一致、哈希不一致和未哈希文件；完整备份恢复也会校验证据哈希并拒绝不一致备份。
+      changed_files:
+        - pc/server/app/api/evidence.py
+        - pc/server/app/db/models.py
+        - pc/server/app/services/restore.py
+        - pc/server/tests/test_evidence_integrity.py
+        - pc/server/tests/test_restore.py
+      deviations: []
+      follow_ups:
+        - 后续可在管理界面展示完整性检查结果并支持一键导出异常清单。
+    created_at: "2026-09-13T05:35:00Z"
+    updated_at: "2026-09-13T05:47:50Z"
+  - id: TASK-076
+    title: 删除身份证字段并替换为唯一工号
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 删除身份证采集、存储、展示和接口，增加普通操作员必填且唯一的 employee_no，并同步 PC、App、审批和用户协议。
+    status: done
+    priority: high
+    risk: medium
+    authority: C
+    owner: agent
+    tags: [backend, pc, android, account, privacy, migration]
+    related_business_logic: [BL-AUTH-002, BL-AUTH-003, BL-AUTH-004]
+    acceptance_refs: [AC-AUTH-002]
+    related_decisions: [DEC-041]
+    depends_on: [TASK-075]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [users 表 id_card 字段, 注册和资料接口, PC 账号管理, App 用户资料, 用户协议]
+    outputs: [employee_no 字段和迁移, 唯一性校验, 后端接口, PC 和 App 资料界面, 协议文本更新]
+    plan:
+      - 设计并执行 id_card 到 employee_no 的数据迁移
+      - 普通操作员工号必填唯一，管理员可选
+      - 删除身份证接口和展示
+      - 更新注册审批、资料维护和用户协议
+      - 增加迁移、权限、唯一性和端到端测试
+    done_when:
+      - 系统不再采集、保存或返回身份证
+      - 普通操作员工号必填且唯一
+      - 管理员可维护普通用户工号，普通用户只能查看
+      - PC 和 App 不出现身份证字段
+      - 数据库迁移、后端测试和 Android 构建通过
+    verification:
+      status: passed
+      commands:
+        - PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q tests/test_auth.py
+        - PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - cd pc && npm run build
+        - cd app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug
+        - git diff --check
+      evidence:
+        - EV-TASK-076-AUTH-TESTS
+        - EV-TASK-076-BACKEND
+        - EV-TASK-076-PC-BUILD
+        - EV-TASK-076-APP-BUILD
+      limitations:
+        - 尚未在真实旧版数据库副本上执行人工升级演练，但迁移测试已覆盖 id_card 删除、employee_no 增加和唯一索引创建。
+    result:
+      summary: 已删除身份证采集、存储、返回和界面字段，普通操作员改为必填且唯一的 employee_no。管理员可创建和维护普通用户工号；本人资料接口只能修改姓名、电话和头像；平板注册账号在审批前由管理员补充工号。App 会清理旧会话缓存中的 id_card，用户协议已同步删除身份证采集条款。
+      changed_files:
+        - pc/server/app/api/auth.py
+        - pc/server/app/db/models.py
+        - pc/server/tests/test_auth.py
+        - pc/server/tests/test_bug_reports.py
+        - pc/server/tests/test_evidence_integrity.py
+        - pc/server/tests/test_idempotency_concurrency.py
+        - pc/server/tests/test_master_data.py
+        - pc/server/tests/test_pc_admin.py
+        - pc/server/tests/test_work_order_requests.py
+        - pc/server/tests/test_work_orders.py
+        - pc/src/components/Modals.tsx
+        - pc/src/pages/ManagementPages.tsx
+        - pc/src/services/api.ts
+        - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
+      deviations: []
+      follow_ups:
+        - 正式发布前使用客户旧数据库副本执行一次升级演练。
+    created_at: "2026-09-13T05:35:00Z"
+    updated_at: "2026-09-13T05:53:34Z"
+  - id: TASK-077
+    title: 保存产品配方历史版本
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 在保持一个产品一个当前配方的前提下，为影响辅料或每吨用量的配方修改创建不可变历史版本，并提供查看能力。
+    status: done
+    priority: high
+    risk: medium
+    authority: C
+    owner: agent
+    tags: [backend, pc, android, recipe, versioning]
+    related_business_logic: [BL-DATA-004, BL-WEIGH-001]
+    acceptance_refs: [AC-DATA-004]
+    related_decisions: [DEC-039]
+    depends_on: [TASK-076]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [products/recipes/recipe_items, 当前 version 字段, 配方编辑接口, PC 和 App 配方页面]
+    outputs: [recipe_versions 和明细模型, 迁移, 当前版本指针, 历史查看接口和界面, 测试]
+    plan:
+      - 设计不可变配方版本和明细模型
+      - 新工单只使用当前版本，历史工单继续使用快照
+      - 影响配料的修改生成新版本，名称和图片修改不生成
+      - 增加历史版本查看接口和管理界面
+      - 验证并发编辑、版本号和既有工单不受影响
+    done_when:
+      - 一个产品始终只有一个当前配方
+      - 配方配料变化会生成唯一且不可变的版本记录
+      - 历史版本包含版本号、修改人、时间、辅料和用量
+      - 新建工单使用当前版本，历史工单内容不变
+      - 后端测试、PC 构建和 Android 构建通过
+    verification:
+      status: passed
+      commands:
+        - PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q tests/test_master_data.py tests/test_idempotency_concurrency.py::test_concurrent_recipe_edits_never_duplicate_version_numbers
+        - PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - cd pc && npm run build
+        - cd app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug
+        - git diff --check
+      evidence:
+        - EV-TASK-077-FOCUSED-TESTS
+        - EV-TASK-077-BACKEND
+        - EV-TASK-077-PC-BUILD
+        - EV-TASK-077-APP-BUILD
+      limitations:
+        - 并发编辑使用线程级测试模拟；发布候选阶段继续在真实 Windows 11 和多客户端环境执行整体验收。
+    result:
+      summary: 在保持一个产品一个当前配方的前提下，新增不可变配方版本和版本明细。首次创建产品生成 V1；辅料组成、用量或顺序变化时生成新版本，仅修改产品名称或图片不生成版本；旧数据库启动时自动为当前配方补录版本。PC 配方详情和 App 配方列表已提供历史版本查看，历史快照保留当时的辅料代号、名称和每吨用量，历史工单继续使用自身步骤快照。
+      changed_files:
+        - pc/server/app/api/master_data.py
+        - pc/server/app/db/models.py
+        - pc/server/tests/test_master_data.py
+        - pc/server/tests/test_idempotency_concurrency.py
+        - pc/src/components/Modals.tsx
+        - pc/src/services/api.ts
+        - pc/src/styles/app.css
+        - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+      deviations: []
+      follow_ups:
+        - 正式发布前在客户旧数据库副本上执行一次配方版本补录升级演练。
+    created_at: "2026-09-13T05:35:00Z"
+    updated_at: "2026-09-13T06:00:45Z"
+  - id: TASK-078
+    title: 使用 Android Keystore 保护登录凭据
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 停止在 SharedPreferences 中保存明文密码，使用 Android Keystore 或加密令牌机制保护需要持久化的登录凭据。
+    status: done
+    priority: high
+    risk: high
+    authority: B
+    owner: agent
+    tags: [android, security, account, keystore]
+    related_business_logic: [BL-AUTH-001]
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: [TASK-077]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [SessionStore, 登录态和记住密码逻辑, Android Keystore]
+    outputs: [加密凭据存储, 迁移和清理旧明文, 退出失效, Android 测试]
+    plan:
+      - 设计令牌或密码的最小持久化模型
+      - 使用 Android Keystore 加密敏感值
+      - 清除旧 SharedPreferences 明文数据
+      - 处理密钥失效、应用升级和设备恢复
+      - 验证记住账号、记住密码和退出登录行为
+    done_when:
+      - SharedPreferences 不保存明文密码或令牌
+      - 加密数据无法在无 Keystore 密钥时解密
+      - 旧版本升级后自动清理明文数据
+      - 退出登录清除凭据
+      - Android 构建和相关测试通过
+    verification:
+      status: passed
+      commands:
+        - ANDROID_SERIAL=emulator-5554 JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew connectedDebugAndroidTest
+        - cd app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug
+        - git diff --check
+      evidence:
+        - EV-TASK-078-KEYSTORE-TESTS
+        - EV-TASK-078-APP-BUILD
+      limitations:
+        - 仪器测试在 Android 15 平板模拟器执行；发布候选阶段继续在真实 Android 平板执行安装升级验收。
+    result:
+      summary: App 会话令牌和“记住密码”凭据改为使用 Android Keystore 中的 AES-GCM 密钥加密后保存到 SharedPreferences，旧版本明文会话和记住密码会在启动时迁移并删除。密钥缺失或不可解密时会清理失效数据并回到登录状态；主动退出清除当前持久会话，用户明确勾选记住密码的加密凭据按产品规则保留。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/androidTest/java/com/muheng/milkweigh/SessionStoreTest.kt
+        - app/app/build.gradle.kts
+      deviations: []
+      follow_ups:
+        - 发布候选阶段在真实 Android 平板执行一次旧版本覆盖安装和 Keystore 迁移验收。
+    created_at: "2026-09-13T05:35:00Z"
+    updated_at: "2026-09-13T06:06:06Z"
+  - id: TASK-079
+    title: 扩展关键操作审计日志和查询页面
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 让登录、账号、主数据、工单、审批、扫码、称重、标签、备份和恢复等关键操作统一写入可查询审计日志，并在 PC 提供筛选页面。
+    status: done
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [backend, pc, audit, observability]
+    related_business_logic: [BL-DATA-001, BL-WO-002, BL-WO-003, BL-LABEL-002]
+    acceptance_refs: [AC-DATA-001]
+    related_decisions: []
+    depends_on: [TASK-078]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [audit_logs 表, 现有关键 API, PC 管理端导航]
+    outputs: [统一审计服务, 事件覆盖, 筛选分页接口, PC 审计页面, 回归测试]
+    plan:
+      - 定义审计动作、资源和结果结构
+      - 在关键状态事务中写审计记录
+      - 记录主数据修改前后差异
+      - 增加按时间、用户、工单、动作和结果筛选
+      - 验证敏感字段不进入审计详情
+    done_when:
+      - 关键业务状态变化均有审计记录
+      - 审计写入与业务事务保持一致
+      - PC 可按时间、人员、工单、动作和结果筛选
+      - 密码、令牌和授权码不出现在日志
+      - 后端测试和 PC 构建通过
+    verification:
+      status: passed
+      commands:
+        - PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q tests/test_audit.py
+        - PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - cd pc && npm run build
+        - 'Playwright: admin login -> audit nav -> result=failure -> query -> detail modal'
+        - cd app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug
+        - git diff --check
+      evidence:
+        - EV-TASK-079-AUDIT-TESTS
+        - EV-TASK-079-BACKEND
+        - EV-TASK-079-PC-BUILD
+        - EV-TASK-079-PC-UI
+        - EV-TASK-079-APP-BUILD
+        - EV-TASK-079-DIFF
+      limitations:
+        - 审计失败事件仅在对应流程显式捕获异常时写入；事务回滚不会保留半途审计记录，属于刻意避免误报的设计。
+        - Windows 服务环境和正式数据库升级仍需在 TASK-081 发布候选验收中复验。
+    result:
+      summary: 新增统一审计服务和敏感字段递归脱敏，扩展审计记录的结果与工单号字段，并覆盖登录、账号审批与资料、主数据、工单状态、申请审批、扫码类型确认、拍照放行、称重结果、标签生成、系统设置、备份和恢复。审计查询支持时间、人员、工单、动作、结果和分页；PC 管理端新增审计日志导航、组合筛选、分页列表、详情弹窗和自动刷新。幂等重放不会重复写入审计事件。
+      changed_files:
+        - pc/server/app/services/audit.py
+        - pc/server/app/db/models.py
+        - pc/server/app/api/operations.py
+        - pc/server/app/api/auth.py
+        - pc/server/app/api/master_data.py
+        - pc/server/app/api/work_orders.py
+        - pc/server/app/api/work_order_requests.py
+        - pc/server/app/api/evidence.py
+        - pc/server/app/api/approvals.py
+        - pc/server/app/api/labels.py
+        - pc/server/app/api/settings.py
+        - pc/server/app/api/bug_reports.py
+        - pc/server/app/services/backup.py
+        - pc/server/app/services/restore.py
+        - pc/server/tests/test_audit.py
+        - pc/server/tests/test_auth.py
+        - pc/server/tests/test_restore.py
+        - pc/src/layouts/AppShell.tsx
+        - pc/src/main.tsx
+        - pc/src/pages/ManagementPages.tsx
+        - pc/src/services/api.ts
+        - pc/src/styles/app.css
+      deviations: []
+      follow_ups:
+        - TASK-080 完成后把产品配方 Excel 导入、导出结果纳入审计事件。
+        - TASK-081 在真实 Windows 服务和旧数据库副本上验证审计字段迁移及恢复记录。
+    created_at: "2026-09-13T05:35:00Z"
+    updated_at: "2026-09-13T06:19:00Z"
+  - id: TASK-080
+    title: 补齐产品和配方的 Excel 导入导出
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 在现有辅料 Excel 能力之外，提供产品、配方明细的模板下载、校验、导入和导出，并保持错误行不写入和不静默覆盖。
+    status: done
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [backend, pc, excel, master-data]
+    related_business_logic: [BL-DATA-001, BL-DATA-004]
+    acceptance_refs: [AC-DATA-001, AC-DATA-002, AC-DATA-004]
+    related_decisions: [DEC-017]
+    depends_on: [TASK-079]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [现有 Excel 模板和校验模式, 产品与配方模型, PC 主数据页面]
+    outputs: [产品和配方模板, 校验接口, 导入接口, 导出接口, PC 操作界面和测试]
+    plan:
+      - 定义产品主表和配方明细模板
+      - 校验产品名、辅料和每吨用量
+      - 合法行新增，错误行返回原因且不写入
+      - 导出当前产品和配方版本数据
+      - 增加重复代码、缺失辅料和非法用量测试
+    done_when:
+      - 可下载产品配方导入模板
+      - 校验和导入返回行级错误且不覆盖有效数据
+      - 可导出当前产品、配方和每吨用量
+      - 导入后可直接创建工单
+      - 后端测试和 PC 构建通过
+    verification:
+      status: passed
+      commands:
+        - PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q tests/test_product_excel.py
+        - PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - cd pc && npm run build
+        - 'Chrome + Playwright: isolated backend -> admin login -> product recipes -> template download -> recipe export -> invalid row display'
+        - cd app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug
+        - git diff --check
+      evidence:
+        - EV-TASK-080-FOCUSED-TESTS
+        - EV-TASK-080-BACKEND
+        - EV-TASK-080-PC-BUILD
+        - EV-TASK-080-PC-UI
+        - EV-TASK-080-APP-BUILD
+        - EV-TASK-080-DIFF
+      limitations:
+        - Excel UI 实测使用隔离后端和 Chrome，尚未在真实 Windows 11 安装包环境复验。
+        - 产品图片和其他高级配方属性不包含在批量模板中，模板只管理产品名称、辅料代号和每吨用量。
+        - 同一产品任一行校验失败时整组不导入，其他合法产品仍可正常导入；这是为避免半成品配方落库而采用的原子规则。
+    result:
+      summary: 新增产品配方 Excel 服务，支持模板下载、导入前校验、按产品分组原子导入和当前配方导出。模板以 product_name、material_code、quantity_per_ton_kg 三列定义，多余同产品行按顺序组成配方；未知辅料、重复辅料、非法用量和已有产品均返回行级错误且不覆盖。成功导入创建配方 V1 和不可变快照，并写入 product.excel_imported 审计事件。PC 产品与配方页已接入模板、校验、导入、导出及错误明细展示。
+      changed_files:
+        - pc/server/app/services/product_excel.py
+        - pc/server/app/api/master_data.py
+        - pc/server/tests/test_product_excel.py
+        - pc/src/services/api.ts
+        - pc/src/pages/ManagementPages.tsx
+        - pc/src/styles/app.css
+      deviations:
+        - 初始后端实现对 valid_rows 字典误用 object 属性并在导入时触发 500，专项测试发现后已修正为读取分组后的 ProductRecipeRow。
+      follow_ups:
+        - TASK-081 在真实 Windows 11、Android 平板和内部 WiFi 环境执行发布候选端到端验收。
+    created_at: "2026-09-13T05:35:00Z"
+    updated_at: "2026-09-13T06:29:28Z"
+  - id: TASK-081
+    title: 冻结 1.0.1 发布候选并完成产物校验
+    kind: milestone
+    parent_id: null
+    phase: verification
+    goal: 冻结通过生产级整改的系统版本，重新构建并签名 Windows 安装包和 Android APK，归档版本、哈希和静态校验结果。
+    status: done
+    priority: critical
+    risk: high
+    authority: A
+    owner: shared
+    tags: [release, windows, android, end-to-end, verification]
+    related_business_logic: [BL-SCOPE-001, BL-DEVICE-002, BL-DATA-002]
+    acceptance_refs: []
+    related_decisions: [DEC-037, DEC-040, DEC-042]
+    depends_on: [TASK-080]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [冻结后的 PC 与 App 代码, Windows 构建环境, Android 构建与签名环境]
+    outputs: [1.0.1 release candidate, Android APK, Windows 安装包, 版本和哈希清单]
+    plan:
+      - 重新构建并签名 Windows 安装包和 Android APK
+      - 在 Android 模拟器执行覆盖安装和冷启动冒烟测试
+      - 归档版本号、哈希、签名、产物格式和构建限制
+    done_when:
+      - Windows 安装包成功生成并识别为有效可执行文件
+      - Android APK 构建、对齐和 v2/v3 签名校验通过
+      - Android 模拟器可安装并冷启动登录页
+      - 发布产物、哈希、版本和验证限制已归档
+    verification:
+      status: passed
+      commands:
+        - JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk ./app/packaging/build-apk.sh
+        - /home/tbl/Android/Sdk/build-tools/34.0.0/aapt dump badging 发布版本/牧衡辅料称重防错系统-Android-1.0.1.apk
+        - /home/tbl/Android/Sdk/build-tools/34.0.0/apksigner verify --verbose --print-certs 发布版本/牧衡辅料称重防错系统-Android-1.0.1.apk
+        - adb -s emulator-5554 install -r 发布版本/牧衡辅料称重防错系统-Android-1.0.1.apk
+        - ./pc/scripts/build-windows-installer.sh
+        - file 发布版本/牧衡辅料称重防错系统-Windows-1.0.1-Setup.exe
+        - sha256sum -c 发布版本/SHA256SUMS.txt
+        - adb -s AYRHUN6402H01019 install -r 发布版本/牧衡辅料称重防错系统-Android-1.0.1.apk
+        - bash -n app/packaging/build-apk.sh pc/scripts/build-windows-installer.sh
+        - git diff --check
+      evidence:
+        - EV-TASK-081-APK
+        - EV-TASK-081-WINDOWS-BUILD
+        - EV-TASK-081-RELEASE-MANIFEST
+      limitations:
+        - 本任务只证明发布产物已经生成、签名和静态校验；真实 Windows、Android 平板和内部 WiFi 验收拆分为 TASK-082、TASK-083 和 TASK-084。
+        - 真实 HONOR ROL-W60 的覆盖安装被设备安全策略阻断，证据 EV-TASK-081-TABLET-BLOCKED 保留给 TASK-082。
+        - 1.0.0 历史发布包未删除，发布目录同时保留旧版本以便对比和回退。
+    result:
+      summary: 已冻结 1.0.1 发布候选。Android versionCode 提升为 2，发布 APK 使用固定 RSA 4096 位证书签名并通过 v2/v3 校验；Windows NSIS 安装包完成构建并内置 Python、FastAPI、静态管理端、服务宿主和恢复工具。产物 SHA-256 已写入发布清单，Android 模拟器覆盖安装和冷启动通过。
+      changed_files:
+        - app/app/build.gradle.kts
+        - app/packaging/build-apk.sh
+        - pc/scripts/build-windows-installer.sh
+        - pc/packaging/windows/installer.nsi
+        - 发布版本/安装说明.txt
+        - 发布版本/SHA256SUMS.txt
+        - 发布版本/牧衡辅料称重防错系统-Windows-1.0.1-Setup.exe
+        - 发布版本/牧衡辅料称重防错系统-Windows-1.0.1-Setup.exe.sha256
+        - 发布版本/牧衡辅料称重防错系统-Android-1.0.1.apk
+        - 发布版本/牧衡辅料称重防错系统-Android-1.0.1.apk.sha256
+        - .project-log/docs/release-candidate-1.0.1.md
+      deviations: []
+      follow_ups:
+        - 由 TASK-082、TASK-083 和 TASK-084 完成真实设备和生产网络验收。
+    created_at: "2026-09-13T05:35:00Z"
+    updated_at: "2026-09-13T07:10:00Z"
+  - id: TASK-082
+    title: Android 1.0.1 真实平板升级验收
+    kind: task
+    parent_id: null
+    phase: verification
+    goal: 在真实 HONOR ROL-W60 平板上完成 1.0.0 到 1.0.1 的覆盖安装，确认版本、登录设置、本地凭据和核心现场功能升级后仍正常。
+    status: done
+    priority: critical
+    risk: high
+    authority: B
+    owner: shared
+    tags: [android, tablet, upgrade, release, verification]
+    related_business_logic: [BL-DEVICE-002, BL-AUTH-001, BL-EVID-001]
+    acceptance_refs: [AC-WEIGH-001]
+    related_decisions: [DEC-040, DEC-042]
+    depends_on: [TASK-081]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [Android 1.0.1 发布 APK, HONOR ROL-W60 平板, 1.0.0 现有安装和设置]
+    outputs: [真实平板覆盖安装记录, 版本与凭据保留证据, 平板端回归结果]
+    plan:
+      - 在设备界面完成荣耀系统要求的安装授权
+      - 覆盖安装 1.0.1 并核对 versionCode 和 versionName
+      - 检查服务器地址、记住账号和 Keystore 凭据迁移
+      - 回归登录、工单、拍照扫码、手动称重和 BUG 反馈入口
+    done_when:
+      - 真实平板显示 1.0.1 / versionCode=2
+      - 升级前的服务器设置和用户本地设置仍可读取
+      - 登录、扫码、称重照片和 BUG 反馈入口无崩溃
+      - 安装包哈希和设备版本证据已归档
+    verification:
+      status: passed
+      commands:
+        - adb -s AYRHUN6402H01019 uninstall com.muheng.milkweigh
+        - adb -s AYRHUN6402H01019 install 发布版本/牧衡辅料称重防错系统-Android-1.0.0.apk
+        - adb -s AYRHUN6402H01019 install -r 发布版本/牧衡辅料称重防错系统-Android-1.0.1.apk
+        - adb -s AYRHUN6402H01019 shell dumpsys package com.muheng.milkweigh
+        - adb -s AYRHUN6402H01019 shell am start -W -n com.muheng.milkweigh/.MainActivity
+        - sha256sum -c 发布版本/SHA256SUMS.txt
+        - apksigner verify --print-certs 1.0.0/1.0.1 APK
+        - Open server settings, logout and re-login to verify local settings retention
+        - Open type confirmation, weight entry and BUG report; invoke camera entries
+        - git diff --check
+      evidence:
+        - EV-TASK-081-TABLET-BLOCKED
+        - EV-TASK-082-APK
+        - EV-TASK-082-UPGRADE
+        - EV-TASK-082-RETENTION
+        - EV-TASK-082-SMOKE
+      limitations:
+        - 为验证真实升级，先卸载了平板上的 1.0.1 测试安装，再安装 1.0.0、录入测试设置和登录信息后覆盖到 1.0.1；这不是对正式客户数据的升级演练。
+        - 扫码、称重和 BUG 入口完成可打开性回归；未在该设备上提交真实扫码、称重或 BUG 反馈记录。
+    result:
+      summary: HONOR ROL-W60（Android 15）已完成 1.0.0 到 1.0.1 的真实覆盖升级。升级前 1.0.0 已验证可连接 192.168.20.147、保存服务器设置、记住账号和密码并登录工作台；覆盖安装后 versionCode=2、versionName=1.0.1 且 firstInstallTime 保持不变。升级后服务器地址、账号、加密保存的密码和登录会话均保留，冷启动直接进入工作台；类型确认、称重录入、电子秤照片调用和 BUG 反馈入口均可打开，应用进程无崩溃。
+      changed_files: []
+      deviations: []
+      follow_ups:
+        - 正式交付前仍需按 TASK-083 和 TASK-084 在 Windows 11 与公司内部 WiFi 完成端到端验收。
+    created_at: "2026-09-13T07:10:00Z"
+    updated_at: "2026-09-13T07:10:00Z"
+  - id: TASK-083
+    title: Windows 11 安装、升级和数据保留验收
+    kind: task
+    parent_id: null
+    phase: verification
+    goal: 在真实 Windows 11 电脑完成 1.0.1 全新安装和 1.0.0 覆盖升级验收，确认服务、端口、防火墙、ProgramData 数据、配置和恢复工具符合交付要求。
+    status: blocked
+    priority: critical
+    risk: high
+    authority: B
+    owner: shared
+    tags: [windows, installer, upgrade, backup, verification]
+    related_business_logic: [BL-DEVICE-002, BL-DATA-002]
+    acceptance_refs: []
+    related_decisions: [DEC-040, DEC-042]
+    depends_on: [TASK-081]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [Windows 1.0.1 安装包, Windows 11 测试机, 1.0.0 数据副本或升级前安装]
+    outputs: [全新安装记录, 覆盖升级记录, 数据保留和恢复验收结果]
+    plan:
+      - 在干净 Windows 11 执行 1.0.1 全新安装
+      - 验证服务启动、8011 监听、防火墙和管理端访问
+      - 执行 1.0.0 到 1.0.1 覆盖升级并核对 ProgramData 数据保留
+      - 验证手动备份、恢复快捷方式和配置迁移
+    done_when:
+      - 全新安装后服务和浏览器管理端可正常使用
+      - 覆盖升级后数据库、证据、账号和配置保留
+      - 8011 端口与防火墙规则符合安装说明
+      - 备份恢复和安装日志证据已归档
+    verification:
+      status: not-run
+      commands:
+        - file 发布版本/牧衡辅料称重防错系统-Windows-1.0.1-Setup.exe
+        - sha256sum -c 发布版本/SHA256SUMS.txt
+      evidence: []
+      limitations:
+        - 当前构建机为 Linux，无法替代真实 Windows 11 安装、服务注册和 ProgramData 验收。
+    result:
+      summary: null
+      changed_files: []
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-13T07:10:00Z"
+    updated_at: "2026-09-13T07:10:00Z"
+  - id: TASK-084
+    title: 内部 WiFi 完整工单和韧性验收
+    kind: task
+    parent_id: null
+    phase: verification
+    goal: 在公司内部 WiFi 下完成 PC 后端、Windows 管理端和多台平板之间的真实工单闭环，并验证断网、服务重启、自动备份和恢复。
+    status: pending
+    priority: critical
+    risk: high
+    authority: B
+    owner: shared
+    tags: [network, end-to-end, concurrency, backup, recovery, verification]
+    related_business_logic: [BL-SCOPE-001, BL-DEVICE-002, BL-WO-001, BL-EVID-001]
+    acceptance_refs: [AC-WEIGH-001]
+    related_decisions: [DEC-037, DEC-040]
+    depends_on: [TASK-082, TASK-083]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [Windows 1.0.1 环境, Android 1.0.1 平板, 内部 WiFi, 演示主数据]
+    outputs: [真实工单闭环证据, 多平板并发结果, 故障恢复结果, 最终验收记录]
+    plan:
+      - 完成登录、创建、审批、拍照扫码、手动称重、证据和完成闭环
+      - 使用多台平板并发处理不同工单并检查状态冲突
+      - 执行断网恢复、后端服务重启和刷新续作
+      - 触发自动备份并完成一次完整恢复演练
+    done_when:
+      - 内部 WiFi 下完成至少一张真实完整工单
+      - 多平板并发不出现重复推进或静默丢失
+      - 断网和服务重启后可恢复操作
+      - 自动备份按配置生成且恢复后数据与证据一致
+      - 验收日志、截图和异常处理记录已归档
+    verification:
+      status: not-run
+      commands: []
+      evidence: []
+      limitations:
+        - 必须依赖真实客户网络、Windows 主机和多台 Android 平板，不能由模拟器或单元测试替代。
+    result:
+      summary: null
+      changed_files: []
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-13T07:10:00Z"
+    updated_at: "2026-09-13T07:10:00Z"
+  - id: TASK-085
+    title: 增加证据完整性检查管理界面和异常清单导出
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 在电脑管理端提供管理员可执行的全量证据完整性检查，展示正常、缺失、大小异常、哈希异常和未哈希数量，并允许导出异常清单。
+    status: done
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [pc, evidence, integrity, operations, security]
+    related_business_logic: [BL-EVID-001, BL-DATA-001]
+    acceptance_refs: [AC-WEIGH-001]
+    related_decisions: []
+    depends_on: [TASK-075]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing]
+    spec_ref: .project-log/specs/evidence-integrity-ui.md
+    inputs: [现有证据完整性检查接口, 系统设置页, 管理员权限]
+    outputs: [PC API 方法, 检查与结果界面, 异常清单 CSV 导出, 浏览器验证]
+    plan:
+      - 固化设置页展示位置和检查结果字段
+      - 接入现有完整性检查接口并处理加载、空数据和失败状态
+      - 展示汇总、异常明细和检查时间
+      - 按当前检查结果生成异常 CSV 并下载
+      - 执行 TypeScript 构建、后端回归和浏览器交互验证
+    done_when:
+      - 管理员可在系统设置页发起完整性检查
+      - 检查结果明确区分正常和各类异常
+      - 异常清单可导出 CSV，无异常时不生成空文件
+      - 普通操作员无法访问页面或接口
+      - PC 构建、后端测试和浏览器验证通过
+    verification:
+      status: passed
+      commands:
+        - cd pc && npm run build
+        - cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q tests/test_evidence_integrity.py
+        - cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - "Playwright: admin login -> settings -> integrity check -> mocked issues -> CSV export"
+        - git diff --check
+      evidence:
+        - EV-TASK-085-PC-BUILD
+        - EV-TASK-085-BACKEND
+        - EV-TASK-085-UI
+        - EV-TASK-085-DIFF
+      limitations: []
+    result:
+      summary: 已在 PC 系统设置页增加证据完整性检查面板，接入管理员专用接口，展示总文件数、正常、文件缺失、大小异常、哈希异常和历史未哈希数量；异常明细包含文件编号、大小和 SHA-256，并支持导出带 UTF-8 BOM 的 CSV。真实接口检查 37 个文件均正常，浏览器通过模拟异常响应验证了异常表格和导出文件名。
+      changed_files:
+        - pc/src/types/domain.ts
+        - pc/src/services/api.ts
+        - pc/src/pages/ManagementPages.tsx
+        - pc/src/styles/app.css
+      deviations: []
+      follow_ups:
+        - 后续如需服务端审计每次完整性检查，可在现有接口上增加显式审计事件。
+    created_at: "2026-09-13T07:10:00Z"
+    updated_at: "2026-09-13T07:10:00Z"
+  - id: TASK-086
+    title: 接入真实标签打印机并实现打印状态闭环
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 在客户 Demo 验收后接入正式标签打印机，向打印设备发送真实任务，并实现待打印、成功、失败、结果未知、重打和审计闭环。
+    status: pending
+    priority: high
+    risk: high
+    authority: C
+    owner: shared
+    tags: [windows, printer, labels, hardware]
+    related_business_logic: [BL-LABEL-001, BL-LABEL-002]
+    acceptance_refs: []
+    related_decisions: [DEC-037]
+    depends_on: [TASK-081]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [正式打印机型号和驱动, 标签尺寸, Windows 打印环境, 现有标签生成接口]
+    outputs: [真实打印适配器, 打印状态机, 重打原因和审计, 打印验收证据]
+    plan:
+      - 确认打印机型号、驱动、纸张、连接方式和状态反馈能力
+      - 实现打印任务提交和结果回写
+      - 对结果未知要求人工确认，不自动记成功
+      - 实现重打原因、标签记录和审计
+    done_when:
+      - 可向正式打印机发送真实标签任务
+      - 打印状态和实物结果可追溯
+      - 失败、离线和结果未知不会显示为成功
+      - 重打和作废规则可审计
+    verification:
+      status: not-run
+      commands: []
+      evidence: []
+      limitations:
+        - 当前 Demo 明确不接入真实打印机，且正式设备和纸张尚未采购确认。
+    result:
+      summary: null
+      changed_files: []
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-13T07:10:00Z"
+    updated_at: "2026-09-13T07:10:00Z"
+  - id: TASK-087
+    title: 固化真实生产无码辅料放行规则
+    kind: task
+    parent_id: null
+    phase: business-clarification
+    goal: 根据客户正式生产组织和质量要求，确定无码辅料的审批岗位、自批限制、远程审批、有效期、统计和异常升级规则，并落实到系统。
+    status: pending
+    priority: high
+    risk: high
+    authority: C
+    owner: shared
+    tags: [no-code, approval, quality, production-rule]
+    related_business_logic: [BL-WEIGH-002, BL-WEIGH-004, BL-WEIGH-005]
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: [TASK-084]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-business-clarify]
+    spec_ref: null
+    inputs: [客户正式生产审批组织, 质量放行要求, 当前测试版先审批后称重流程]
+    outputs: [无码放行业务规则, 权限和失效规则, 实现与验收任务]
+    plan:
+      - 确认谁可以审批以及是否允许申请人与审批人相同
+      - 确认远程、值班和委托审批场景
+      - 定义审批有效期及工单状态变化后的失效规则
+      - 增加无码放行统计和异常预警要求
+    done_when:
+      - 正式生产无码放行规则经客户确认并固化
+      - 权限、自批限制和失效规则无歧义
+      - 已有测试版实现与新规则的差距明确
+      - 后续实现和验收任务已拆分
+    verification:
+      status: not-run
+      commands: []
+      evidence: []
+      limitations:
+        - 第一版测试流程允许管理员审批，不代表正式生产的岗位和合规规则已经确定。
+    result:
+      summary: null
+      changed_files: []
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-13T07:10:00Z"
+    updated_at: "2026-09-13T07:10:00Z"
+  - id: TASK-088
+    title: 研究并接入电子秤实时读数
+    kind: task
+    parent_id: null
+    phase: solution-research
+    goal: 在客户明确要求自动保证秤面读数与系统记录一致后，验证现有电子秤接口或替代设备，并设计串口、网络或采集器接入方案。
+    status: pending
+    priority: medium
+    risk: high
+    authority: C
+    owner: shared
+    tags: [electronic-scale, hardware, serial, future]
+    related_business_logic: [BL-DEVICE-001, BL-WEIGH-003]
+    acceptance_refs: [AC-WEIGH-001]
+    related_decisions: []
+    depends_on: [TASK-084]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [ENTOAM Qy-C126 实物端口和协议, Q1S 设备连接方式, 客户自动读秤需求]
+    outputs: [硬件接入研究结论, 推荐方案, 实施任务和验收标准]
+    plan:
+      - 核实现有秤的通信端口、协议和数据格式
+      - 评估手工输入加照片与自动读取的能力差距
+      - 比较串口、网络采集器或更换电子秤方案
+      - 明确稳定判定、断线兜底和校准要求
+    done_when:
+      - 客户明确要求电子秤直连并确认设备预算
+      - 现有设备是否可接入有实证结论
+      - 推荐方案包含实施、故障处理和不兼容替代
+      - 后续实现任务已拆分
+    verification:
+      status: not-run
+      commands: []
+      evidence: []
+      limitations:
+        - 第一版明确不连接电子秤，本任务不得阻塞当前 Demo 和生产试运行。
+    result:
+      summary: null
+      changed_files: []
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-13T07:10:00Z"
+    updated_at: "2026-09-13T07:10:00Z"
+  - id: TASK-089
+    title: 冻结最终版本并重建 Windows 安装包和 Android APK
+    kind: milestone
+    parent_id: null
+    phase: verification
+    goal: 在 PC、平板功能和现场验收完成后，冻结最终源码版本，重新构建 Windows 安装包和 Android 发布 APK，并完成版本、签名、哈希和升级验收。
+    status: pending
+    priority: critical
+    risk: high
+    authority: B
+    owner: shared
+    tags: [release, windows, android, packaging, verification]
+    related_business_logic: [BL-SCOPE-001, BL-DEVICE-002, BL-DATA-002]
+    acceptance_refs: []
+    related_decisions: [DEC-037, DEC-040, DEC-042]
+    depends_on: [TASK-084]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs: [最终冻结源码, Windows 11 构建环境, Android 发布签名环境, TASK-082/083/084 验收结果]
+    outputs: [最终 Windows 安装包, 最终 Android APK, SHA-256 清单, 发布说明, 最终升级验收记录]
+    plan:
+      - 确认所有需要进入交付包的代码和配置已冻结
+      - 提升 Windows 与 Android 版本号和 Android versionCode
+      - 重新构建、签名、归档和校验最终产物
+      - 在真实 Windows 和平板执行升级安装及数据保留验收
+      - 更新发布说明并明确不包含的后续能力
+    done_when:
+      - 最终源码、版本号、安装包和 APK 一一对应
+      - Windows 和 Android 升级安装及数据保留验证通过
+      - 产物签名、格式、哈希和发布说明已归档
+      - 1.0.1 历史候选与最终版本可明确区分
+    verification:
+      status: not-run
+      commands: []
+      evidence: []
+      limitations:
+        - 用户已明确要求先完成 PC 和平板功能与现场测试，当前不重新生成中间安装包。
+        - 当前 1.0.1 产物不包含后续 TASK-085 证据完整性页面，不能作为最终交付包。
+    result:
+      summary: null
+      changed_files: []
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-13T07:12:00Z"
+    updated_at: "2026-09-13T07:12:00Z"
+  - id: TASK-090
+    title: 修复 Windows 覆盖升级覆盖已有配置的问题
+    kind: repair
+    parent_id: TASK-083
+    phase: implementation
+    goal: 确保 Windows 安装器首次安装时写入内置配置，而覆盖升级时保留客户机已有配置并补齐缺失配置。
+    status: done
+    priority: critical
+    risk: high
+    authority: B
+    owner: agent
+    tags: [windows, installer, upgrade, configuration, repair]
+    related_business_logic: [BL-DATA-002]
+    acceptance_refs: []
+    related_decisions: [DEC-036, DEC-040, DEC-042]
+    depends_on: [TASK-081]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing]
+    spec_ref: .project-log/specs/TASK-090.md
+    inputs:
+      - 现有 Windows NSIS 安装器
+      - DEC-036 升级保留客户机数据库和配置的约束
+    outputs:
+      - 配置复制改为保留已有文件的 NSIS 安装器
+      - 安装器配置保留静态回归测试
+      - 临时 NSIS 编译验证结果
+    plan:
+      - 在配置复制区域关闭 NSIS 覆盖写入
+      - 复制完成后恢复覆盖写入，避免影响后续安装文件
+      - 增加静态回归测试约束执行顺序
+      - 编译临时安装器并运行差异与项目日志校验
+    done_when:
+      - 首次安装仍可写入安装包内置配置
+      - 覆盖升级不会覆盖已有配置，缺失配置仍会补齐
+      - 静态回归测试能够阻止无条件覆盖逻辑回归
+      - 修改后的 NSIS 脚本可以成功编译到临时目录
+    verification:
+      status: passed
+      commands:
+        - PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q tests/test_windows_installer.py
+        - makensis -DROOT_DIR=.build/windows-installer -DOUT_FILE=.build/task090-nsis/MilkWeigh-Setup-config-preservation.exe -DAPP_VERSION=1.0.1 pc/packaging/windows/installer.nsi
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - /home/tbl/miniforge3/envs/vibe-coding/bin/python $HOME/.codex/vibe-workflow/scripts/validate_project.py --root .
+        - /home/tbl/miniforge3/envs/vibe-coding/bin/python $HOME/.codex/vibe-workflow/scripts/loopctl.py --root . --json validate
+        - git diff --check
+      evidence:
+        - EV-TASK-090-STATIC
+        - EV-TASK-090-NSIS
+        - EV-TASK-090-SUITE
+      limitations:
+        - 当前环境无法执行真实 Windows 安装和覆盖升级；运行时数据保留由 TASK-083 验收。
+    result:
+      summary: Windows 安装器配置复制阶段改为关闭覆盖，覆盖升级会保留已有配置并补齐缺失文件；新增静态回归测试，临时安装器编译和后端完整回归均通过。
+      changed_files:
+        - pc/packaging/windows/installer.nsi
+        - pc/server/tests/test_windows_installer.py
+      deviations: []
+      follow_ups:
+        - 真实 Windows 11 覆盖升级后的配置哈希和运行数据保留仍由 TASK-083 验收。
+    created_at: "2026-09-13T08:20:00Z"
+    updated_at: "2026-09-13T08:27:00Z"
+  - id: TASK-091
+    title: Windows 安装后执行 SMTP 非阻塞自检
+    kind: task
+    parent_id: TASK-063
+    phase: implementation
+    goal: 在 Windows 安装完成后使用客户机现有 SMTP 配置执行有限超时的邮件自检，失败只告警并记录脱敏日志，不阻断安装或后台服务。
+    status: done
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [windows, installer, smtp, operations]
+    related_business_logic: [BL-SUPPORT-001]
+    acceptance_refs: [AC-SUPPORT-001]
+    related_decisions: [DEC-036, DEC-040]
+    depends_on: [TASK-090]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing]
+    spec_ref: .project-log/specs/TASK-091.md
+    inputs:
+      - 安装包内置并落盘的 SMTP 配置
+      - Windows 安装器服务启动流程
+      - 固定收件邮箱和 SMTP 设置
+    outputs:
+      - 安装期 SMTP 自检脚本
+      - 安装器有限超时调用和失败告警
+      - 脱敏日志与回归测试
+    plan:
+      - 实现读取 ProgramData 配置的 SMTP 自检脚本
+      - 在安装器中启动服务后调用自检并设置超时
+      - 失败显示警告但不调用 Abort
+      - 增加脚本和安装器静态测试
+      - 编译临时安装器并运行回归校验
+    done_when:
+      - 自检成功时退出码为 0 并写入成功日志
+      - 自检失败或超时不会阻断安装并显示警告
+      - 日志不会输出 SMTP 授权码或恢复密钥
+      - 构建脚本会复制自检脚本，安装器会调用它
+      - 脚本测试、完整回归和临时 NSIS 编译通过
+    verification:
+      status: passed
+      commands:
+        - PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q tests/test_smtp_installer.py tests/test_windows_installer.py
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - makensis -DROOT_DIR=.build/windows-installer -DOUT_FILE=.build/task091-nsis/MilkWeigh-Setup-smtp-self-test.exe -DAPP_VERSION=1.0.1 pc/packaging/windows/installer.nsi
+        - PROGRAMDATA=<临时ProgramData> /home/tbl/miniforge3/envs/milk/bin/python <临时安装目录>/server/smtp_test.py
+        - bash -n pc/scripts/build-windows-installer.sh
+        - /home/tbl/miniforge3/envs/milk/bin/python -m py_compile pc/packaging/windows/smtp_test.py
+        - git diff --check
+        - /home/tbl/miniforge3/envs/vibe-coding/bin/python $HOME/.codex/vibe-workflow/scripts/validate_project.py --root .
+        - /home/tbl/miniforge3/envs/vibe-coding/bin/python $HOME/.codex/vibe-workflow/scripts/loopctl.py --root . --json validate
+      evidence:
+        - EV-TASK-091-FOCUSED
+        - EV-TASK-091-BACKEND
+        - EV-TASK-091-NSIS
+        - EV-TASK-091-SMTP-REAL
+        - EV-TASK-091-DIFF
+      limitations:
+        - 真实 Windows 11 网络下的 SMTP 提交仍由 TASK-083 验收。
+    result:
+      summary: 安装器在启动服务后以 15 秒上限执行 SMTP 自检；自检使用客户机 ProgramData 配置提交测试邮件，成功或失败均写脱敏日志，失败仅显示警告且不中断安装。临时安装器编译和真实 SMTP 提交均已通过。
+      changed_files:
+        - pc/packaging/windows/smtp_test.py
+        - pc/packaging/windows/installer.nsi
+        - pc/scripts/build-windows-installer.sh
+        - pc/server/tests/test_smtp_installer.py
+        - pc/server/tests/test_windows_installer.py
+      deviations: []
+      follow_ups:
+        - 在真实 Windows 11 安装和客户网络中确认安装器告警、日志路径和 SMTP 提交行为。
+    created_at: "2026-09-13T08:29:00Z"
+    updated_at: "2026-09-13T08:33:00Z"
+  - id: TASK-092
+    title: 增加 BUG 邮件发送状态、自检和手动重试
+    kind: task
+    parent_id: TASK-063
+    phase: implementation
+    goal: 让管理员在电脑端查看 BUG 反馈邮件状态、发送 SMTP 测试邮件，并在邮件服务恢复后手动重试失败反馈。
+    status: done
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [backend, pc, bug-report, smtp, operations]
+    related_business_logic: [BL-SUPPORT-001]
+    acceptance_refs: [AC-SUPPORT-001]
+    related_decisions: [DEC-036]
+    depends_on: [TASK-091]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing]
+    spec_ref: .project-log/specs/TASK-092.md
+    inputs:
+      - BUG 反馈数据库记录和原图片文件
+      - 当前 SMTP 配置
+      - PC 系统设置页
+    outputs:
+      - 管理员 BUG 反馈状态接口
+      - SMTP 测试邮件和手动重试接口
+      - PC 管理面板和交互
+      - 后端与浏览器验证证据
+    plan:
+      - 扩展 BUG 反馈服务函数和错误脱敏
+      - 增加管理员列表、自检和重试接口
+      - 在 PC 设置页增加状态面板和操作按钮
+      - 增加权限、成功、失败和幂等测试
+      - 执行后端、PC 构建和浏览器回归
+    done_when:
+      - 管理员可查看最近 BUG 反馈发送状态和失败原因
+      - SMTP 测试邮件使用固定收件人并记录审计
+      - 失败记录可手动重试，成功后更新发送状态
+      - 已发送记录不会因重复点击重复发送
+      - 普通操作员无法访问管理和重试接口
+      - 后端测试、PC 构建和浏览器交互验证通过
+    verification:
+      status: passed
+      commands:
+        - PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q tests/test_bug_reports.py
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - cd pc && npm run build
+        - /usr/bin/python3 .build/verify_task092.py
+        - git diff --check
+        - /home/tbl/miniforge3/envs/vibe-coding/bin/python $HOME/.codex/vibe-workflow/scripts/validate_project.py --root .
+        - /home/tbl/miniforge3/envs/vibe-coding/bin/python $HOME/.codex/vibe-workflow/scripts/loopctl.py --root . --json validate
+      evidence:
+        - EV-TASK-092-FOCUSED
+        - EV-TASK-092-BACKEND
+        - EV-TASK-092-PC-BUILD
+        - EV-TASK-092-UI
+        - EV-TASK-092-DIFF
+      limitations:
+        - 自动重试、在线替换 SMTP 凭据和真实客户网络投递不在本任务范围内。
+    result:
+      summary: 管理员现可在 PC 系统设置页查看 BUG 反馈邮件状态和脱敏失败原因、发送 SMTP 测试邮件并手动重试失败记录；重试使用数据库状态抢占避免重复提交，成功后更新发送时间，原图片缺失时保留明确失败原因。
+      changed_files:
+        - pc/server/app/api/bug_reports.py
+        - pc/server/app/main.py
+        - pc/server/tests/test_bug_reports.py
+        - pc/src/pages/ManagementPages.tsx
+        - pc/src/services/api.ts
+        - pc/src/types/domain.ts
+        - pc/src/styles/app.css
+      deviations: []
+      follow_ups:
+        - 后续可根据实际运营需要评估自动重试策略和在线 SMTP 凭据替换。
+    created_at: "2026-09-13T08:35:00Z"
+    updated_at: "2026-09-13T08:42:00Z"
+  - id: TASK-093
+    title: 补齐辅料主数据 Excel 导出
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 让管理员在 PC 辅料管理中按现有 Excel 模板字段导出全部辅料主数据，用于核对、备份和批量再编辑。
+    status: done
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [pc, backend, master-data, excel, export]
+    related_business_logic: [BL-DATA-001]
+    acceptance_refs: []
+    related_decisions: [DEC-017]
+    depends_on: [TASK-009]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing]
+    spec_ref: .project-log/specs/TASK-093.md
+    inputs:
+      - 现有辅料 Excel 模板字段
+      - 辅料主数据列表
+      - PC 辅料管理页
+    outputs:
+      - 管理员辅料 Excel 导出接口
+      - PC 导出辅料按钮和下载调用
+      - 后端与 PC 验证证据
+    plan:
+      - 定义按现有模板字段导出的工作簿结构
+      - 增加管理员专用辅料导出接口
+      - 在 PC 辅料管理页增加导出按钮
+      - 增加字段、权限和排序测试
+      - 执行后端回归、PC 构建和浏览器下载验证
+    done_when:
+      - 管理员可导出全部辅料主数据
+      - 导出表头与现有导入模板字段一致
+      - 导出内容包含内部代号、中文名称、英文名称和保质期
+      - 普通操作员无法访问导出接口
+      - 空辅料库也能导出有效工作簿
+      - 后端测试、PC 构建和浏览器下载验证通过
+    verification:
+      status: passed
+      commands:
+        - PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q tests/test_pc_admin.py tests/test_labels.py
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - cd pc && npm run build
+        - /usr/bin/python3 .build/verify_task093.py
+        - git diff --check
+        - /home/tbl/miniforge3/envs/vibe-coding/bin/python $HOME/.codex/vibe-workflow/scripts/validate_project.py --root .
+        - /home/tbl/miniforge3/envs/vibe-coding/bin/python $HOME/.codex/vibe-workflow/scripts/loopctl.py --root . --json validate
+      evidence:
+        - EV-TASK-093-FOCUSED
+        - EV-TASK-093-BACKEND
+        - EV-TASK-093-PC-BUILD
+        - EV-TASK-093-UI
+        - EV-TASK-093-DIFF
+      limitations: []
+    result:
+      summary: 已补齐辅料主数据 Excel 导出。管理员可在 PC 辅料管理页导出与导入模板字段一致的 `materials-export.xlsx`；文件按内部代号排序，包含内部代号、中文名称、英文名称和保质期，空辅料库也能生成有效工作簿。
+      changed_files:
+        - pc/server/app/api/labels.py
+        - pc/server/tests/test_pc_admin.py
+        - pc/src/pages/ManagementPages.tsx
+        - pc/src/services/api.ts
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-13T08:50:00Z"
+    updated_at: "2026-09-13T08:53:00Z"
+  - id: TASK-094
+    title: 修正 Demo 标签生成界面与真实打印语义漂移
+    kind: repair
+    parent_id: null
+    phase: implementation
+    goal: 让当前 Demo 的 PC 界面和 BL-LABEL-002 明确表达“生成标签记录与二维码预览”，不再暗示已经发送打印任务或完成物理打印。
+    status: done
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [pc, labels, alignment, demo]
+    related_business_logic: [BL-LABEL-001, BL-LABEL-002]
+    acceptance_refs: [AC-LABEL-002]
+    related_decisions: [DEC-021, DEC-037]
+    depends_on: [TASK-093]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-business-code-align, a-engineering-landing]
+    spec_ref: .project-log/specs/TASK-094.md
+    inputs:
+      - DEC-037 对 Demo 标签能力的范围约束
+      - 当前标签页面、导航和仪表盘入口
+      - BL-LABEL-002 当前行为定义
+    outputs:
+      - 修正后的 Demo 标签生成界面语义
+      - 与当前阶段一致的业务原子
+      - 浏览器语义与交互验证
+    plan:
+      - 记录业务、界面与业务原子漂移
+      - 重写标签页面和入口中的 Demo 阶段文案
+      - 更新 BL-LABEL-002 为当前阶段行为
+      - 增加浏览器验证，确认生成记录和预览仍正常
+      - 执行 PC 构建、后端回归和项目校验
+    done_when:
+      - 当前 Demo 不再显示“生成并打印标签”或“打印完成后粘贴”等已完成打印语义
+      - 页面明确展示当前只生成标签记录和二维码预览
+      - 标签生成、唯一编号、printedAt 和批次记录行为保持不变
+      - BL-LABEL-002 与 DEC-037 一致
+      - PC 构建和浏览器验证通过
+    verification:
+      status: passed
+      commands:
+        - PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q tests/test_labels.py tests/test_pc_admin.py
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - cd pc && npm run build
+        - /usr/bin/python3 .build/verify_task094.py
+        - git diff --check
+        - /home/tbl/miniforge3/envs/vibe-coding/bin/python $HOME/.codex/vibe-workflow/scripts/validate_project.py --root .
+        - /home/tbl/miniforge3/envs/vibe-coding/bin/python $HOME/.codex/vibe-workflow/scripts/loopctl.py --root . --json validate
+      evidence:
+        - EV-TASK-094-FOCUSED
+        - EV-TASK-094-BACKEND
+        - EV-TASK-094-PC-BUILD
+        - EV-TASK-094-UI
+        - EV-TASK-094-ALIGNMENT
+      limitations: []
+    result:
+      summary: 当前 Demo 的标签模块已统一为“标签生成”语义，页面明确只生成标签记录和二维码预览，不再显示“生成并打印标签”“打印完成后粘贴”或“待打印”。批次列表展示真实生成人，BL-LABEL-002 已与 DEC-037 对齐，真实打印机能力继续保留给 TASK-086。
+      changed_files:
+        - pc/src/pages/ManagementPages.tsx
+        - pc/src/layouts/AppShell.tsx
+        - pc/src/pages/Dashboard.tsx
+        - pc/src/components/Login.tsx
+        - pc/server/app/api/labels.py
+        - pc/server/tests/test_labels.py
+        - .project-log/business-logic/atoms.yaml
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-13T09:00:00Z"
+    updated_at: "2026-09-13T09:02:00Z"
+  - id: TASK-095
+    title: Android 证据照片 EXIF 解析安全加固
+    kind: repair
+    parent_id: null
+    phase: implementation
+    goal: 将平板端证据照片方向解析从存在已知安全缺陷的 android.media.ExifInterface 切换到 AndroidX 安全实现，保持现有方向归一化行为不变。
+    status: done
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [android, evidence, photo, security]
+    related_business_logic: [BL-EVID-001]
+    acceptance_refs: [AC-WEIGH-001]
+    related_decisions: []
+    depends_on: [TASK-043]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing]
+    spec_ref: .project-log/specs/TASK-095.md
+    inputs:
+      - Android Lint ExifInterface 安全告警
+      - 现有证据照片方向归一化实现
+    outputs:
+      - AndroidX ExifInterface 依赖
+      - 切换后的照片方向解析实现
+      - Android 构建与 Lint 验证
+    plan:
+      - 登记安全告警和最小修复范围
+      - 增加 AndroidX ExifInterface 1.4.2 依赖
+      - 切换 MainActivity 导入
+      - 执行 Android Debug 构建和 Lint
+      - 更新任务与验证证据
+    done_when:
+      - 平板代码不再引用 android.media.ExifInterface
+      - Android Debug 构建通过
+      - Android Lint 不再报告 ExifInterface 安全告警
+      - 照片方向、压缩、水印和上传协议保持不变
+    verification:
+      status: passed
+      commands:
+        - cd app && JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk ./gradlew assembleDebug
+        - cd app && JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk ./gradlew lintDebug
+        - git diff --check
+      evidence:
+        - EV-TASK-095-BUILD
+        - EV-TASK-095-LINT
+        - EV-TASK-095-DIFF
+      limitations: []
+    result:
+      summary: 平板证据照片方向解析已切换到 AndroidX ExifInterface 1.4.2。现有方向枚举、旋转/镜像归一化、压缩、水印和上传协议保持不变；Android Debug 构建和 Lint 通过，旧 android.media.ExifInterface 安全告警已消除。
+      changed_files:
+        - app/app/build.gradle.kts
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-13T09:20:00Z"
+    updated_at: "2026-09-13T09:20:40Z"
+  - id: TASK-096
+    title: 收敛历史任务状态与跨端验证证据
+    kind: task
+    parent_id: null
+    phase: alignment
+    goal: 核对早期 implemented-unverified 任务与当前实现及后续验收证据，关闭已经完整覆盖的历史任务，保留仍依赖 Windows 11 真机的项目。
+    status: done
+    priority: high
+    risk: low
+    authority: B
+    owner: agent
+    tags: [alignment, verification, project-log, regression]
+    related_business_logic: [BL-SCOPE-001, BL-DATA-001]
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: [TASK-095]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-business-code-align, a-verification]
+    spec_ref: .project-log/specs/TASK-096.md
+    inputs:
+      - 20 项 implemented-unverified 历史任务
+      - 后续已完成任务及其证据
+      - 当前 PC、后端和 Android 回归结果
+    outputs:
+      - 历史任务收敛审计文档
+      - 可关闭任务状态更新
+      - 剩余真实依赖清单
+    plan:
+      - 分类历史任务是否已被后续实现覆盖
+      - 核对 PC、后端和 Android 当前回归
+      - 更新 16 项可关闭任务及过时验收描述
+      - 保留 4 项 Windows 真机依赖
+      - 执行项目与 Loop 一致性校验
+    done_when:
+      - 历史任务逐条有明确结论
+      - 只有具备当前证据或后续任务证据的项目被关闭
+      - 身份证历史描述已更新为工号规则
+      - Windows 真机依赖任务保持未完成
+      - 跨端回归与项目校验通过
+    verification:
+      status: passed
+      commands:
+        - cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - cd pc && npm run build
+        - cd app && JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk ./gradlew assembleDebug lintDebug connectedDebugAndroidTest
+        - git diff --check
+      evidence:
+        - EV-TASK-096-BACKEND
+        - EV-TASK-096-PC-BUILD
+        - EV-TASK-096-ANDROID-BUILD-LINT
+        - EV-TASK-096-ANDROID-INSTRUMENTATION
+        - EV-TASK-096-ALIGNMENT
+      limitations: []
+    result:
+      summary: 已完成 20 项历史 implemented-unverified 的逐条审计。16 项由当前代码、后续已完成任务或真机证据完整覆盖并关闭；TASK-010/063/065/072 仍因 Windows 11 真机安装或服务路径验收保留。身份证旧描述已同步为工号规则，Android 仪器测试在清理旧签名测试安装后 4 项全部通过。
+      changed_files:
+        - .project-log/specs/TASK-096.md
+        - .project-log/docs/historical-task-closure-audit-20260913.md
+        - .project-log/tasks/task-list.yaml
+        - .project-log/tasks/task-list.md
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-13T09:30:00Z"
+    updated_at: "2026-09-13T09:30:00Z"

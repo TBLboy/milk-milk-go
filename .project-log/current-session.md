@@ -9,10 +9,11 @@
 
 ## 当前状态
 
-  - 当前阶段：business-clarification / GPT 整改项规则确认
-  - 当前目标：按 Demo 先行策略澄清生产级整改的正式业务规则
-  - 当前任务：确认贴标复核、工号、配方版本和 HTTPS 的实施范围
-  - 当前状态：已确认当前阶段不强制贴标后二次复核；一个产品只允许一个当前配方，并要求保留配方历史版本；身份证删除并替换为唯一工号；当前版本确定继续使用内部 WiFi HTTP 和手工主机 IP
+  - 当前阶段：implementation / TASK-090 至 TASK-096 已完成并转入外部验收
+  - 当前目标：完成剩余生产级可本地实现缺口，并在真实 Android 平板、Windows 11 和公司内部 WiFi 完成独立验收
+  - 当前任务：TASK-090 至 TASK-096 已完成；TASK-083/084 等待真实环境验收
+  - 当前状态：Windows 安装器保留客户已有配置并执行有限超时 SMTP 自检；管理员可管理 BUG 邮件、导出辅料主数据并生成标签记录与二维码预览；Demo 标签语义已与真实打印范围对齐；平板证据照片 EXIF 解析已切换到 AndroidX 安全实现。专项测试、后端 105 项回归、PC 构建、Android 构建、Lint、浏览器交互和项目校验通过
+  - 下一步：TASK-083/084 分别等待 Windows 11 安装升级和公司内部 WiFi 完整工单验收；TASK-010/063/065/072 的 Windows 真机部分并入 TASK-083。真实打印机、正式无码放行规则和电子秤直连分别等待客户设备、质量规则或技术决策
   - 当前状态补记：已核查 GPT 意见；用户确认真实标签打印机接入推迟到第一版 Demo 验收后，当前 Demo 只保留标签生成、二维码预览和记录；网络确定使用公司内部 WiFi，当前版本采用 HTTP，不引入证书和固定 IP 要求
   - 上一轮状态：TASK-068 功能审查稿和图标生成提示词已完成并通过敏感信息扫描；TASK-069 用户协议 V1.0 已完成
   - 当前状态补记：2026-09-13 确认平板连接失败根因是校园网客户端隔离，切换手机热点后可正常连接；针对完整 IPv4 输入的 1.0.1 修改已按用户要求撤销，恢复 Android 1.0.0 原有服务器设置方案
@@ -83,6 +84,105 @@
 2. 覆盖安装一次，确认 `%ProgramData%\MilkWeigh\data` 中数据库和证据文件保留
 3. 在真实 Android 平板安装发布签名 APK，回归登录、扫码、称重证据和 BUG 反馈
 4. 补充安装后 SMTP 非阻塞测试、自动备份调度和 Windows 实机升级验证
+
+## 2026-09-13 TASK-094 Demo 标签生成语义与业务原子对齐
+
+- 标签模块、导航、仪表盘和登录说明统一为“标签生成”，明确当前 Demo 只生成标签记录和二维码预览
+- 页面移除“生成并打印标签”“打印完成后粘贴”“待打印”等会误认为已完成物理打印的语义
+- 批次列表改为展示生成批次、生成人、生成时间和“已生成”状态；后端返回真实生成人
+- `BL-LABEL-002` 已按 `DEC-037` 更新，真实打印机能力继续由 `TASK-086` 负责
+- 对齐发现 `ALN-001` 已解决
+- 验证：专项测试 10 项、后端完整回归 105 项、PC 构建、Playwright 生成链路、差异检查和项目校验通过
+- 证据：EV-TASK-094-FOCUSED、EV-TASK-094-BACKEND、EV-TASK-094-PC-BUILD、EV-TASK-094-UI、EV-TASK-094-ALIGNMENT
+
+## 2026-09-13 TASK-095 Android 照片 EXIF 安全加固
+
+- Android Lint 发现旧 `android.media.ExifInterface` 存在已知安全缺陷，已切换为 `androidx.exifinterface:exifinterface:1.4.2`
+- 保留现有照片方向枚举、旋转/镜像、压缩、水印和上传行为，不修改业务协议
+- 验证：Android Debug 构建通过；Lint 通过并消除 ExifInterface 告警，0 errors；`git diff --check` 通过
+- 证据：EV-TASK-095-BUILD、EV-TASK-095-LINT、EV-TASK-095-DIFF
+
+## 2026-09-13 TASK-096 历史任务收敛与跨端验证
+
+- 逐条审计 20 项历史 `implemented-unverified`，将 16 项已有当前实现或后续任务证据的任务收敛为 `done`
+- `TASK-010/063/065/072` 保留未完成状态，统一等待 Windows 11 真机安装、服务、多网卡和自动备份验收
+- 更新早期账号任务中的身份证描述为当前唯一工号规则，并收敛重复切换账号入口的历史说明
+- 后端 105 项测试、PC 生产构建、Android Debug/Lint 和 Android 15 模拟器 4 项仪器测试全部通过
+- 证据：EV-TASK-096-BACKEND、EV-TASK-096-PC-BUILD、EV-TASK-096-ANDROID-BUILD-LINT、EV-TASK-096-ANDROID-INSTRUMENTATION、EV-TASK-096-ALIGNMENT
+
+## 2026-09-13 TASK-093 辅料主数据 Excel 导出
+
+- PC 辅料管理页新增“导出辅料”，调用管理员专用 `GET /labels/excel-export`
+- 导出文件 `materials-export.xlsx` 与现有导入模板字段一致，按内部代号排序，空辅料库也能生成带表头的有效工作簿
+- 验证：专项测试 10 项、后端完整回归 105 项、PC 生产构建、浏览器下载、差异检查和项目校验通过
+- 证据：EV-TASK-093-FOCUSED、EV-TASK-093-BACKEND、EV-TASK-093-PC-BUILD、EV-TASK-093-UI、EV-TASK-093-DIFF
+- 限制：不实现 Excel 增量合并、覆盖导入或图片打包导出
+
+## 2026-09-13 TASK-092 BUG 邮件状态、管理员自检和手动重试
+
+- PC 系统设置页新增 BUG 反馈邮件面板，可查看最近记录、来源、提交人、图片数量、发送状态和脱敏失败原因
+- 新增管理员专用的 SMTP 测试邮件、BUG 反馈列表和失败记录手动重试接口
+- 重试使用数据库状态抢占避免重复发送；成功更新发送时间，原图片缺失时保留明确失败原因
+- 验证：专项测试 8 项、后端完整回归 102 项、PC 生产构建、Playwright 交互、差异检查和项目校验通过
+- 证据：EV-TASK-092-FOCUSED、EV-TASK-092-BACKEND、EV-TASK-092-PC-BUILD、EV-TASK-092-UI、EV-TASK-092-DIFF
+- 限制：自动重试、在线替换 SMTP 凭据和真实客户网络投递不在本任务范围内
+
+## 2026-09-13 TASK-091 Windows 安装后 SMTP 非阻塞自检
+
+- 新增 `smtp_test.py`，从客户机 `%ProgramData%\MilkWeigh\config\.env` 读取配置并提交一封简短测试邮件
+- 安装器在后台服务启动后以 15 秒上限执行自检；失败显示警告，不调用 `Abort`，不影响核心系统安装
+- 自检成功或失败均写入 `%ProgramData%\MilkWeigh\logs\smtp-install-test.log`，日志对 SMTP 授权码、恢复密钥和 token secret 做脱敏
+- 验证：聚焦测试 5 项、后端完整回归、临时 NSIS 编译、真实 SMTP 提交、脚本语法和项目校验均通过
+- 证据：EV-TASK-091-FOCUSED、EV-TASK-091-BACKEND、EV-TASK-091-NSIS、EV-TASK-091-SMTP-REAL、EV-TASK-091-DIFF
+- 限制：真实 Windows 11 客户网络中的安装告警、日志路径和 SMTP 提交仍由 TASK-083 验收
+
+## 2026-09-13 TASK-090 Windows 覆盖升级配置保留修复
+
+- 修复 NSIS 安装器无条件复制内置 `.env` 的问题：配置复制阶段临时关闭覆盖，完成 `.env` 和配置资源复制后恢复覆盖写入
+- 首次安装仍会写入缺失配置；覆盖升级保留已有 `config\.env` 和其他已有配置文件，并继续补齐缺失文件
+- 新增 `pc/server/tests/test_windows_installer.py`，静态约束 `SetOverwrite off -> 配置复制 -> SetOverwrite on` 的执行顺序
+- 验证：聚焦测试 1 项、后端完整回归 93 项、临时 NSIS 安装器编译、`git diff --check`、`validate_project.py` 和 `loopctl validate` 均通过
+- 证据：EV-TASK-090-STATIC、EV-TASK-090-NSIS、EV-TASK-090-SUITE
+- 限制：真实 Windows 11 覆盖升级后的配置哈希和运行数据保留仍由 TASK-083 验收
+
+## 2026-09-13 TASK-082 Android 1.0.1 真实平板升级验收
+
+- HONOR ROL-W60（Android 15）先安装签名 1.0.0，配置服务器 `192.168.20.147`、记住账号与密码并登录工作台
+- 使用 `adb install -r` 覆盖安装 1.0.1，设备显示 `versionCode=2`、`versionName=1.0.1`，首次安装时间保持不变
+- 升级后服务器设置、账号、Android Keystore 加密凭据和登录会话均保留；退出后登录页仍回填账号和密码，重新登录成功
+- 类型确认、称重录入、电子秤照片调用和 BUG 反馈入口均可打开；相机活动正常启动，应用进程无崩溃
+- 为称重入口验证创建临时测试工单和标签，经正常 API 完成类型确认后通过申请撤销流程关闭；未推进正式业务数据
+- 验证：APK 哈希和签名、ADB 升级、设备版本、UI 保留、接口、截图和日志检查通过
+- 证据：EV-TASK-082-APK、EV-TASK-082-UPGRADE、EV-TASK-082-RETENTION、EV-TASK-082-SMOKE、EV-TASK-082-DIFF
+
+## 2026-09-13 TASK-033 平板真机账号资料与密码闭环验收
+
+- HONOR ROL-W60 真机使用重置后的临时密码登录后，强制进入首次修改密码弹窗；改密成功进入工作台
+- 后端复核临时密码返回 401、新密码返回 200，`/auth/me` 返回工号 `QA-0913`、头像 `FILE-a03583f01dce2678eef5e155` 和 `must_change_password=false`
+- 真机用户资料弹窗显示姓名、电话、工号和头像，头像为上传的红色郁金香图片
+- 新注册账号待审批登录返回 403，管理员补充工号并批准后登录返回 200
+- Android 模拟器登录同一账号后显示同一头像，验证头像跨设备同步；完全停止并重启后恢复工作台；退出登录后账号和加密保存的密码可回填并重新登录
+- 验证：ADB UiAutomator 真机流程、模拟器跨设备流程、直接认证接口和 `git diff --check`
+- 证据：EV-TASK-033-REAL-TABLET、EV-TASK-033-AUTH-API、EV-TASK-033-AVATAR-SYNC、EV-TASK-033-SESSION、EV-TASK-033-DIFF
+- 限制：跨设备头像与重启恢复使用第二台 Android 模拟器；真机完成主要账号和密码操作
+
+## 2026-09-13 TASK-034 PC 后台账号资料与审批闭环验收
+
+- 将旧验收契约同步到当前唯一工号规则，移除已删除的身份证字段要求
+- Chrome 实测新建账号头像、姓名、电话和工号；账号列表显示工号且不出现身份证
+- 随机密码弹窗生成 10 位临时密码，复制内容与弹窗一致，关闭后不可再次查看
+- 注册申请批准/驳回状态正确，待审批和已驳回账号登录均被后端拒绝
+- 验证：账号专项测试 11 项、PC 生产构建、Playwright 闭环和项目日志校验通过
+- 证据：EV-TASK-034-AUTH-TESTS、EV-TASK-034-PC-BUILD、EV-TASK-034-UI、EV-TASK-034-DIFF
+
+## 2026-09-13 TASK-085 证据完整性检查管理界面
+
+- PC 系统设置页增加管理员专用的证据完整性检查面板，接入现有 `/evidence/files/integrity-check` 接口
+- 展示检查总数、正常、缺失、大小异常、哈希异常和历史未哈希数量；异常表包含文件编号、大小和 SHA-256
+- 支持导出带 UTF-8 BOM 的异常 CSV；真实接口检查 37 个文件均正常，浏览器模拟异常后下载文件名正确
+- 验证：后端 92 项测试、PC 生产构建、Playwright 管理员交互、`git diff --check` 和项目日志校验通过
+- 证据：EV-TASK-085-PC-BUILD、EV-TASK-085-BACKEND、EV-TASK-085-UI、EV-TASK-085-DIFF
+- 后续本地代码任务：无已批准 ready 项；TASK-082/083/084 等待真实设备或内部 WiFi，TASK-086/087/088 等待客户验收或决策
 
 ## 2026-09-13 GPT 整改项业务规则澄清
 

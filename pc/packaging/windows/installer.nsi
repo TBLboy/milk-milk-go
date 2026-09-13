@@ -15,7 +15,7 @@ SetCompressorDictSize 32
   !define APP_ICON "${ROOT_DIR}/app.ico"
 !endif
 !ifndef APP_VERSION
-  !define APP_VERSION "1.0.0"
+  !define APP_VERSION "1.0.1"
 !endif
 
 !define PAYLOAD_DIR "${ROOT_DIR}/payload"
@@ -31,7 +31,7 @@ UninstallIcon "${APP_ICON}"
 InstallDir "$PROGRAMFILES64\MilkWeigh"
 InstallDirRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MilkWeigh" "InstallLocation"
 BrandingText "${PRODUCT_NAME}"
-VIProductVersion "1.0.0.0"
+VIProductVersion "${APP_VERSION}.0"
 VIAddVersionKey /LANG=2052 "ProductName" "${PRODUCT_NAME}"
 VIAddVersionKey /LANG=2052 "CompanyName" "牧衡"
 VIAddVersionKey /LANG=2052 "FileDescription" "${PRODUCT_NAME} 安装程序"
@@ -77,8 +77,10 @@ Section "Install"
   File "${APP_ICON}"
 
   SetOutPath "$COMMONPROGRAMDATA\MilkWeigh\config"
+  SetOverwrite off
   File /nonfatal "${CONFIG_DIR}/.env"
   File /r "${CONFIG_DIR}/*.*"
+  SetOverwrite on
   CreateDirectory "$COMMONPROGRAMDATA\MilkWeigh\data"
   CreateDirectory "$COMMONPROGRAMDATA\MilkWeigh\logs"
 
@@ -93,6 +95,12 @@ Section "Install"
   nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="MilkWeigh Backend"'
   nsExec::ExecToLog 'netsh advfirewall firewall add rule name="MilkWeigh Backend" dir=in action=allow protocol=TCP localport=8011'
 
+  nsExec::ExecToLog /TIMEOUT=15000 '"$INSTDIR\python\python.exe" "$INSTDIR\server\smtp_test.py"'
+  Pop $0
+  StrCmp $0 "0" smtp_self_test_done
+  MessageBox MB_ICONEXCLAMATION|MB_OK "系统已安装并可正常使用，但邮件反馈自检失败。请检查客户机网络和 SMTP 配置，详情见 ProgramData\MilkWeigh\logs\smtp-install-test.log。" /SD IDOK
+  smtp_self_test_done:
+
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MilkWeigh" "DisplayName" "${PRODUCT_NAME}"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MilkWeigh" "DisplayVersion" "${APP_VERSION}"
@@ -106,6 +114,7 @@ Section "Install"
   CreateShortCut "$DESKTOP\${PRODUCT_NAME}.lnk" "http://127.0.0.1:8011/" "" "$INSTDIR\app.ico" 0
   CreateDirectory "$SMPROGRAMS\${PRODUCT_NAME}"
   CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\打开管理后台.lnk" "http://127.0.0.1:8011/" "" "$INSTDIR\app.ico" 0
+  CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\从备份恢复.lnk" "powershell.exe" '-NoExit -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\server\restore_backup.ps1"' "$INSTDIR\app.ico" 0
   CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\卸载.lnk" "$INSTDIR\Uninstall.exe"
 SectionEnd
 

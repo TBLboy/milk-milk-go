@@ -10,7 +10,7 @@ def test_operator_cannot_read_master_data(client):
     client.post(
         "/api/v1/auth/users",
         headers={"Authorization": f"Bearer {admin}"},
-        json={"username": "operator01", "display_name": "李师傅", "password": "operator123"},
+        json={"username": "operator01", "display_name": "李师傅", "password": "operator123", "employee_no": "MH1004"},
     )
     token = client.post("/api/v1/auth/login", json={"username": "operator01", "password": "operator123"}).json()["access_token"]
     assert client.get("/api/v1/master-data/materials", headers={"Authorization": f"Bearer {token}"}).status_code == 403
@@ -88,6 +88,187 @@ def test_product_recipe_can_be_edited(client):
     target = next(item for item in listed if item["id"] == product_id)
     assert target["name"] == "编辑后配方"
     assert len(target["items"]) == 2
+
+
+def test_recipe_history_only_versions_ingredient_changes(client):
+    headers = admin_headers(client)
+    material = client.post(
+        "/api/v1/master-data/materials",
+        headers=headers,
+        json={"material_code": "VER01", "name_zh": "版本辅料", "shelf_life_months": 12},
+    ).json()
+    created = client.post(
+        "/api/v1/master-data/products",
+        headers=headers,
+        json={
+            "name": "版本测试产品",
+            "items": [{"material_id": material["material_id"], "quantity_per_ton_kg": 5}],
+        },
+    ).json()
+
+    initial = client.get(
+        f"/api/v1/master-data/products/{created['id']}/recipe-versions",
+        headers=headers,
+    )
+    assert initial.status_code == 200
+    assert len(initial.json()) == 1
+    assert initial.json()[0]["version"] == 1
+    assert initial.json()[0]["is_current"] is True
+    assert initial.json()[0]["items"][0]["quantity_per_ton_kg"] == 5
+    assert initial.json()[0]["created_by"]["username"] == "admin"
+
+    renamed = client.put(
+        f"/api/v1/master-data/products/{created['id']}",
+        headers=headers,
+        json={
+            "name": "改名但配方不变",
+            "items": [{"material_id": material["material_id"], "quantity_per_ton_kg": 5}],
+            "image_file_id": "FILE-version-image",
+        },
+    )
+    assert renamed.status_code == 200
+    assert renamed.json()["recipe_version"] == 1
+    assert len(client.get(
+        f"/api/v1/master-data/products/{created['id']}/recipe-versions",
+        headers=headers,
+    ).json()) == 1
+
+    changed = client.put(
+        f"/api/v1/master-data/products/{created['id']}",
+        headers=headers,
+        json={
+            "name": "改名但配方不变",
+            "items": [{"material_id": material["material_id"], "quantity_per_ton_kg": 7.5}],
+            "image_file_id": "FILE-version-image",
+        },
+    )
+    assert changed.status_code == 200
+    assert changed.json()["recipe_version"] == 2
+
+    history = client.get(
+        f"/api/v1/master-data/products/{created['id']}/recipe-versions",
+        headers=headers,
+    ).json()
+    assert [item["version"] for item in history] == [2, 1]
+    assert history[0]["is_current"] is True
+    assert history[0]["items"][0]["quantity_per_ton_kg"] == 7.5
+    assert history[1]["is_current"] is False
+    assert history[1]["items"][0]["quantity_per_ton_kg"] == 5
+
+
+def test_work_order_keeps_recipe_snapshot_after_new_version(client):
+    headers = admin_headers(client)
+    material = client.post(
+        "/api/v1/master-data/materials",
+        headers=headers,
+        json={"material_code": "VERWO", "name_zh": "快照辅料", "shelf_life_months": 12},
+    ).json()
+    product = client.post(
+        "/api/v1/master-data/products",
+        headers=headers,
+        json={
+            "name": "快照版本产品",
+            "items": [{"material_id": material["material_id"], "quantity_per_ton_kg": 10}],
+        },
+    ).json()
+    old_order = client.post(
+        "/api/v1/work-orders",
+        headers=headers,
+        json={"product_id": product["id"], "target_weight_kg": 1000},
+    ).json()
+
+    updated = client.put(
+        f"/api/v1/master-data/products/{product['id']}",
+        headers=headers,
+        json={
+            "name": "快照版本产品",
+            "items": [{"material_id": material["material_id"], "quantity_per_ton_kg": 20}],
+        },
+    )
+    assert updated.status_code == 200
+    assert updated.json()["recipe_version"] == 2
+
+    old_detail = client.get(
+        f"/api/v1/work-orders/{old_order['order_no']}",
+        headers=headers,
+    ).json()
+    assert old_detail["steps"][0]["required_weight_kg"] == 10
+    new_order = client.post(
+        "/api/v1/work-orders",
+        headers=headers,
+        json={"product_id": product["id"], "target_weight_kg": 1000},
+    ).json()
+    assert new_order["steps"][0]["required_weight_kg"] == 20
+
+
+def test_operator_cannot_read_recipe_versions(client):
+    headers = admin_headers(client)
+    material = client.post(
+        "/api/v1/master-data/materials",
+        headers=headers,
+        json={"material_code": "VERPERM", "name_zh": "权限辅料", "shelf_life_months": 12},
+    ).json()
+    product = client.post(
+        "/api/v1/master-data/products",
+        headers=headers,
+        json={
+            "name": "权限版本产品",
+            "items": [{"material_id": material["material_id"], "quantity_per_ton_kg": 1}],
+        },
+    ).json()
+    client.post(
+        "/api/v1/auth/users",
+        headers=headers,
+        json={
+            "username": "version_operator",
+            "display_name": "版本操作员",
+            "password": "operator123",
+            "employee_no": "MH-VERSION",
+        },
+    )
+    token = client.post(
+        "/api/v1/auth/login",
+        json={"username": "version_operator", "password": "operator123"},
+    ).json()["access_token"]
+    response = client.get(
+        f"/api/v1/master-data/products/{product['id']}/recipe-versions",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 403
+
+
+def test_recipe_version_backfill_for_existing_current_recipe(client):
+    headers = admin_headers(client)
+    material = client.post(
+        "/api/v1/master-data/materials",
+        headers=headers,
+        json={"material_code": "VERMIG", "name_zh": "迁移辅料", "shelf_life_months": 12},
+    ).json()
+    product = client.post(
+        "/api/v1/master-data/products",
+        headers=headers,
+        json={
+            "name": "迁移版本产品",
+            "items": [{"material_id": material["material_id"], "quantity_per_ton_kg": 3}],
+        },
+    ).json()
+
+    from app.db.models import RecipeVersion, initialize_database
+    from app.db.session import SessionLocal
+
+    with SessionLocal.begin() as db:
+        for version in db.query(RecipeVersion).all():
+            db.delete(version)
+    initialize_database()
+
+    history = client.get(
+        f"/api/v1/master-data/products/{product['id']}/recipe-versions",
+        headers=headers,
+    ).json()
+    assert len(history) == 1
+    assert history[0]["version"] == 1
+    assert history[0]["created_by"] is None
+    assert history[0]["items"][0]["material_id"] == material["material_id"]
 
 
 def test_product_recipe_can_be_enabled_and_disabled(client):

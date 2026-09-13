@@ -14,7 +14,7 @@ PYTHON_EMBED_URLS=(
   "https://mirrors.huaweicloud.com/python/3.11.9/python-3.11.9-embed-amd64.zip"
   "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip"
 )
-APP_VERSION="1.0.0"
+APP_VERSION="1.0.1"
 OUTPUT_STAGE="$BUILD_ROOT/MilkWeigh-Windows-Setup.exe"
 OUTPUT_RELEASE="$RELEASE_DIR/牧衡辅料称重防错系统-Windows-${APP_VERSION}-Setup.exe"
 
@@ -41,8 +41,11 @@ cp -a "$PC_DIR/dist" "$PAYLOAD_DIR/dist"
 mkdir -p "$PAYLOAD_DIR/server"
 cp -a "$PC_DIR/server/app" "$PAYLOAD_DIR/server/app"
 cp "$PC_DIR/server/seed.py" "$PAYLOAD_DIR/server/seed.py"
+cp "$PC_DIR/server/restore_backup.py" "$PAYLOAD_DIR/server/restore_backup.py"
 cp "$PC_DIR/packaging/windows/seed_install.py" "$PAYLOAD_DIR/server/seed_install.py"
 cp "$PC_DIR/packaging/windows/MilkWeighService.py" "$PAYLOAD_DIR/server/MilkWeighService.py"
+cp "$PC_DIR/packaging/windows/smtp_test.py" "$PAYLOAD_DIR/server/smtp_test.py"
+cp "$PC_DIR/packaging/windows/restore_backup.ps1" "$PAYLOAD_DIR/server/restore_backup.ps1"
 find "$PAYLOAD_DIR/server" -type d -name "__pycache__" -prune -exec rm -rf {} +
 find "$PAYLOAD_DIR/server" -type f -name "*.pyc" -delete
 
