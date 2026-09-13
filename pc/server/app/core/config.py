@@ -11,8 +11,10 @@ class Settings(BaseSettings):
     app_name: str = "milk-weigh-api"
     app_version: str = "0.1.0"
     data_dir: Path = PROJECT_ROOT / "data"
+    frontend_dir: Path = PROJECT_ROOT / "dist"
     database_filename: str = "milk_weigh.sqlite3"
     api_prefix: str = "/api/v1"
+    token_secret: str | None = None
     admin_recovery_secret_hash: str | None = None
     admin_recovery_max_attempts: int = 5
     admin_recovery_lockout_minutes: int = 15
