@@ -507,3 +507,158 @@ evidence:
   recorded_at: '2026-09-12T15:21:03Z'
   invalidated_at: '2026-09-13T01:10:56Z'
   invalidation_reason: 用户确认平板连接失败根因是校园网客户端隔离，不是 APP 地址限制；完整 IPv4 修改和 1.0.1 发布包已撤销
+- id: EV-TASK-065-BACKEND
+  kind: test
+  subject: 本机 IPv4 检测后端与 51 项完整测试
+  status: valid
+  command: conda run -n milk env PYTHONPATH= PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python
+    -m pytest -q
+  result_ref: 51 tests passed; hotspot and physical adapters outrank virtual adapters;
+    endpoint requires admin
+  covers:
+    files:
+    - pc/server/app/core/network.py
+    requirements: []
+    tasks:
+    - TASK-065
+  version_binding:
+    git_commit: 3ee2115b03f0c61dbf22f6c95e4ad50bd0d61765
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      pc/server/app/core/network.py: efa6a90d8c777aab94155abbbdd3965c0b48461ccfb610b4f0babf9173958587
+  recorded_at: '2026-09-13T01:31:44Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-065-PC-BUILD
+  kind: build
+  subject: PC 设置页本机 IPv4 检测生产构建
+  status: valid
+  command: npm run build
+  result_ref: TypeScript and Vite production build passed
+  covers:
+    files:
+    - pc/src/pages/ManagementPages.tsx
+    requirements: []
+    tasks:
+    - TASK-065
+  version_binding:
+    git_commit: 3ee2115b03f0c61dbf22f6c95e4ad50bd0d61765
+    diff_hash: dcf4a83573ae8db83eedced3b650ae278b4adec44eb272eb5f94edb8825aaba2
+    file_hashes:
+      pc/src/pages/ManagementPages.tsx: 393a3020380fde755b4b910005b0f5d9191e59116632fd50214df88bcc8f6f88
+  recorded_at: '2026-09-13T01:31:50Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-065-LIVE
+  kind: integration
+  subject: 8011 服务本机 IPv4 检测接口
+  status: valid
+  command: GET http://127.0.0.1:8011/api/v1/settings/network-addresses with admin
+    bearer token
+  result_ref: HTTP 200; recommended WLAN 192.168.20.147; virtual bridge retained only
+    as non-recommended address
+  covers:
+    files:
+    - pc/server/app/api/settings.py
+    requirements: []
+    tasks:
+    - TASK-065
+  version_binding:
+    git_commit: 3ee2115b03f0c61dbf22f6c95e4ad50bd0d61765
+    diff_hash: 16611f90825da606146bbf5dd68e24829254384ceeae03f89edf3808f90f616a
+    file_hashes:
+      pc/server/app/api/settings.py: 60e1b30040858d27f2f4b8d73e660d9acdcd94d369492b19bb395f0a25697bf3
+  recorded_at: '2026-09-13T01:31:55Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-065-UI
+  kind: test
+  subject: PC 设置页 IPv4 检测浏览器交互
+  status: valid
+  command: 'Chrome headless via CDP: login state -> 系统设置 -> 检测本机 IP'
+  result_ref: Network result rendered recommended 192.168.20.147, tablet last-two-segment
+    hint 20/147, copy action, and separate virtual adapter rows
+  covers:
+    files:
+    - .build/task065-network-ui.png
+    requirements: []
+    tasks:
+    - TASK-065
+  version_binding:
+    git_commit: 3ee2115b03f0c61dbf22f6c95e4ad50bd0d61765
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      .build/task065-network-ui.png: 04970fdfd179ca44953a7d8c2d91eed37942279ffab67a0e50c719c98c95d850
+  recorded_at: '2026-09-13T01:33:00Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-066-BUILD
+  kind: build
+  subject: 侧边栏内部开关版 Android 构建
+  status: valid
+  command: JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk
+    ./gradlew assembleDebug --no-daemon
+  result_ref: BUILD SUCCESSFUL; 37 actionable tasks; app-debug.apk generated
+  covers:
+    files:
+    - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+    requirements: []
+    tasks:
+    - TASK-066
+  version_binding:
+    git_commit: 3ee2115b03f0c61dbf22f6c95e4ad50bd0d61765
+    diff_hash: e5a5d305d1e3e9abf4b118fdcc08e34d195d398b44cb1c4841f17bc309d1d5ff
+    file_hashes:
+      app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt: ffc150606493b8c47a76e030bd4be75cf24eafcbd0a62914eb2e4f5edf52c3e5
+  recorded_at: '2026-09-13T02:58:45Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-066-EMULATOR
+  kind: test
+  subject: 侧边栏内部开关版展开与收缩模拟器验证
+  status: valid
+  command: install debug APK on emulator-5554; launch app; inspect expanded and collapsed
+    screenshots
+  result_ref: Top bar has distinct bottom divider; toggle is inside sidebar; expanded
+    230dp and collapsed 76dp icon-only states verified; no visible overlap
+  covers:
+    files:
+    - .build/task066-sidebar-toggle-expanded.png
+    - .build/task066-sidebar-toggle-collapsed-final.png
+    requirements: []
+    tasks:
+    - TASK-066
+  version_binding:
+    git_commit: 3ee2115b03f0c61dbf22f6c95e4ad50bd0d61765
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      .build/task066-sidebar-toggle-expanded.png: 1a6b4802cfa108f8cf98cab2ef16162d7a454afc5ebed1c981becb9b24389916
+      .build/task066-sidebar-toggle-collapsed-final.png: 9eaf103d9d3c35832610202355a843d3e9831461335410960deb8375e35e6eb4
+  recorded_at: '2026-09-13T02:58:51Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-066-PHYSICAL
+  kind: test
+  subject: 侧边栏内部开关版物理平板安装与冷启动验证
+  status: valid
+  command: adb -s a67adf5d install -r app-debug.apk; clear logcat; force-stop; am
+    start -W
+  result_ref: Install Success; versionName 1.0.0; cold start 1265ms then warm start
+    194ms; top divider and sidebar-internal toggle visible; no new AndroidRuntime
+    fatal exception
+  covers:
+    files:
+    - .build/task066-physical-tablet.png
+    - app/app/build/outputs/apk/debug/app-debug.apk
+    requirements: []
+    tasks:
+    - TASK-066
+  version_binding:
+    git_commit: 3ee2115b03f0c61dbf22f6c95e4ad50bd0d61765
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      .build/task066-physical-tablet.png: 1c6954ebd56e436ae9f36c52ed3125931be991c3cc6cbfa78c5f4bf7546f975e
+      app/app/build/outputs/apk/debug/app-debug.apk: 966bc23a3110a7ceb37dac114fadcf3269c3cf037e7deec96aeb2e698708c79d
+  recorded_at: '2026-09-13T02:58:56Z'
+  invalidated_at: null
+  invalidation_reason: null

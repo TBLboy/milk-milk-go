@@ -21,6 +21,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
@@ -73,6 +75,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -1085,6 +1088,7 @@ private fun MainShell(
     onLogout: () -> Unit,
 ) {
     var selected by remember { mutableStateOf("工作台") }
+    var sidebarExpanded by rememberSaveable { mutableStateOf(true) }
     var selectedOrderNo by remember { mutableStateOf<String?>(null) }
     var orders by remember { mutableStateOf<List<WorkOrder>>(emptyList()) }
     var products by remember { mutableStateOf<List<Product>>(emptyList()) }
@@ -1094,6 +1098,10 @@ private fun MainShell(
     var showChangePasswordDialog by remember { mutableStateOf(user.mustChangePassword) }
     var showBugReportDialog by remember { mutableStateOf(false) }
     var isRefreshing by remember { mutableStateOf(false) }
+    val sidebarWidth by animateDpAsState(
+        targetValue = if (sidebarExpanded) 230.dp else 76.dp,
+        label = "sidebarWidth",
+    )
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     suspend fun refreshData() {
@@ -1119,19 +1127,22 @@ private fun MainShell(
         if (currentUser.mustChangePassword) showChangePasswordDialog = true
     }
     Scaffold(topBar = {
-        TopAppBar(
-            title = { Text("牧衡辅料称重", fontWeight = FontWeight.Bold) },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
-            actions = {
-                UserMenu(
-                    user = currentUser,
-                    repository = repository,
-                    onProfile = { showProfileDialog = true },
-                    onChangePassword = { showChangePasswordDialog = true },
-                    onLogout = onLogout,
-                )
-            },
-        )
+        Column(modifier = Modifier.fillMaxWidth().background(Color.White)) {
+            TopAppBar(
+                title = { Text("牧衡辅料称重", fontWeight = FontWeight.Bold) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
+                actions = {
+                    UserMenu(
+                        user = currentUser,
+                        repository = repository,
+                        onProfile = { showProfileDialog = true },
+                        onChangePassword = { showChangePasswordDialog = true },
+                        onLogout = onLogout,
+                    )
+                },
+            )
+            HorizontalDivider(thickness = 1.dp, color = Color(0xFFDDE4E8))
+        }
     }, containerColor = Page, floatingActionButton = {
         FloatingActionButton(
             onClick = { showBugReportDialog = true },
@@ -1142,15 +1153,59 @@ private fun MainShell(
         }
     }) { padding ->
         Row(modifier = Modifier.fillMaxSize().padding(padding)) {
-            Column(modifier = Modifier.width(230.dp).fillMaxSize().background(Color.White).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("现场操作", color = Muted, fontSize = 13.sp, modifier = Modifier.padding(8.dp))
-                NavItem("工作台", Icons.Default.Assignment, selected == "工作台") { selected = "工作台" }
-                NavItem("工单", Icons.Default.Inventory2, selected == "工单") { selected = "工单" }
-                if (currentUser.role == UserRole.ADMIN) {
-                    Spacer(Modifier.height(12.dp)); Text("管理员", color = Muted, fontSize = 13.sp, modifier = Modifier.padding(8.dp))
-                    NavItem("辅料与配方", Icons.Default.Settings, selected == "辅料与配方") { selected = "辅料与配方" }
+            Column(
+                modifier = Modifier
+                    .width(sidebarWidth)
+                    .fillMaxSize()
+                    .background(Color.White)
+                    .padding(horizontal = if (sidebarExpanded) 14.dp else 8.dp, vertical = 14.dp)
+                    .animateContentSize(),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(38.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = if (sidebarExpanded) Arrangement.End else Arrangement.Center,
+                ) {
+                    if (sidebarExpanded) {
+                        Text(
+                            "导航",
+                            color = Muted,
+                            fontSize = 13.sp,
+                            modifier = Modifier.weight(1f).padding(start = 10.dp),
+                        )
+                    }
+                    IconButton(
+                        onClick = { sidebarExpanded = !sidebarExpanded },
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFFF4F7F6)),
+                    ) {
+                        Icon(
+                            if (sidebarExpanded) Icons.Default.ChevronLeft else Icons.Default.ChevronRight,
+                            contentDescription = if (sidebarExpanded) "收起侧边栏" else "展开侧边栏",
+                            tint = Muted,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
                 }
-                Spacer(Modifier.weight(1f)); Text("局域网模式 · 实时接口", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(8.dp))
+                if (sidebarExpanded) {
+                    Text("现场操作", color = Muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
+                }
+                NavItem("工作台", Icons.Default.Assignment, selected == "工作台", collapsed = !sidebarExpanded) { selected = "工作台" }
+                NavItem("工单", Icons.Default.Inventory2, selected == "工单", collapsed = !sidebarExpanded) { selected = "工单" }
+                if (currentUser.role == UserRole.ADMIN) {
+                    if (sidebarExpanded) {
+                        Spacer(Modifier.height(10.dp))
+                        Text("管理员", color = Muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
+                    }
+                    NavItem("辅料与配方", Icons.Default.Settings, selected == "辅料与配方", collapsed = !sidebarExpanded) { selected = "辅料与配方" }
+                }
+                Spacer(Modifier.weight(1f))
+                if (sidebarExpanded) {
+                    Text("局域网模式 · 实时接口", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(10.dp))
+                }
             }
             when (selected) {
                 "工单" -> OrderListScreen(
@@ -1232,9 +1287,39 @@ private fun MainShell(
 }
 
 @Composable
-private fun NavItem(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, active: Boolean, onClick: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).background(if (active) Color(0xFFEAF6F0) else Color.Transparent, RoundedCornerShape(8.dp)).padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, null, tint = if (active) Green else Muted); Spacer(Modifier.width(12.dp)); Text(label, color = if (active) Green else Ink, fontWeight = if (active) FontWeight.Bold else FontWeight.Normal)
+private fun NavItem(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    active: Boolean,
+    collapsed: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (active) Color(0xFFEAF6F0) else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(horizontal = if (collapsed) 0.dp else 13.dp)
+            .animateContentSize(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = if (collapsed) Arrangement.Center else Arrangement.Start,
+    ) {
+        Icon(
+            icon,
+            contentDescription = label,
+            tint = if (active) Green else Muted,
+            modifier = Modifier.size(21.dp),
+        )
+        if (!collapsed) {
+            Spacer(Modifier.width(12.dp))
+            Text(
+                label,
+                color = if (active) Green else Ink,
+                fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+            )
+        }
     }
 }
 

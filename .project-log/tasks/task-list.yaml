@@ -3696,3 +3696,262 @@ tasks:
         - 校园网环境继续使用手机热点，或调整校园网客户端隔离策略
     created_at: "2026-09-12T15:30:00Z"
     updated_at: "2026-09-12T15:30:00Z"
+  - id: TASK-065
+    title: PC 系统设置增加本机 IPv4 地址检测
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 在 PC 管理端系统设置页提供一键检测本机当前 IPv4 地址的能力，方便管理员把平板需要填写的主机地址准确告知现场操作员。
+    status: implemented-unverified
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags:
+      - pc
+      - settings
+      - network
+      - ipv4
+    related_business_logic: []
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: []
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 设置页“立即备份数据库”按钮位于现有系统设置区域
+      - Windows 主机可能同时存在 WLAN、以太网、VMware 虚拟网卡等多个 IPv4 地址
+      - 平板需要填写与 PC 处于同一局域网的主机地址
+    outputs:
+      - “检测本机 IP”按钮
+      - 检测结果展示区域
+      - 对可用局域网地址及虚拟网卡地址的必要标识
+    plan:
+      - 先确认后端可获取的网卡名称、地址和接口类型
+      - 在现有设置页备份按钮右侧增加检测按钮
+      - 调用后端检测接口并展示本机 IPv4 检测结果
+      - 增加无可用地址、多网卡和检测失败状态
+      - 执行后端测试、PC 构建和页面交互回归
+    done_when:
+      - 设置页“立即备份数据库”右侧存在本机 IP 检测入口
+      - 点击后自动读取并显示当前 PC 的 IPv4 地址
+      - 能区分常用物理网卡与 VMware 等虚拟网卡，避免误选不可供平板访问的地址
+      - 无可用局域网地址或检测失败时显示明确提示
+      - 后端测试、PC 生产构建和浏览器交互验证通过
+    verification:
+      status: partial
+      commands:
+        - conda run -n milk env PYTHONPATH= PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q
+        - npm run build
+        - curl/permissioned local API GET /api/v1/settings/network-addresses
+      evidence:
+        - 后端 51 项完整测试通过，新增热点优先、虚拟网卡排除、管理员鉴权和接口返回 4 项测试
+        - PC TypeScript 和 Vite 生产构建通过
+        - 真实 8011 服务返回 200，正确推荐 WLAN 192.168.20.147，未把虚拟网桥作为首选
+        - Chrome 实际进入系统设置并点击“检测本机 IP”，推荐地址、平板后两段提示、复制入口和其他网卡列表均正确显示
+      limitations:
+        - 尚未在真实 Windows 11 多网卡与移动热点环境验证
+    result:
+      summary: PC 设置页已增加本机 IPv4 检测按钮，后端枚举活动网卡并优先推荐热点或物理网络地址，前端展示推荐地址、其他网卡和管理员提示。
+      changed_files:
+        - pc/server/app/core/network.py
+        - pc/server/app/api/settings.py
+        - pc/server/tests/test_network_detection.py
+        - pc/server/requirements.txt
+        - pc/server/requirements-installer.txt
+        - pc/src/pages/ManagementPages.tsx
+        - pc/src/services/api.ts
+        - pc/src/types/domain.ts
+        - pc/src/styles/app.css
+        - pc/dist
+      deviations: []
+      follow_ups:
+        - 在 Windows 11 热点和校园网环境检查检测结果
+        - 在 Windows 11 真机复核热点优先检测结果，并按需确认移动端样式
+    created_at: "2026-09-13T01:20:00Z"
+    updated_at: "2026-09-13T01:20:00Z"
+  - id: TASK-066
+    title: 进一步优化平板 APP 视觉细节
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 在不改变既有业务流程的前提下，进一步改善平板 APP 的视觉层级、间距、字号、控件状态和不同屏幕尺寸下的现场可用性。
+    status: implemented-unverified
+    priority: medium
+    risk: low
+    authority: B
+    owner: shared
+    tags:
+      - android
+      - ui
+      - visual-polish
+    related_business_logic: []
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: []
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 当前平板 APP 已完成的主要业务流程和页面
+      - 用户后续提供的具体视觉痛点、截图或优先页面
+    outputs:
+      - 视觉优化清单
+      - 平板 APP 视觉细节调整
+      - 关键页面真机或模拟器截图对比
+    plan:
+      - 收集用户指定的页面和问题，必要时先做一次整体视觉审计
+      - 按登录、工作台、工单、主数据、用户资料等页面分批优化
+      - 重点检查字号、间距、层级、按钮状态、图片显示和横竖屏适配
+      - 在目标 Android 版本和平板尺寸上验证无重叠、无截断、无布局跳动
+    done_when:
+      - 用户确认待优化页面和视觉方向
+      - 优化后的页面在真实平板尺寸下文字清晰、层级明确、控件不重叠
+      - 关键流程的功能和状态不发生行为回归
+      - Android 发布构建通过并完成截图或真机检查
+    verification:
+      status: partial
+      commands:
+        - JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk ./gradlew assembleDebug --no-daemon
+        - adb -s emulator-5554 install -r app/app/build/outputs/apk/debug/app-debug.apk
+        - adb -s emulator-5554 exec-out screencap -p
+        - adb -s a67adf5d install -r app/app/build/outputs/apk/debug/app-debug.apk
+        - adb -s a67adf5d logcat -c
+        - adb -s a67adf5d shell am force-stop com.muheng.milkweigh
+        - adb -s a67adf5d shell am start -W -n com.muheng.milkweigh/.MainActivity
+      evidence:
+        - Android debug APK 构建通过，37 个任务成功
+        - 模拟器展开状态显示顶栏底部独立分隔线，内容区与侧边栏边界清晰
+        - 收缩按钮位于侧边栏内部；侧边栏从 230dp 收缩为 76dp 时仅保留导航图标和展开箭头
+        - 物理平板覆盖安装成功，应用冷启动 1265ms，界面显示顶栏分隔线和侧边栏内部收缩按钮
+        - 清空日志后重新启动未发现新的 FATAL EXCEPTION 或 AndroidRuntime 崩溃
+      limitations:
+        - 当前仅完成用户本轮提出的顶栏和侧边栏细节，其他页面视觉优化仍可继续扩展
+        - 物理平板已完成界面与冷启动检查，展开/收缩动画的最终手感仍可由用户现场确认
+    result:
+      summary: 平板 APP 顶栏增加明确底部分隔线；收缩按钮移入侧边栏内部，侧边栏支持 230dp 展开和 76dp 图标模式收缩，并记忆展开状态。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+      deviations: []
+      follow_ups:
+        - 根据用户反馈继续优化其他页面视觉细节
+    created_at: "2026-09-13T01:20:00Z"
+    updated_at: "2026-09-13T02:58:56Z"
+  - id: TASK-067
+    title: 为电脑端软件和平板 APP 配置统一图标
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 使用公司现有品牌素材为 Windows 安装程序、桌面快捷方式、应用界面和平板 APP 启动器配置清晰统一的图标。
+    status: pending
+    priority: medium
+    risk: low
+    authority: A
+    owner: agent
+    tags:
+      - pc
+      - android
+      - branding
+      - icon
+      - packaging
+    related_business_logic: []
+    acceptance_refs: []
+    related_decisions: []
+    depends_on:
+      - TASK-010
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 项目现有公司 logo 和品牌资源
+      - Windows NSIS 安装包与 Android 启动器图标要求
+    outputs:
+      - Windows 安装程序图标
+      - Windows 桌面和开始菜单快捷方式图标
+      - PC 浏览器管理端 favicon/PWA 图标（如适用）
+      - Android 启动器图标
+      - 重新构建并校验的发布包
+    plan:
+      - 核对现有 logo 源文件、尺寸和透明背景质量
+      - 生成 Windows ICO 及所需分辨率资源
+      - 生成 Android mipmap/adaptive icon 资源
+      - 接入安装器、快捷方式、网页入口和 APP 清单
+      - 重新打包并检查图标在 Windows 和平板上的实际显示效果
+    done_when:
+      - Windows 安装包、桌面快捷方式和开始菜单入口显示目标图标
+      - Android 安装后启动器和系统任务界面显示目标图标
+      - 图标在常见缩放尺寸下清晰，无明显拉伸或白边
+      - Windows 安装器编译和 Android APK 签名校验通过
+    verification:
+      status: not-run
+      commands: []
+      evidence: []
+      limitations:
+        - 需要确认原始 logo 文件是否满足 ICO 和 Android 自适应图标质量要求
+    result:
+      summary: null
+      changed_files: []
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-13T01:20:00Z"
+    updated_at: "2026-09-13T01:20:00Z"
+  - id: TASK-068
+    title: 整理 PC 与平板整体功能审查稿
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 把当前电脑管理端和平板 APP 的角色、业务流程、功能模块、数据规则、异常处理、部署方式和已知限制整理成一份独立文件，供 GPT 或外部人员审查优化。
+    status: pending
+    priority: high
+    risk: low
+    authority: A
+    owner: agent
+    tags:
+      - documentation
+      - product-review
+      - pc
+      - android
+    related_business_logic: []
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: []
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: []
+    spec_ref: null
+    inputs:
+      - 当前 PC 管理端和平板 APP 已实现功能
+      - 需求基线、主要决策、核心业务规则和当前发布状态
+      - 已知限制、待确认问题和真实设备验证情况
+    outputs:
+      - 单文件 Markdown 整体功能审查稿
+      - 审查问题清单与后续优化建议占位
+    plan:
+      - 汇总产品定位、用户角色和系统边界
+      - 按 PC 与 APP 分别整理功能菜单和关键页面
+      - 描述工单、扫码确认、称重、审批、主数据、标签、账号和 BUG 反馈流程
+      - 说明数据关系、权限、状态、审核规则、证据留存和部署方式
+      - 列出已确认限制、未实现项和建议 GPT 重点审查的问题
+      - 检查文档不包含密码、SMTP 授权码或其他敏感配置
+    done_when:
+      - 产出一份可独立发送给 GPT 的 Markdown 文件
+      - 文档同时覆盖 PC 端和平板端，不遗漏主要业务闭环
+      - 明确区分已实现、已确认需求、待确认事项和已知限制
+      - 文档不包含任何密码、密钥或授权码
+    verification:
+      status: not-run
+      commands: []
+      evidence: []
+      limitations:
+        - 文档需要与当前代码和需求基线持续同步，避免形成过期说明
+    result:
+      summary: null
+      changed_files: []
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-13T01:20:00Z"
+    updated_at: "2026-09-13T01:20:00Z"
