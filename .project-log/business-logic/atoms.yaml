@@ -183,7 +183,7 @@ atoms:
     source:
       type: user-statement
       reference: "2026-09-09 Q-017 确认 + 外部设计说明"
-    description: 第一版由电脑后台管理员生成和打印标签；系统以标签打印时间 printedAt 作为二维码标签日期，不录入实际生产日期；生成本系统二维码和唯一 labelId，后台保存标签记录，粘贴后扫码复核。
+    description: 第一版由电脑后台管理员生成和管理标签；系统以标签打印时间 printedAt 作为二维码标签日期，不录入实际生产日期；生成本系统二维码和唯一 labelId，后台保存标签记录。当前阶段不强制标签粘贴后的二次复核扫码。
     actors:
       - 电脑后台管理员/标签打印人员
     trigger: 用户生成或打印自制辅料二维码标签
@@ -202,7 +202,6 @@ atoms:
       - 标签记录
     side_effects:
       - 后台保存打印人、打印时间、辅料快照和标签状态 ACTIVE/VOID
-      - 粘贴后扫码复核记录留痕
     exceptions:
       - 辅料不存在
     failure_handling:
@@ -212,6 +211,7 @@ atoms:
       - materialId 不可变
       - 标签生成后后台保留完整记录
       - 二维码标签日期以 printedAt 为准
+      - 当前阶段不把贴标后的二次复核作为流程必经步骤
     acceptance:
       - id: AC-LABEL-001
         given: 管理员选择 MAT-00023 并打印标签
@@ -227,12 +227,13 @@ atoms:
       - DEC-015
       - DEC-016
       - DEC-022
+      - DEC-038
     implementation_refs: []
     test_refs: []
     supersedes: []
-    notes: Q-017 已确认标签流程；Q-022/DEC-022 已确认第一版不录入实际生产日期，以标签打印日期为准。
+    notes: Q-017 已确认标签流程；Q-022/DEC-022 已确认第一版不录入实际生产日期，以标签打印日期为准；DEC-038 已确认当前阶段不强制贴标后二次复核，但保留“正确标签贴到错误包装”的残余风险。
     created_at: "2026-09-09T03:21:41Z"
-    updated_at: "2026-09-09T04:30:00Z"
+    updated_at: "2026-09-13T05:00:00Z"
     last_verified_at: null
   - id: BL-LABEL-002
     title: 后台选择辅料并批量打印自制二维码标签
@@ -1050,7 +1051,7 @@ atoms:
     updated_at: "2026-09-08T10:32:39Z"
     last_verified_at: "2026-09-12T12:05:00Z"
   - id: BL-AUTH-002
-    title: 账号资料、头像与维护权限
+    title: 账号资料、头像、工号与维护权限
     kind: constraint
     domain: account
     status: active
@@ -1060,7 +1061,7 @@ atoms:
     source:
       type: user-statement
       reference: "2026-09-12 头像与用户资料澄清"
-    description: 账号资料扩展头像、身份证和电话；头像作为后台账号资料跨平板同步；普通用户可维护自己的头像、姓名和电话，身份证仅可查看，管理员可维护普通用户资料；账号列表等非本人场景对身份证脱敏显示。
+    description: 账号资料扩展头像、工号和电话；头像作为后台账号资料跨平板同步；普通用户可维护自己的头像、姓名和电话，工号仅可查看，管理员可维护普通用户资料；系统不再采集或保存身份证。
     actors:
       - 平板端普通操作员
       - 平板端管理员
@@ -1073,9 +1074,9 @@ atoms:
       - 头像图片
       - 显示名
       - 电话
-      - 身份证
+      - 工号
     rule:
-      statement: 头像、显示名、电话和身份证作为后台账号资料保存；头像跨平板同步；普通用户可修改自己的头像、显示名和电话，身份证只能查看；管理员可维护普通用户的头像、显示名、电话和身份证；身份证在账号列表和普通可见场景中脱敏显示。
+      statement: 头像、显示名、电话和工号作为后台账号资料保存；头像跨平板同步；普通用户可修改自己的头像、显示名和电话，工号只能查看；管理员可维护普通用户的头像、显示名、电话和工号；普通操作员工号必填且唯一，管理员账号工号可选。
     outputs:
       - 用户资料预览
       - 后台账号资料变更
@@ -1084,13 +1085,16 @@ atoms:
       - 用户资料修改记录可追溯
     exceptions:
       - 头像图片不存在或上传失败
-      - 电话或身份证格式非法
+      - 电话或工号格式非法
+      - 普通操作员工号为空或重复
       - 非本人或无管理员权限修改受限字段
     failure_handling:
       - 阻止保存并提示格式或权限错误
     invariants:
       - 头像作为后台账号资料，不存储在单一平板本地
-      - 身份证不得明文展示给非本人场景
+      - 系统不采集、不保存身份证
+      - 普通操作员工号在系统内唯一
+      - 管理员账号允许工号为空
     acceptance:
       - id: AC-AUTH-002
         given: 用户在平板或后台修改头像并保存
@@ -1102,13 +1106,14 @@ atoms:
     dependencies:
       - BL-AUTH-001
     baseline_refs: []
-    decision_refs: []
+    decision_refs:
+      - DEC-041
     implementation_refs: []
     test_refs: []
     supersedes: []
-    notes: 身份证和电话不纳入平板注册必填项；管理员可在后台补充和维护。
+    notes: 工号和电话不纳入平板注册必填项；管理员可在后台补充和维护；DEC-041 已确认删除身份证并替换为唯一工号。
     created_at: "2026-09-12"
-    updated_at: "2026-09-12"
+    updated_at: "2026-09-13T05:20:00Z"
     last_verified_at: null
   - id: BL-AUTH-003
     title: 平板注册账号需后台审批
@@ -1616,7 +1621,8 @@ atoms:
       statement: 产品信息包含产品名称、可选产品图片和配方；配方只能引用现有辅料库中的辅料并填写每吨用量；辅料尚未录入时，操作人员应先录入辅料再创建产品配方。
     outputs:
       - 可用于生成称量清单的产品配方
-    side_effects: []
+    side_effects:
+      - 配方发生影响生产配料的修改时保留不可变历史版本
     exceptions:
       - 配方引用的辅料不存在
       - 产品名称重复或每吨用量非法
@@ -1626,6 +1632,8 @@ atoms:
       - 配方引用的每个辅料都必须存在于辅料库
       - 配方中的用量按每吨成品保存，后续按目标生产重量等比换算
       - 产品图片为可选资料，不参与配方数量计算
+      - 一个产品只允许一个当前配方
+      - 历史工单继续使用创建时的配方快照，不受后续配方修改影响
     acceptance:
       - id: AC-DATA-004
         given: 管理员创建产品并从辅料库选中三种辅料
@@ -1641,12 +1649,13 @@ atoms:
     baseline_refs: []
     decision_refs:
       - DEC-018
+      - DEC-039
     implementation_refs: []
     test_refs: []
     supersedes: []
-    notes: 产品配方及可选产品图片录入支持电脑和平板端，但仅管理员可操作。
+    notes: 产品配方及可选产品图片录入支持电脑和平板端，但仅管理员可操作；DEC-039 已确认一个产品只允许一个当前配方，并要求保留可查看的配方历史版本。
     created_at: "2026-09-09T03:55:00Z"
-    updated_at: "2026-09-12T12:25:28Z"
+    updated_at: "2026-09-13T05:00:00Z"
     last_verified_at: null
   - id: BL-DEVICE-001
     title: 平板优先作为现场操作与辅料识别设备

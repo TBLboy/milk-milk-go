@@ -1,5 +1,305 @@
 version: "0.2"
 decisions:
+  - id: DEC-041
+    title: 用唯一工号替换账号身份证字段
+    category: data
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-AUTH-002
+      - BL-AUTH-003
+    context: 当前系统保存并展示完整身份证号码，用户认为没有必要继续承担该敏感信息。用户已确认用工号替换身份证，普通操作员工号必须唯一，管理员工号可选。
+    hypothesis: 用唯一工号标识人员可以满足账号归属、生产追溯和管理需要，同时移除完整身份证的采集、存储和展示风险。
+    options:
+      - name: 用工号替换身份证
+        benefits:
+          - 满足人员识别和追溯需求
+          - 避免保存完整身份证
+          - 管理界面和用户资料更简单
+        costs:
+          - 需要数据库迁移、接口和两端界面改造
+          - 需要定义普通账号与管理员账号的必填规则
+        risks:
+          - 工号规则不稳定时可能影响人员识别
+      - name: 完全删除身份证且不增加工号
+        benefits:
+          - 数据字段最少
+        costs:
+          - 账号缺少与企业人事信息对应的稳定业务标识
+        risks:
+          - 后续追溯只能依赖用户名或显示名
+      - name: 保留身份证但继续脱敏
+        benefits:
+          - 保留现有身份核验能力
+        costs:
+          - 继续保存个人敏感信息并承担合规和泄露风险
+        risks:
+          - 与最小化收集原则冲突
+    decision: 删除身份证字段及其采集、展示和接口能力，新增唯一工号 employee_no。普通操作员工号必填且唯一，管理员账号工号可选；普通用户只能查看自己的工号，管理员可维护普通用户工号。
+    reason_summary:
+      - 用户确认身份证没有必要保存
+      - 工号足以支撑人员识别和生产追溯
+    conditions:
+      - 工号在所有普通操作员范围内唯一
+      - 管理员账号允许工号为空
+      - 用户名登录方式保持不变
+      - 用户协议中涉及身份证的条款同步调整为工号
+      - 迁移时不得在日志或接口响应中继续泄露历史身份证原文
+    action: 后续实现数据库迁移、后端模型与接口、PC 账号管理、APP 用户资料、注册审批和用户协议文本更新。
+    expected_result: 系统不再收集或保存身份证，普通操作员使用唯一工号进行人员识别。
+    reversal_plan: 如果客户未来提出合规核验需求，应重新评估采集目的和法律依据，不直接从备份恢复身份证字段。
+    observation: 用户确认采用“唯一工号替换身份证”的方案。
+    actual_result: 业务规则已确认，功能代码和数据结构尚未修改。
+    outcome_status: not-observed
+    lesson: 当用户账号已有稳定登录名时，人员追溯字段仍应选择可管理、低敏感且与线下组织对应的业务标识。
+    evidence:
+      - user-statement/2026-09-13 确认用工号替换身份证
+    supersedes: []
+    created_at: "2026-09-13T05:20:00Z"
+    updated_at: "2026-09-13T05:20:00Z"
+  - id: DEC-040
+    title: 当前版本继续使用公司内部 WiFi 下的 HTTP 主机 IP 连接
+    category: security
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-DEVICE-002
+      - BL-AUTH-001
+      - BL-EVID-001
+    context: 完成 HTTPS、内部 CA、证书分发、服务器地址稳定性和证书续期方案调研后，用户认为客户现场不需要引入这些复杂度。客户只需要让平板连接公司 WiFi，并在 App 中填写后端电脑当前的主机 IP。
+    hypothesis: 当前版本保留 HTTP 和手工 IP 配置可以显著降低部署与维护复杂度，并将安全强化留到客户明确要求 HTTPS 或网络条件变化时处理。
+    options:
+      - name: 当前版本使用内部 WiFi HTTP 和手工主机 IP
+        benefits:
+          - 部署和现场维护最简单
+          - 不依赖固定 IP、内网 DNS 或证书续期
+          - 与当前 App、Windows 服务和安装包实现一致
+        costs:
+          - 登录令牌、账号资料、审批和现场照片在局域网明文传输
+          - 无法防御同一网络内的监听或服务冒用
+          - IP 改变后需要在 App 中重新填写地址
+        risks:
+          - 客户 WiFi 不是受控独立生产网络时，安全风险会上升
+      - name: 当前版本启用内部 CA HTTPS
+        benefits:
+          - 保护传输内容并验证后端身份
+        costs:
+          - 需要证书、信任、IP 变化重签和续期流程
+          - 增加安装和故障排查复杂度
+        risks:
+          - 现场无法维护时可能形成半完成的 HTTPS 部署
+      - name: 暂缓交付并等待正式网络安全方案
+        benefits:
+          - 可先解决网络边界和证书基础设施
+        costs:
+          - 阻塞当前 Demo 和流程验证
+        risks:
+          - 现场需求变化导致整体延期
+    decision: 当前版本继续使用公司内部 WiFi 下的 HTTP，不引入 HTTPS、内部 CA、证书分发或固定 IP 要求。平板连接 WiFi 后手工填写后端电脑 IP，后端仍监听局域网端口；正式生产前如客户提高安全要求，再单独立项实施 HTTPS。
+    reason_summary:
+      - 用户明确要求当前阶段简单部署
+      - 客户现场只需平板连接 WiFi 并输入主机 IP
+      - HTTPS 的证书和地址稳定性要求与当前简化目标不匹配
+    conditions:
+      - 后端和现场平板处于同一个可互通的内部局域网
+      - 客户接受当前 HTTP 明文传输风险
+      - App 继续支持手工填写主机 IP
+      - 文档不得把当前 HTTP 方案描述为加密通信
+      - 如果正式生产网络不受控或出现合规要求，应重新评估 HTTPS
+    action: 更新需求基线，将当前通信约束明确为内部 WiFi HTTP + 手工 IP；保留 RES-004 作为未来安全升级研究，不进入当前实现范围。
+    expected_result: 当前 App、后端和安装流程保持简单，客户只需连接 WiFi 并输入主机 IP 即可使用。
+    reversal_plan: 如果客户后续要求加密传输，按 RES-004 重新实施内部 CA HTTPS，并同步改造 App 信任配置、服务启动和安装程序。
+    observation: 用户答复“还是简单一点，暂时不考虑这么复杂，客户只需要连接 WiFi，输入主机 IP 到 App，就还是用现在的内网局域网方案”。
+    actual_result: 当前版本通信范围已确定为 HTTP 内部局域网方案，HTTPS 研究保留但不再作为当前阻塞项。
+    outcome_status: successful
+    lesson: 安全改进应按客户实际风险承受和运维能力控制范围，不能为了理论完备度给当前交付增加无法维护的基础设施。
+    evidence:
+      - user-statement/2026-09-13 当前版本继续使用内网 HTTP
+    supersedes: []
+    created_at: "2026-09-13T05:20:00Z"
+    updated_at: "2026-09-13T05:20:00Z"
+  - id: DEC-039
+    title: 一个产品只使用一个配方并保留配方历史版本
+    category: business
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-DATA-004
+      - BL-WEIGH-001
+    context: 当前产品与配方是一对一关系，配方表的 version 字段虽然会在编辑时递增，但只保存最新配方内容，没有历史快照。用户明确表示一个产品只允许一个配方，并要求修改配方后保留版本记录。
+    hypothesis: 保持一个产品对应一个当前配方，同时在每次影响辅料种类或用量的修改产生不可变历史版本，可以兼顾现场操作简单性和配方追溯。
+    options:
+      - name: 一个产品一个当前配方并保留历史版本
+        benefits:
+          - 新建工单时只有一个明确的当前配方
+          - 可以追溯配方何时由谁修改以及修改前的辅料和用量
+          - 已创建工单继续使用工单快照，不受后续修改影响
+        costs:
+          - 需要增加配方版本和版本明细数据结构
+          - 需要设计版本查看和迁移逻辑
+        risks:
+          - 版本递增规则若定义不清，可能产生无意义版本
+      - name: 允许多个并行配方
+        benefits:
+          - 同一产品可以保留多个可生产方案
+        costs:
+          - 创建工单时必须额外选择配方，现场操作更复杂
+        risks:
+          - 选错配方会削弱防错效果
+      - name: 只保留最后修改时间，不保存历史
+        benefits:
+          - 实现最简单
+        costs:
+          - 无法还原历史配方
+        risks:
+          - 无法满足配方变更追溯
+    decision: 一个产品只允许一个当前配方；配方发生影响生产配料的修改时，系统保留不可变历史版本。新建工单只使用当前版本，已创建工单继续使用创建时的配方快照。
+    reason_summary:
+      - 用户明确确认一个产品只允许一个配方
+      - 用户要求修改配方后可以查看版本记录
+      - 现有工单快照机制已经避免历史工单被后续修改影响
+    conditions:
+      - 第一版不要求同时启用多个可生产配方
+      - 历史版本至少保存版本号、修改时间、修改人、辅料身份和每吨用量
+      - 仅修改产品名称或产品图片是否递增配方版本，留待实现设计时明确
+      - 第一版不要求自动恢复旧版本，但数据应支持后续增加该能力
+    action: 更新产品配方业务规则，并在后续实现任务中增加配方历史版本模型、查看入口和迁移逻辑。
+    expected_result: 每个产品只有一个可生产配方，配方修改可追溯且不影响历史工单。
+    reversal_plan: 如果未来需要同一产品并行维护多套配方，则新增配方方案选择，不覆盖现有历史版本数据。
+    observation: 用户确认“一个产品肯定只允许一个配方，修改配方后可以做版本记录”。
+    actual_result: 规则已确认，代码尚未实现历史版本存储和查看。
+    outcome_status: not-observed
+    lesson: 当前配方与历史工单快照应作为两个独立追溯层次，不能只依赖一个可变的配方版本号。
+    evidence:
+      - user-statement/2026-09-13 产品配方版本规则
+    supersedes: []
+    created_at: "2026-09-13T05:00:00Z"
+    updated_at: "2026-09-13T05:00:00Z"
+  - id: DEC-038
+    title: 当前阶段不强制贴标后的二次复核扫码
+    category: business
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-LABEL-001
+      - BL-RECOG-001
+    context: 自制二维码方案此前建议在标签粘贴后再次扫码，确认标签贴到了正确的辅料包装上。用户认为当前没有这个必要，希望简化现场流程。
+    hypothesis: 取消当前阶段的强制贴标复核扫码可以减少现场步骤；系统仍保留 labelId 和标签记录，后续如发现贴错标签风险不可接受，可以重新增加复核。
+    options:
+      - name: 当前阶段不强制贴标复核
+        benefits:
+          - 标签制作和粘贴流程更简单
+          - 不增加现场额外扫码步骤
+          - 不阻塞当前 Demo 和首版流程
+        costs:
+          - 系统无法发现“正确标签贴到错误包装”的人为错误
+          - 扫码验证的是标签身份，不证明包装内辅料与标签一致
+        risks:
+          - 贴错标签会绕过辅料类型防错
+      - name: 强制贴标后复核扫码
+        benefits:
+          - 可以降低标签贴错导致的系统性防错漏洞
+        costs:
+          - 增加贴标后的操作步骤
+          - 需要定义复核人、复核时间和异常处理
+        risks:
+          - 现场可能为了赶工而形式化操作
+      - name: 仅对高风险辅料或抽查场景复核
+        benefits:
+          - 在风险和操作成本之间折中
+        costs:
+          - 需要定义高风险辅料范围
+          - 流程规则更复杂
+        risks:
+          - 未抽查批次仍可能发生贴错
+    decision: 当前阶段不把贴标后的二次复核扫码设为强制步骤；保留后续按现场风险重新引入复核或抽检的可能。平板业务扫码仍应提交并校验 labelId，不能只校验 materialId。
+    reason_summary:
+      - 用户明确认为当前没有强制贴标复核的必要
+      - 当前仍处于流程验证和 Demo 阶段
+    conditions:
+      - 该决定不取消 labelId 和标签记录要求
+      - 如果正式生产阶段出现标签贴错或质量审计要求，应重新评估
+    action: 更新标签业务规则，移除当前流程中的强制贴标复核描述，并在需求基线中保留剩余风险说明。
+    expected_result: 当前标签流程不包含强制二次复核，但标签身份和操作记录仍可追溯。
+    reversal_plan: 如果客户在正式生产要求复核，恢复贴标后的扫码步骤并增加独立复核记录。
+    observation: 用户答复“贴标后的复核扫码暂时没这个必要”。
+    actual_result: 当前阶段已决定不强制二次复核，代码和需求文本待同步调整。
+    outcome_status: not-observed
+    lesson: 标签身份校验不能替代包装实物校验，取消复核时必须明确记录残余风险。
+    evidence:
+      - user-statement/2026-09-13 贴标复核决策
+    supersedes: []
+    created_at: "2026-09-13T05:00:00Z"
+    updated_at: "2026-09-13T05:00:00Z"
+  - id: DEC-037
+    title: 真实标签打印机接入推迟到第一版 Demo 验收后
+    category: business
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks: []
+    related_business_logic:
+      - BL-LABEL-001
+      - BL-LABEL-002
+    context: GPT 功能审查指出当前“生成并打印标签”只创建数据库记录，没有真正连接打印机，也没有打印成功、失败或结果未知状态。用户随后明确要求先把第一版 Demo 交给客户查看，客户确认没有问题后再做二维码与打印机的真实连接。
+    hypothesis: 当前阶段保留标签生成、二维码预览、标签记录和现场识别能力，不接入真实打印机，可以先把核心业务流程交给客户验收；真实打印机驱动、纸张、状态回传和贴标复核在 Demo 通过后单独实施。
+    options:
+      - name: Demo 验收前只生成标签记录和二维码预览
+        benefits:
+          - 不阻塞核心业务 Demo
+          - 避免在没有正式打印机型号时返工
+          - 客户可先确认标签内容和现场流程
+        costs:
+          - 当前“打印”尚未形成实物闭环
+          - 不能把当前版本称为完整生产打印版
+        risks:
+          - 客户可能误认为点击按钮后已经真实打印
+      - name: 立即采购并接入真实打印机
+        benefits:
+          - Demo 即包含实物标签
+          - 可提前验证贴标和扫码流程
+        costs:
+          - 需要先确定打印机、驱动、纸张和现场打印方式
+          - 当前 Demo 范围被硬件选型阻塞
+        risks:
+          - 型号变化导致打印适配返工
+      - name: 完全取消标签打印
+        benefits:
+          - 范围最小
+        costs:
+          - 失去自制二维码防错方案的关键基础
+        risks:
+          - 类型识别链路无法按现有方案落地
+    decision: 当前 Demo 阶段不接入真实标签打印机；只保留标签生成、二维码预览、标签记录、打印批次记录和现场扫码识别能力。Demo 经客户验收通过后，再重新立项实施真实打印机连接、打印状态、重打、作废和贴标复核闭环。
+    reason_summary:
+      - 用户明确要求先给客户看第一版 Demo
+      - 当前尚未采购和确定正式标签打印机
+      - 先验证业务流程可以减少硬件变更造成的返工
+    conditions:
+      - 当前界面和文档不得把未接入打印机的操作描述成已完成真实打印
+      - Demo 仍需生成稳定 labelId 和二维码内容，保证后续打印适配无需重做标签数据模型
+      - Demo 验收后必须重新处理打印成功、失败、结果未知、重打和作废状态
+      - 真实打印机接入不因本决策而从整体产品目标中删除，只是调整阶段顺序
+    action: 更新 REQ-001 的范围说明和未决项，并在后续讨论标签闭环时先区分 Demo 能力与正式打印能力。
+    expected_result: 当前 Demo 不被打印机硬件选型阻塞，客户确认核心流程后再实施真实打印集成。
+    reversal_plan: 如果客户要求 Demo 必须使用实物标签，则转为提前完成打印机选型和临时打印方案。
+    observation: 用户答复“二维码连接打印机，这个等第一版本 demo 给客户，客户看了没问题之后我们再做”。
+    actual_result: 真实打印机接入已从当前 Demo 范围调整到 Demo 验收后的后续实施项。
+    outcome_status: successful
+    lesson: 硬件集成在型号和现场条件未确定前，可以通过稳定数据契约先行完成业务流程验证。
+    evidence:
+      - user-statement/2026-09-13 标签打印机接入推迟
+    supersedes: []
+    created_at: "2026-09-13T05:00:00Z"
+    updated_at: "2026-09-13T05:00:00Z"
   - id: DEC-036
     title: Windows 安装包内置 SMTP 配置并实现零输入部署
     category: security

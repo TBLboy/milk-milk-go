@@ -491,3 +491,94 @@ questions:
       - user-statement/2026-09-09 Q-022 确认
     created_at: "2026-09-09T04:20:00Z"
     answered_at: "2026-09-09T04:30:00Z"
+  - id: Q-023
+    title: 公司内部 WiFi 下是否要求 HTTPS
+    status: answered
+    authority: C
+    impact: high
+    uncertainty: medium
+    rework_cost: medium
+    related_business_logic:
+      - BL-DEVICE-002
+      - BL-AUTH-001
+      - BL-EVID-001
+    related_tasks: []
+    context: 用户明确计划使用公司内部 WiFi，而不是让平板连接临时热点或依赖公网。当前系统使用 HTTP，登录令牌、头像、电话、身份证资料、工单、审批和现场照片都会在局域网中传输。内部 WiFi 是网络范围，不等于已确认接受明文传输风险。
+    recommendation: 优先评估内部 CA 或安装程序生成受平板信任证书的 HTTPS 方案；如果因 Android 证书信任和现场维护成本决定继续使用 HTTP，应由客户确认该 WiFi 为受控生产网络并形成风险接受记录。
+    alternatives:
+      - 使用 HTTPS：保护令牌和个人信息，但需要证书签发、分发和续期方案。
+      - 使用受控内部 WiFi 下的 HTTP：部署简单，但必须接受局域网监听和冒用风险。
+      - 先 Demo 使用 HTTP，正式投产前再升级 HTTPS：Demo 成本最低，但需要明确正式版上线门槛。
+    answer: 当前版本继续使用公司内部局域网 WiFi 下的 HTTP，不引入 HTTPS、内部 CA、证书分发和证书续期；平板只需连接 WiFi 并在 App 中填写主机 IP。系统仍需明确区分这是当前简化交付方案，未来如对安全要求提高可重新评估 HTTPS。
+    source_refs:
+      - user-statement/2026-09-13 使用公司内部局域网 WiFi
+      - .project-log/docs/gpt-feature-review-verification-20260913.md#P0-5
+    created_at: "2026-09-13T05:00:00Z"
+    answered_at: "2026-09-13T05:20:00Z"
+  - id: Q-024
+    title: 当前阶段是否强制贴标后的二次复核扫码
+    status: answered
+    authority: C
+    impact: high
+    uncertainty: low
+    rework_cost: medium
+    related_business_logic:
+      - BL-LABEL-001
+      - BL-RECOG-001
+    related_tasks: []
+    context: 自制二维码方案此前建议在标签粘贴后再次扫码，以发现正确标签贴到错误包装的情况。用户认为当前没有这个必要。
+    recommendation: 当前阶段不强制二次复核；保留 labelId 和标签记录，并在正式生产风险评审时重新评估。
+    alternatives:
+      - 不强制复核：流程最简，但保留贴错标签的残余风险。
+      - 全部强制复核：能降低贴错风险，但增加现场步骤。
+      - 仅高风险辅料或抽查复核：折中，但规则更复杂。
+    answer: 当前阶段不要求贴标后的二次复核扫码；扫码时仍必须提交并校验 labelId。
+    source_refs:
+      - user-statement/2026-09-13 贴标复核决策
+    created_at: "2026-09-13T05:00:00Z"
+    answered_at: "2026-09-13T05:00:00Z"
+  - id: Q-025
+    title: 身份证是否完全删除或替换为工号
+    status: answered
+    authority: C
+    impact: medium
+    uncertainty: low
+    rework_cost: medium
+    related_business_logic:
+      - BL-AUTH-002
+    related_tasks: []
+    context: 用户认为账号没有必要保存完整身份证，并提出可以删除字段或替换为工号。当前数据库、后端接口、PC 账号管理和平板用户资料仍保存并展示身份证字段。
+    recommendation: 用唯一工号替换身份证；普通操作员工号建议必填且唯一，管理员账号可以选填。系统删除身份证采集、展示和接口，并通过数据库迁移移除该字段。
+    alternatives:
+      - 完全删除身份证且不增加新字段：隐私风险最低，但账号与线下员工档案缺少稳定对应关系。
+      - 用唯一工号替换身份证：适合生产追溯和人员识别，但需要定义必填和唯一规则。
+      - 保留身份证仅做脱敏：兼容现状，但仍承担完整个人敏感信息存储和合规成本。
+    answer: 删除身份证字段，用工号替换；普通操作员工号必填且唯一，管理员账号工号可选。普通用户只能查看自己的工号，管理员可以维护普通用户工号。
+    source_refs:
+      - user-statement/2026-09-13 身份证与工号建议
+    created_at: "2026-09-13T05:00:00Z"
+    answered_at: "2026-09-13T05:20:00Z"
+  - id: Q-026
+    title: 现场服务器地址是否可以通过 DHCP 保留或稳定主机名固定
+    status: deferred
+    authority: C
+    impact: high
+    uncertainty: medium
+    rework_cost: medium
+    related_business_logic:
+      - BL-DEVICE-002
+      - BL-AUTH-001
+    related_tasks: []
+    context: 客户可能无法保证现场电脑的 IP 永远不变。HTTPS 证书的信任链可以由 App 内置根 CA 固定，但标准证书校验仍要求证书 SAN 与平板实际访问的 IP 或主机名一致。
+    recommendation: 优先让路由器或 DHCP 服务按电脑网卡 MAC 配置地址保留，电脑继续使用 DHCP，但每次获得同一个 IP；如果网络支持内网 DNS，则使用稳定的 `milkweigh` 类主机名并给证书配置 DNS SAN。两者都不可用时，提供 IP 变化后重新签发服务器叶子证书的本地工具。
+    alternatives:
+      - DHCP 地址保留：配置最简单，仍可能出现网络管理员更换设备或路由器。
+      - 内网主机名或本地 DNS：证书不随 IP 变化失效，但依赖网络设备支持。
+      - IP 变化后重新签发叶子证书：根 CA 和 App 不需要变化，但需要现场管理员执行证书更新。
+      - 继续使用 HTTP：不需要证书，但必须接受局域网明文传输和冒用风险。
+    answer: 当前版本使用 HTTP，不依赖服务器证书，因此暂不要求 DHCP 地址保留、内网主机名或证书重签工具。平板每次只需填写当前主机 IP 即可；未来升级 HTTPS 时再重新确认地址稳定性。
+    source_refs:
+      - user-statement/2026-09-13 客户 IP 可能不固定
+      - .project-log/research/solution-research.yaml#RES-004
+    created_at: "2026-09-13T05:10:00Z"
+    answered_at: "2026-09-13T05:20:00Z"

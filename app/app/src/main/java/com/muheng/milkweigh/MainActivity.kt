@@ -21,12 +21,25 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
@@ -88,6 +101,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -99,6 +113,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -182,6 +197,104 @@ private val Green = Color(0xFF1F9469)
 private val Ink = Color(0xFF17202B)
 private val Muted = Color(0xFF77858F)
 private val Page = Color(0xFFF5F7F9)
+private const val UserAgreementVersion = "1.0"
+private val UserAgreementText = """
+    牧衡辅料称重防错系统用户协议
+
+    版本：V$UserAgreementVersion
+    生效日期：2026年9月13日
+
+    特别提示
+    1. 本系统是部署在系统使用单位内部网络中的生产辅助管理系统，用于辅料主数据、产品配方、工单、辅料类型确认、称重记录、审批、标签打印和追溯查询。本系统不连接金蝶系统，不以面向社会公众的互联网平台形式提供服务。
+    2. 用户在注册、登录或使用本系统前，应完整阅读并理解本协议。用户勾选“我已阅读并同意《用户协议》”，或实际注册、登录、使用本系统，即表示已阅读、理解并同意接受本协议约束。
+    3. 本系统用于辅助生产管理和留痕，不能替代使用单位的岗位标准操作流程、食品安全管理、计量管理、质量控制、安全生产制度以及国家法律法规。用户仍应对实际领料、称量、投料和审批行为承担相应责任。
+
+    一、定义
+    1. “运营方”指部署、管理和使用本系统并负责账号、业务数据及现场管理的单位。
+    2. “用户”指经运营方批准并取得账号，依法依规使用本系统的管理员或普通操作员。
+    3. “业务数据”指产品、配方、辅料、工单、生产步骤、称量结果、审批结论、标签及设置等数据。
+    4. “操作证据”指用户通过本系统形成或提交的现场照片、二维码识别结果、称重数据、水印信息、操作日志及其他可追溯记录。
+    5. “管理员”指经运营方授权，能够维护主数据、账号、审批事项、标签和系统设置的用户。
+
+    二、账号申请、审批与权限
+    1. 平板端注册的账号默认为普通操作员账号。注册申请须经管理员审批，审批通过后方可登录和使用相应功能。
+    2. 管理员账号应由运营方预先配置或授权，不通过公开注册方式产生。系统按照账号角色分配功能权限，用户不得越权访问、修改或导出数据。
+    3. 用户应提供真实、准确、完整的账号资料，并在资料发生变化时及时更新。不得冒用他人身份，不得使用虚假身份或虚假资料注册账号。
+    4. 账号原则上仅供本人使用。用户不得出借、转让、共享账号，不得允许他人以本人账号实施操作。
+    5. 用户应妥善保管账号和密码，避免在公共设备或无人值守状态下保持登录。发现账号被盗用、密码泄露或存在其他安全风险时，应立即联系管理员处理。
+    6. 管理员可以依照运营方管理制度创建、审批、停用账号或重置密码。因离职、调岗、权限变化或安全风险，运营方有权及时调整或终止账号权限。
+
+    三、系统使用规则
+    1. 用户应当按照运营方批准的工单、配方、操作顺序和权限执行任务，不得擅自跳过步骤、变更配方、替换辅料或绕过审批。
+    2. 辅料类型确认应使用系统提供的现场“拍照扫码”功能。系统从本次现场拍摄的照片中解析二维码，并使用该照片作为操作证据。用户不得使用历史照片、相册图片、截图或伪造图片代替现场拍摄。
+    3. 重量确认应以实际称量结果为准。第一版系统不直接连接电子秤，用户须人工输入称量读数，并拍摄能够辨认电子秤读数的现场照片。用户应对输入数据和照片真实性负责。
+    4. 用户不得篡改、遮挡、删除或伪造系统水印、时间、操作人员、工单、步骤、辅料、二维码、重量和审批记录，不得通过技术手段规避类型校验、重量允差或审批流程。
+    5. 管理员应准确维护辅料、产品配方、标签和账号资料。主数据发生变化时，应以书面制度、审批记录或其他可靠依据为基础，确保后续生产使用最新有效数据。
+    6. 工单应按顺序完成全部辅料步骤，并在类型确认、称重证据等必要信息完整后方可提交完成。撤销或终止工单不删除历史记录，相关操作继续保留用于追溯。
+    7. 用户发现二维码异常、辅料包装不一致、称量超差、设备故障、网络中断、数据冲突或其他可能影响生产安全的情况时，应停止相关操作并按运营方制度报告，不得隐瞒或强行绕过。
+
+    四、个人信息与数据处理
+    1. 为实现账号管理、身份核验、生产追溯、质量审计、安全管理和系统运维，系统可能处理用户提供的姓名或显示名、账号、电话、身份证信息、头像，以及用户在使用过程中形成的登录记录、设备或网络信息、操作日志、工单记录、审批记录、称重数据和现场照片。
+    2. 运营方按照合法、正当、必要和诚信原则处理个人信息，处理目的包括履行内部管理职责、保障食品安全和生产追溯、维护系统安全、处理争议及履行法律法规要求的义务。
+    3. 身份证等敏感个人信息仅限有必要权限的管理员或用户本人在相应场景查看。系统在账号列表等非必要场景中采取脱敏展示措施。
+    4. 现场照片可能包含人员、辅料、电子秤读数或生产环境信息。用户应避免拍摄与业务无关的人员面部、私密信息或其他不必要内容。相关照片仅用于生产管理、追溯、审计和异常核查，未经授权不得对外提供。
+    5. 本系统原则上在运营方内部网络运行，不主动将业务数据上传至互联网。用户主动提交 BUG 反馈时，系统会将问题描述、所选图片、提交账号及必要的技术信息发送至运营方配置的指定维护邮箱，用于问题排查和系统维护。
+    6. 生产工单、称重记录、审批记录、操作证据和审计日志按照运营方的追溯要求长期保存。第一版不提供物理删除功能。因法律法规、食品安全追溯、审计或争议处理需要，运营方可以在必要期限内继续保存相关记录。
+    7. 用户可以通过管理员或运营方提供的内部渠道，依法申请查询、更正本人资料或提出个人信息相关请求。对于依法必须保存的业务记录和操作证据，运营方可以不予删除，但应说明处理依据。
+    8. 运营方应采取访问控制、权限校验、密码哈希、备份、日志审计等合理措施保护数据安全。任何用户不得未经授权收集、复制、导出、传播、出售或用于与本职工作无关的目的。
+
+    五、操作记录、证据与审计
+    1. 系统以服务器记录的时间作为主要审计时间。现场照片按照系统规则添加操作人员、拍摄时间、工单、步骤或辅料等水印信息。
+    2. 登录、主数据修改、工单执行、类型确认、称重、审批、标签打印、备份和异常处理等关键活动可能被记录并接受审计。
+    3. 操作记录和证据可用于生产追溯、质量检查、内部审计、事故调查、争议处理以及配合监管或司法机关依法开展的调查。
+    4. 用户不得以任何理由要求管理员删除、修改或伪造已经形成的真实操作记录。发现记录确有错误的，应通过系统允许的更正、撤销、补充说明或异常审批流程处理，并保留原始痕迹。
+
+    六、禁止行为
+    1. 禁止利用本系统实施违反法律法规、食品安全、计量、劳动、网络与数据安全等规定的行为。
+    2. 禁止未经授权访问、探测、攻击、干扰、破坏系统，或传播病毒、恶意程序及其他危害系统安全的代码。
+    3. 禁止绕过权限控制，擅自修改数据库、接口数据、系统时间、审计日志、图片水印或业务状态。
+    4. 禁止伪造、变造、买卖或冒用账号、二维码、标签、照片、审批意见和生产记录。
+    5. 禁止擅自对系统进行反向工程、破解、批量抓取、搭建未经授权的镜像或接口，或删除、隐藏系统的权利标识。
+    6. 禁止将运营方的业务数据、配方、工艺、客户信息、账号资料和现场照片用于未经授权的商业活动或对外披露。
+    7. 用户违反本协议或运营方管理制度，运营方有权根据情节采取提醒、限制功能、暂停账号、终止权限、追究责任等措施；涉嫌违法的，依法移送有关机关处理。
+
+    七、知识产权
+    1. 本系统软件、界面设计、文档、标识及相关技术成果的知识产权归其合法权利人所有。未经权利人书面许可，用户不得复制、修改、发布、出租、出售、转让或用于本协议约定之外的用途。
+    2. 用户录入的产品、配方、辅料、工单、生产记录和操作证据等业务数据，其权利归属及使用规则按照运营方制度、相关合同和法律规定确定。本协议不改变业务数据原有的权利归属。
+    3. 用户不得因使用本系统而取得系统软件或运营方知识产权的所有权。系统在授权范围内提供的是有限、非独占、不可转让的使用权。
+
+    八、服务提供、变更、中断与终止
+    1. 本系统依赖运营方内部电脑、局域网、Android 平板、存储设备、备份和电源等环境。网络中断、设备故障、系统维护、升级、断电、容量不足或不可抗力可能导致服务暂时中断。
+    2. 系统进行维护、升级或数据迁移时，运营方应尽可能提前通知用户并采取合理措施保护数据。因现场生产需要，用户可以按照运营方制度采用经批准的应急流程，但应及时补录并保留原始依据。
+    3. 运营方有权根据业务、法律或安全需要调整系统功能、接口、版本和权限。影响用户重要权益的重大变更，应以合理方式通知用户；依法需要重新取得同意的，运营方应重新征得同意。
+    4. 用户离职、调岗、账号停用或授权终止后，应停止使用系统，并按照运营方要求交还设备、资料和账号权限。账号终止不影响终止前已形成的操作记录和证据的依法保存。
+
+    九、责任边界
+    1. 用户应按照岗位要求核对屏幕提示、实物、电子秤读数和现场情况后再提交操作。系统校验通过不代表用户已经免除人工核对、岗位复核或质量放行义务。
+    2. 因用户未按规定扫码、拍照、输入、核对、审批或保管账号，导致数据错误、生产异常或损失的，由用户及运营方按照内部制度和法律规定处理。
+    3. 因不可抗力、第三方设备或网络故障、电力中断、操作系统或数据库异常等非系统运营方可合理控制的原因造成服务中断或数据延迟的，运营方应尽合理努力恢复，但依法可以免除或减轻相应责任。
+    4. 运营方不对用户擅自修改系统、使用未经授权的软件或设备、泄露账号密码、传播虚假信息等行为造成的后果承担责任。
+    5. 本协议中的责任限制不适用于法律禁止免除或限制的责任，也不免除因故意或重大过失依法应承担的责任。
+
+    十、通知与联系
+    1. 系统公告、后台通知、管理员通知、弹窗提示和协议更新页面均可作为有效通知方式。
+    2. 用户对账号、数据、权限、个人信息或系统使用有疑问的，应通过运营方指定的内部管理员或服务渠道联系处理。
+
+    十一、协议更新
+    1. 运营方可以依据法律法规变化、监管要求、系统功能调整或内部管理制度更新本协议，并在系统中标注新版本和生效日期。
+    2. 协议更新后，用户继续使用系统即表示接受更新后的协议。用户不同意更新内容的，应停止使用并联系管理员处理账号和权限。
+    3. 对用户权益可能产生重大影响的变更，运营方应通过合理方式提示，必要时要求用户重新阅读并确认。
+
+    十二、法律适用与争议解决
+    1. 本协议的订立、效力、解释、履行和争议解决适用中华人民共和国大陆地区法律。
+    2. 因本协议或系统使用发生争议，双方应先友好协商；协商不成的，除法律另有强制性规定外，可向运营方所在地有管辖权的人民法院提起诉讼。
+    3. 本协议部分条款被认定无效、被撤销或不可执行的，不影响其他条款的效力。双方应以合法有效且最接近原条款目的的方式处理。
+
+    十三、其他
+    1. 本协议标题仅为方便阅读，不影响条款含义。
+    2. 本协议与运营方依法发布的专项规则、岗位制度或单独签署的协议不一致时，以更符合法律法规且更具体的约定为准。
+    3. 用户在系统中点击同意、登录或实际使用系统，即确认已获得必要的岗位授权，并愿意按照本协议及运营方制度使用本系统。
+""".trimIndent()
 
 private fun parseIpParts(url: String): Pair<String, String> {
     val match = Regex("""^http://192\.168\.(\d{1,3})\.(\d{1,3}):\d+/api/v1/?$""", RegexOption.IGNORE_CASE)
@@ -648,13 +761,46 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
         )
     }
     if (showAgreementDialog) {
-        AlertDialog(
-            onDismissRequest = { showAgreementDialog = false },
-            title = { Text("用户协议") },
-            text = { Text("本系统用于辅料称重防错记录，请按现场作业规范操作。操作记录将长期保存，用于生产追溯和异常核查。") },
-            confirmButton = { TextButton(onClick = { showAgreementDialog = false }) { Text("知道了") } }
-        )
+        UserAgreementDialog(onDismiss = { showAgreementDialog = false })
     }
+}
+
+@Composable
+private fun UserAgreementDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("用户协议")
+                Text(
+                    "版本 V$UserAgreementVersion · 生效日期 2026年9月13日",
+                    color = Muted,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Normal,
+                )
+            }
+        },
+        text = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 520.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                Text(
+                    UserAgreementText,
+                    color = Ink,
+                    fontSize = 14.sp,
+                    lineHeight = 22.sp,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("关闭")
+            }
+        },
+    )
 }
 
 @Composable
@@ -1098,9 +1244,36 @@ private fun MainShell(
     var showChangePasswordDialog by remember { mutableStateOf(user.mustChangePassword) }
     var showBugReportDialog by remember { mutableStateOf(false) }
     var isRefreshing by remember { mutableStateOf(false) }
+    val sidebarToggleInteraction = remember { MutableInteractionSource() }
+    val sidebarTogglePressed by sidebarToggleInteraction.collectIsPressedAsState()
+    val sidebarToggleBackground by animateColorAsState(
+        targetValue = if (sidebarTogglePressed) Color(0xFFEAF6F0) else Color(0xFFF4F7F6),
+        label = "sidebarToggleBackground",
+    )
+    val sidebarExpandedWidth = 230.dp
+    val sidebarCollapsedWidth = 76.dp
+    val expandedSidebarPadding = 14.dp
+    val collapsedSidebarPadding = 8.dp
+    val sidebarAnimationSpec = tween<Dp>(durationMillis = 220)
     val sidebarWidth by animateDpAsState(
-        targetValue = if (sidebarExpanded) 230.dp else 76.dp,
+        targetValue = if (sidebarExpanded) sidebarExpandedWidth else sidebarCollapsedWidth,
+        animationSpec = sidebarAnimationSpec,
         label = "sidebarWidth",
+    )
+    val sidebarHorizontalPadding by animateDpAsState(
+        targetValue = if (sidebarExpanded) expandedSidebarPadding else collapsedSidebarPadding,
+        animationSpec = sidebarAnimationSpec,
+        label = "sidebarHorizontalPadding",
+    )
+    val sidebarToggleWidth by animateDpAsState(
+        targetValue = if (sidebarExpanded) 36.dp else sidebarCollapsedWidth - collapsedSidebarPadding * 2,
+        animationSpec = sidebarAnimationSpec,
+        label = "sidebarToggleWidth",
+    )
+    val sidebarToggleHeight by animateDpAsState(
+        targetValue = if (sidebarExpanded) 36.dp else 48.dp,
+        animationSpec = sidebarAnimationSpec,
+        label = "sidebarToggleHeight",
     )
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -1158,29 +1331,36 @@ private fun MainShell(
                     .width(sidebarWidth)
                     .fillMaxSize()
                     .background(Color.White)
-                    .padding(horizontal = if (sidebarExpanded) 14.dp else 8.dp, vertical = 14.dp)
+                    .clipToBounds()
+                    .padding(horizontal = sidebarHorizontalPadding, vertical = 14.dp)
                     .animateContentSize(),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().height(38.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = if (sidebarExpanded) Arrangement.End else Arrangement.Center,
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
                 ) {
-                    if (sidebarExpanded) {
-                        Text(
-                            "导航",
-                            color = Muted,
-                            fontSize = 13.sp,
-                            modifier = Modifier.weight(1f).padding(start = 10.dp),
-                        )
-                    }
-                    IconButton(
-                        onClick = { sidebarExpanded = !sidebarExpanded },
+                    SidebarSectionTitle(
+                        visible = sidebarExpanded,
+                        modifier = Modifier.align(Alignment.CenterStart),
+                    )
+                    Box(
                         modifier = Modifier
-                            .size(36.dp)
+                            .align(Alignment.CenterEnd)
+                            .width(sidebarToggleWidth)
+                            .height(sidebarToggleHeight)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFFF4F7F6)),
+                            .background(sidebarToggleBackground)
+                            .border(
+                                width = 1.dp,
+                                color = if (sidebarTogglePressed) Color(0xFFB9DCCB) else Color(0xFFE5EBEE),
+                                shape = RoundedCornerShape(8.dp),
+                            )
+                            .clickable(
+                                interactionSource = sidebarToggleInteraction,
+                                indication = ripple(bounded = true, color = Green.copy(alpha = 0.16f)),
+                                onClick = { sidebarExpanded = !sidebarExpanded },
+                            ),
+                        contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             if (sidebarExpanded) Icons.Default.ChevronLeft else Icons.Default.ChevronRight,
@@ -1189,9 +1369,6 @@ private fun MainShell(
                             modifier = Modifier.size(20.dp),
                         )
                     }
-                }
-                if (sidebarExpanded) {
-                    Text("现场操作", color = Muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
                 }
                 NavItem("工作台", Icons.Default.Assignment, selected == "工作台", collapsed = !sidebarExpanded) { selected = "工作台" }
                 NavItem("工单", Icons.Default.Inventory2, selected == "工单", collapsed = !sidebarExpanded) { selected = "工单" }
@@ -1203,9 +1380,10 @@ private fun MainShell(
                     NavItem("辅料与配方", Icons.Default.Settings, selected == "辅料与配方", collapsed = !sidebarExpanded) { selected = "辅料与配方" }
                 }
                 Spacer(Modifier.weight(1f))
-                if (sidebarExpanded) {
-                    Text("局域网模式 · 实时接口", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(10.dp))
-                }
+                SidebarNetworkStatus(
+                    visible = sidebarExpanded,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
             when (selected) {
                 "工单" -> OrderListScreen(
@@ -1287,6 +1465,90 @@ private fun MainShell(
 }
 
 @Composable
+private fun SidebarSectionTitle(
+    visible: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        modifier = modifier,
+        enter = fadeIn(
+            animationSpec = tween(durationMillis = 150, delayMillis = 70),
+        ) + slideInHorizontally(
+            animationSpec = tween(durationMillis = 180, delayMillis = 50),
+            initialOffsetX = { width -> -width / 4 },
+        ),
+        exit = fadeOut(
+            animationSpec = tween(durationMillis = 80),
+        ) + slideOutHorizontally(
+            animationSpec = tween(durationMillis = 150),
+            targetOffsetX = { width -> -width / 4 },
+        ),
+    ) {
+        Text(
+            "现场制作",
+            color = Ink,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(start = 10.dp),
+        )
+    }
+}
+
+@Composable
+private fun SidebarNetworkStatus(
+    visible: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        modifier = modifier,
+        enter = fadeIn(
+            animationSpec = tween(durationMillis = 150, delayMillis = 80),
+        ) + expandVertically(
+            animationSpec = tween(durationMillis = 180, delayMillis = 60),
+            expandFrom = Alignment.Bottom,
+        ),
+        exit = fadeOut(
+            animationSpec = tween(durationMillis = 70),
+        ) + shrinkVertically(
+            animationSpec = tween(durationMillis = 140),
+            shrinkTowards = Alignment.Bottom,
+        ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(Color(0xFFF5F9F7))
+                .padding(horizontal = 10.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(7.dp)
+                    .clip(CircleShape)
+                    .background(Green),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "局域网模式",
+                color = Ink,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+            )
+            Spacer(Modifier.weight(1f))
+            Text(
+                "实时接口",
+                color = Green,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+    }
+}
+
+@Composable
 private fun NavItem(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -1294,6 +1556,11 @@ private fun NavItem(
     collapsed: Boolean,
     onClick: () -> Unit,
 ) {
+    val horizontalPadding by animateDpAsState(
+        targetValue = if (collapsed) 19.5.dp else 13.dp,
+        animationSpec = tween(durationMillis = 220),
+        label = "navItemHorizontalPadding",
+    )
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1301,10 +1568,10 @@ private fun NavItem(
             .clip(RoundedCornerShape(8.dp))
             .background(if (active) Color(0xFFEAF6F0) else Color.Transparent)
             .clickable(onClick = onClick)
-            .padding(horizontal = if (collapsed) 0.dp else 13.dp)
+            .padding(start = horizontalPadding, end = 13.dp)
             .animateContentSize(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = if (collapsed) Arrangement.Center else Arrangement.Start,
+        horizontalArrangement = Arrangement.Start,
     ) {
         Icon(
             icon,
@@ -1312,13 +1579,30 @@ private fun NavItem(
             tint = if (active) Green else Muted,
             modifier = Modifier.size(21.dp),
         )
-        if (!collapsed) {
-            Spacer(Modifier.width(12.dp))
-            Text(
-                label,
-                color = if (active) Green else Ink,
-                fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
-            )
+        AnimatedVisibility(
+            visible = !collapsed,
+            enter = fadeIn(
+                animationSpec = tween(durationMillis = 140, delayMillis = 100),
+            ) + expandHorizontally(
+                animationSpec = tween(durationMillis = 180, delayMillis = 70),
+                expandFrom = Alignment.Start,
+            ),
+            exit = fadeOut(
+                animationSpec = tween(durationMillis = 70),
+            ) + shrinkHorizontally(
+                animationSpec = tween(durationMillis = 140),
+                shrinkTowards = Alignment.Start,
+            ),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    label,
+                    color = if (active) Green else Ink,
+                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }
@@ -2169,6 +2453,7 @@ private data class ImagePreviewTarget(
     val previewUri: String? = null,
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AdminMasterDataScreen(repository: MilkRepository) {
     var tab by remember { mutableStateOf("辅料") }
@@ -2180,46 +2465,75 @@ private fun AdminMasterDataScreen(repository: MilkRepository) {
     var showRecipeDialog by remember { mutableStateOf(false) }
     var editingRecipe by remember { mutableStateOf<ProductRecipe?>(null) }
     var previewImage by remember { mutableStateOf<ImagePreviewTarget?>(null) }
+    var isRefreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
-    androidx.compose.runtime.LaunchedEffect(Unit) {
+    suspend fun loadMasterData() {
         materials = repository.listMaterials()
         recipes = repository.listRecipes()
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(30.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Column {
-                Text("辅料与配方", color = Ink, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-                Text("管理员维护现场识别和配方计算需要的主数据", color = Muted, modifier = Modifier.padding(top = 6.dp))
-            }
-            Button(onClick = {
-                if (tab == "辅料") showMaterialDialog = true else showRecipeDialog = true
-            }) {
-                Icon(Icons.Default.Add, null)
-                Spacer(Modifier.width(6.dp))
-                Text(if (tab == "辅料") "新增辅料" else "新增配方")
-            }
-        }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        runCatching { loadMasterData() }
+    }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("辅料", "产品配方").forEach { option ->
-                val selected = tab == option
-                Text(
-                    option,
-                    modifier = Modifier
-                        .clickable { tab = option }
-                        .background(if (selected) Green.copy(alpha = 0.12f) else Color.White, RoundedCornerShape(50))
-                        .border(1.dp, if (selected) Green.copy(alpha = 0.45f) else Color(0xFFE3E8EA), RoundedCornerShape(50))
-                        .padding(horizontal = 18.dp, vertical = 9.dp),
-                    color = if (selected) Green else Muted,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                )
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = {
+            if (!isRefreshing) {
+                isRefreshing = true
+                scope.launch {
+                    runCatching { loadMasterData() }
+                        .onFailure {
+                            Toast.makeText(context, "刷新失败，请检查网络后重试", Toast.LENGTH_SHORT).show()
+                        }
+                    isRefreshing = false
+                }
             }
-        }
+        },
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(30.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Column {
+                        Text("辅料与配方", color = Ink, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                        Text("管理员维护现场识别和配方计算需要的主数据", color = Muted, modifier = Modifier.padding(top = 6.dp))
+                    }
+                    Button(onClick = {
+                        if (tab == "辅料") showMaterialDialog = true else showRecipeDialog = true
+                    }) {
+                        Icon(Icons.Default.Add, null)
+                        Spacer(Modifier.width(6.dp))
+                        Text(if (tab == "辅料") "新增辅料" else "新增配方")
+                    }
+                }
+            }
 
-        if (tab == "辅料") {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("辅料", "产品配方").forEach { option ->
+                        val selected = tab == option
+                        Text(
+                            option,
+                            modifier = Modifier
+                                .clickable { tab = option }
+                                .background(if (selected) Green.copy(alpha = 0.12f) else Color.White, RoundedCornerShape(50))
+                                .border(1.dp, if (selected) Green.copy(alpha = 0.45f) else Color(0xFFE3E8EA), RoundedCornerShape(50))
+                                .padding(horizontal = 18.dp, vertical = 9.dp),
+                            color = if (selected) Green else Muted,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                        )
+                    }
+                }
+            }
+
+            if (tab == "辅料") {
                 items(materials, key = { it.materialId }) { material ->
                     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                         Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -2251,9 +2565,7 @@ private fun AdminMasterDataScreen(repository: MilkRepository) {
                         }
                     }
                 }
-            }
-        } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            } else {
                 items(recipes, key = { it.id }) { recipe ->
                     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                         Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {

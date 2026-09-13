@@ -149,3 +149,52 @@ studies:
     retrieved_at: "2026-09-12T14:35:00Z"
     decision_ref: null
     updated_at: "2026-09-12T14:35:00Z"
+  - id: RES-004
+    status: complete
+    problem: 在 Windows 11 现场主机、Android 平板和公司内部 WiFi 的约束下，如何为 FastAPI 后端与 App 提供可维护的 HTTPS 和内网证书信任方案
+    related_business_logic:
+      - BL-DEVICE-002
+      - BL-AUTH-001
+      - BL-EVID-001
+    related_tasks: []
+    constraints:
+      - 后端部署在 Windows 11 现场电脑，核心业务不依赖互联网
+      - Android App 通过局域网访问后端，当前 Base URL 使用主机 IP
+      - 当前后端使用 Uvicorn，尚未配置 TLS
+      - 当前 Android Manifest 允许明文 HTTP，未配置自定义信任锚
+      - 现场没有公开域名、公共 DNS 和公网入口
+      - 需要避免每台平板手工安装根证书和频繁更新 App
+      - 使用 IP 直连时必须保证证书包含对应 IP SAN，IP 变化会使旧证书失效
+      - 客户现场不保证服务器 IP 永远不变，需要提供 DHCP 地址保留、内网主机名或证书重签路径
+    candidates:
+      - "受控内网继续使用 HTTP：部署最简单，但令牌、账号资料和现场照片在局域网明文传输"
+      - "单张自签名服务器证书并在 Android App 固定证书：实现较小，但证书续期通常需要更新 App"
+      - "内部 CA 签发服务器证书，Android App 内置 CA 公钥证书：无需每台平板安装用户 CA，服务器证书续期不必更新 App，但 IP 变化后需重新签发叶子证书"
+      - "内部 CA + 稳定内网主机名：App 使用主机名访问，证书使用 DNS SAN，IP 变化不影响证书有效性"
+      - "内部 CA + 服务器自动重签叶子证书：IP 变化时依据固定主机名重新签发 IP SAN，需要保护中间 CA 或根 CA 私钥"
+      - "Windows 安装程序生成根 CA 和服务器证书，并让每台 Android 平板手工信任根 CA：可自动化签发，但平板配置和维护成本高"
+      - "公网域名加 Let's Encrypt：需要域名、DNS 或公网验证，不适合当前纯内网 IP 部署"
+      - "WireGuard/Tailscale 等加密隧道：有成熟方案，但增加客户端、账号或外网依赖，不符合当前简单部署目标"
+    strategy: wrapper-adapter
+    recommendation: 正式生产推荐小型内部 CA 方案，按现场能力依次选择：1. 路由器配置 DHCP 地址保留，服务器实际仍使用 DHCP，但每次获得同一个 IP；2. 路由器或内网 DNS 提供稳定主机名，App 使用主机名访问并让证书包含对应 DNS SAN；3. 无法固定 IP 或主机名时，保留内部 CA，在服务器 IP 变化后重新签发带新 IP SAN 的叶子证书。Android App 始终内置根 CA 公钥证书并信任该 CA，因此 IP 变化通常只需要更新服务器叶子证书，不需要重新安装 App。若证书可通过服务器上的中间 CA 自动重签，必须严格限制中间 CA 私钥和部署目录访问权限。
+    conditions:
+      - 现场主机使用 DHCP 地址保留、稳定内网主机名，或具备服务器证书重新签发流程
+      - 根 CA 私钥不与日常运行服务器放在同一目录，并限制访问
+      - 服务器证书 SAN 与平板实际访问的 IP 或主机名一致；IP 变化后必须及时重签
+      - Windows 和 Android 系统时间保持正确
+      - App 安装包只内置根 CA 公钥证书，不包含根 CA 私钥
+      - 正式投产前实际验证安装、登录、图片上传、审批和证书续期
+    contrary_evidence:
+      - 内部 CA 增加了根证书、叶子证书续期、IP 变化重签和时钟校验的运维要求
+      - 如果客户既无法配置地址保留或内网主机名，也无法维护证书重签，受控内网 HTTP 的风险接受会比半完成的 HTTPS 更可控
+      - 手工信任根 CA 的方案在 Android 新版本上可能受用户证书策略影响，因此优先采用 App 内置信任锚
+    confidence: 0.82
+    sources:
+      - "https://developer.android.com/privacy-and-security/security-config"
+      - "https://www.uvicorn.org/settings/"
+      - "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/certutil"
+      - "pc/packaging/windows/MilkWeighService.py"
+      - "app/app/src/main/AndroidManifest.xml"
+    retrieved_at: "2026-09-13T05:05:00Z"
+    decision_ref: null
+    updated_at: "2026-09-13T05:05:00Z"
