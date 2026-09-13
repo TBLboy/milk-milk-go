@@ -1,4 +1,3 @@
-import json
 import secrets
 import string
 from datetime import datetime, timedelta, timezone
@@ -6,12 +5,14 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.security import create_token, decode_token, hash_password, verify_password
-from app.db.models import AuditLog, EvidenceFile, SystemSetting, User
+from app.db.models import EvidenceFile, SystemSetting, User
 from app.db.session import get_db
+from app.services.audit import write_audit
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -34,7 +35,7 @@ class CreateUserRequest(BaseModel):
     password: str = Field(min_length=8, max_length=128)
     avatar_file_id: str | None = Field(default=None, max_length=64)
     phone: str | None = Field(default=None, max_length=32)
-    id_card: str | None = Field(default=None, max_length=64)
+    employee_no: str = Field(min_length=1, max_length=64)
 
 
 class ResetPasswordRequest(BaseModel):
@@ -45,11 +46,14 @@ class UserActiveRequest(BaseModel):
     is_active: bool
 
 
-class UserProfileUpdateRequest(BaseModel):
+class SelfProfileUpdateRequest(BaseModel):
     display_name: str | None = Field(default=None, min_length=1, max_length=64)
     avatar_file_id: str | None = Field(default=None, max_length=64)
     phone: str | None = Field(default=None, max_length=32)
-    id_card: str | None = Field(default=None, max_length=64)
+
+
+class AdminUserProfileUpdateRequest(SelfProfileUpdateRequest):
+    employee_no: str | None = Field(default=None, max_length=64)
 
 
 class ChangePasswordRequest(BaseModel):
@@ -65,16 +69,12 @@ RECOVERY_ATTEMPTS_KEY = "admin_recovery_failed_attempts"
 RECOVERY_LOCKED_UNTIL_KEY = "admin_recovery_locked_until"
 
 
-def _mask_id_card(value: str | None) -> str:
-    if not value:
-        return ""
-    if len(value) <= 7:
-        return "********"
-    return value[:3] + "********" + value[-4:]
+def _normalize_employee_no(value: str | None) -> str | None:
+    normalized = value.strip() if value is not None else ""
+    return normalized or None
 
 
-def _public_user(user: User, include_sensitive: bool = False) -> dict:
-    id_card = user.id_card or ""
+def _public_user(user: User) -> dict:
     return {
         "id": user.id,
         "username": user.username,
@@ -84,9 +84,20 @@ def _public_user(user: User, include_sensitive: bool = False) -> dict:
         "is_active": user.is_active,
         "avatar_file_id": user.avatar_file_id,
         "phone": user.phone or "",
-        "id_card": id_card if include_sensitive else _mask_id_card(id_card),
+        "employee_no": user.employee_no or "",
         "must_change_password": user.must_change_password,
     }
+
+
+def _validate_employee_no_available(db: Session, employee_no: str | None, *, exclude_user_id: int | None = None) -> None:
+    normalized = _normalize_employee_no(employee_no)
+    if normalized is None:
+        return
+    query = select(User.id).where(User.employee_no == normalized)
+    if exclude_user_id is not None:
+        query = query.where(User.id != exclude_user_id)
+    if db.scalar(query) is not None:
+        raise HTTPException(status_code=409, detail={"code": "EMPLOYEE_NO_EXISTS", "message": "工号已存在"})
 
 
 def _generate_reset_password() -> str:
@@ -155,19 +166,12 @@ def require_admin(user: User = Depends(current_user)) -> User:
 
 @router.post("/login")
 def login(body: LoginRequest, db: Session = Depends(get_db)) -> dict:
-    user = _authenticate_user(body, db)
-    return _login_response(user)
+    return _login(body, db, portal="app")
 
 
 @router.post("/admin/login")
 def admin_login(body: LoginRequest, db: Session = Depends(get_db)) -> dict:
-    user = _authenticate_user(body, db)
-    if user.role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"code": "ADMIN_PORTAL_REQUIRED", "message": "普通操作员账号不能登录电脑管理端"},
-        )
-    return _login_response(user)
+    return _login(body, db, portal="pc")
 
 
 @router.post("/admin/recover")
@@ -206,12 +210,14 @@ def recover_admin_password(body: AdminRecoveryRequest, db: Session = Depends(get
             next_lock = now + timedelta(minutes=settings.admin_recovery_lockout_minutes)
             _set_setting_value(db, RECOVERY_ATTEMPTS_KEY, "0")
             _set_setting_value(db, RECOVERY_LOCKED_UNTIL_KEY, next_lock.isoformat())
-            db.add(AuditLog(
+            write_audit(
+                db,
                 action="admin_password.recovery_locked",
                 resource_type="user",
                 resource_id="admin",
-                detail_json=json.dumps({"failed_attempts": attempts}, separators=(",", ":")),
-            ))
+                result="failure",
+                detail={"failed_attempts": attempts},
+            )
             db.commit()
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -223,12 +229,14 @@ def recover_admin_password(body: AdminRecoveryRequest, db: Session = Depends(get
             )
 
         _set_setting_value(db, RECOVERY_ATTEMPTS_KEY, str(attempts))
-        db.add(AuditLog(
+        write_audit(
+            db,
             action="admin_password.recovery_failed",
             resource_type="user",
             resource_id="admin",
-            detail_json=json.dumps({"failed_attempts": attempts}, separators=(",", ":")),
-        ))
+            result="failure",
+            detail={"failed_attempts": attempts},
+        )
         db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -252,12 +260,13 @@ def recover_admin_password(body: AdminRecoveryRequest, db: Session = Depends(get
     admin.auth_version = (admin.auth_version or 1) + 1
     _set_setting_value(db, RECOVERY_ATTEMPTS_KEY, "0")
     _clear_setting_value(db, RECOVERY_LOCKED_UNTIL_KEY)
-    db.add(AuditLog(
+    write_audit(
+        db,
         action="admin_password.recovered",
         resource_type="user",
-        resource_id=str(admin.id),
-        detail_json=None,
-    ))
+        resource_id=admin.id,
+        detail={"username": admin.username},
+    )
     db.commit()
     return {
         "status": "ok",
@@ -281,6 +290,44 @@ def _authenticate_user(body: LoginRequest, db: Session) -> User:
     return user
 
 
+def _login(body: LoginRequest, db: Session, *, portal: str) -> dict:
+    try:
+        user = _authenticate_user(body, db)
+        if portal == "pc" and user.role != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"code": "ADMIN_PORTAL_REQUIRED", "message": "普通操作员账号不能登录电脑管理端"},
+            )
+    except HTTPException as exc:
+        candidate = db.scalar(select(User).where(User.username == body.username))
+        detail = exc.detail if isinstance(exc.detail, dict) else {}
+        write_audit(
+            db,
+            actor_id=candidate.id if candidate else None,
+            action="auth.admin_login" if portal == "pc" else "auth.login",
+            resource_type="session",
+            result="failure",
+            detail={
+                "username": body.username,
+                "portal": portal,
+                "code": detail.get("code", "LOGIN_FAILED"),
+            },
+        )
+        db.commit()
+        raise
+
+    write_audit(
+        db,
+        actor_id=user.id,
+        action="auth.admin_login" if portal == "pc" else "auth.login",
+        resource_type="session",
+        resource_id=user.id,
+        detail={"username": user.username, "portal": portal},
+    )
+    db.commit()
+    return _login_response(user)
+
+
 def _login_response(user: User) -> dict:
     return {
         "access_token": create_token(user.id, user.role, user.auth_version),
@@ -302,6 +349,15 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)) -> dict:
         is_active=False,
     )
     db.add(user)
+    db.flush()
+    write_audit(
+        db,
+        actor_id=None,
+        action="account.registered",
+        resource_type="user",
+        resource_id=user.id,
+        detail={"username": user.username, "display_name": user.display_name},
+    )
     db.commit()
     db.refresh(user)
     return {
@@ -316,28 +372,57 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)) -> dict:
 
 @router.get("/me")
 def me(user: User = Depends(current_user)) -> dict:
-    return {"user": _public_user(user, include_sensitive=True)}
+    return {"user": _public_user(user)}
 
 
 @router.patch("/me", status_code=status.HTTP_200_OK)
-def update_my_profile(body: UserProfileUpdateRequest, user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
+def update_my_profile(body: SelfProfileUpdateRequest, user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
+    changed_fields = []
     if body.display_name is not None:
         user.display_name = body.display_name
+        changed_fields.append("display_name")
     if body.avatar_file_id is not None:
         _validate_avatar_file(db, body.avatar_file_id)
         user.avatar_file_id = body.avatar_file_id
+        changed_fields.append("avatar_file_id")
     if body.phone is not None:
         user.phone = body.phone
+        changed_fields.append("phone")
+    write_audit(
+        db,
+        actor_id=user.id,
+        action="account.profile_updated",
+        resource_type="user",
+        resource_id=user.id,
+        detail={"changed_fields": changed_fields},
+    )
     db.commit()
-    return {"user": _public_user(user, include_sensitive=True)}
+    return {"user": _public_user(user)}
 
 
 @router.post("/me/change-password", status_code=status.HTTP_200_OK)
 def change_my_password(body: ChangePasswordRequest, user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
     if not verify_password(body.current_password, user.password_hash):
+        write_audit(
+            db,
+            actor_id=user.id,
+            action="account.password_changed",
+            resource_type="user",
+            resource_id=user.id,
+            result="failure",
+            detail={"reason": "INVALID_CURRENT_PASSWORD"},
+        )
+        db.commit()
         raise HTTPException(status_code=422, detail={"code": "INVALID_CURRENT_PASSWORD", "message": "当前密码不正确"})
     user.password_hash = hash_password(body.new_password)
     user.must_change_password = False
+    write_audit(
+        db,
+        actor_id=user.id,
+        action="account.password_changed",
+        resource_type="user",
+        resource_id=user.id,
+    )
     db.commit()
     return {"status": "ok", "message": "密码修改成功"}
 
@@ -357,6 +442,10 @@ def list_users(_user: User = Depends(require_admin), db: Session = Depends(get_d
 def create_user(body: CreateUserRequest, _user: User = Depends(require_admin), db: Session = Depends(get_db)) -> dict:
     if db.scalar(select(User).where(User.username == body.username)) is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={"code": "USERNAME_EXISTS", "message": "账号已存在"})
+    employee_no = _normalize_employee_no(body.employee_no)
+    if employee_no is None:
+        raise HTTPException(status_code=422, detail={"code": "EMPLOYEE_NO_REQUIRED", "message": "普通操作员工号不能为空"})
+    _validate_employee_no_available(db, employee_no)
     _validate_avatar_file(db, body.avatar_file_id)
     user = User(
         username=body.username,
@@ -367,11 +456,24 @@ def create_user(body: CreateUserRequest, _user: User = Depends(require_admin), d
         is_active=True,
         avatar_file_id=body.avatar_file_id,
         phone=body.phone,
-        id_card=body.id_card,
+        employee_no=employee_no,
         must_change_password=True,
     )
     db.add(user)
-    db.commit()
+    db.flush()
+    write_audit(
+        db,
+        actor_id=_user.id,
+        action="account.created",
+        resource_type="user",
+        resource_id=user.id,
+        detail={"username": user.username, "employee_no": user.employee_no},
+    )
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail={"code": "EMPLOYEE_NO_EXISTS", "message": "工号已存在"}) from exc
     db.refresh(user)
     return {"user": _public_user(user)}
 
@@ -381,25 +483,46 @@ def get_user(user_id: int, _user: User = Depends(require_admin), db: Session = D
     user = db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail={"code": "USER_NOT_FOUND", "message": "用户不存在"})
-    return {"user": _public_user(user, include_sensitive=True)}
+    return {"user": _public_user(user)}
 
 
 @router.patch("/users/{user_id}/profile", status_code=status.HTTP_200_OK)
-def update_user_profile(user_id: int, body: UserProfileUpdateRequest, _user: User = Depends(require_admin), db: Session = Depends(get_db)) -> dict:
+def update_user_profile(user_id: int, body: AdminUserProfileUpdateRequest, _user: User = Depends(require_admin), db: Session = Depends(get_db)) -> dict:
     user = db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail={"code": "USER_NOT_FOUND", "message": "用户不存在"})
+    changed_fields = []
     if body.display_name is not None:
         user.display_name = body.display_name
+        changed_fields.append("display_name")
     if body.avatar_file_id is not None:
         _validate_avatar_file(db, body.avatar_file_id)
         user.avatar_file_id = body.avatar_file_id
+        changed_fields.append("avatar_file_id")
     if body.phone is not None:
         user.phone = body.phone
-    if body.id_card is not None:
-        user.id_card = body.id_card
-    db.commit()
-    return {"user": _public_user(user, include_sensitive=True)}
+        changed_fields.append("phone")
+    if body.employee_no is not None:
+        employee_no = _normalize_employee_no(body.employee_no)
+        if user.role == "operator" and employee_no is None:
+            raise HTTPException(status_code=422, detail={"code": "EMPLOYEE_NO_REQUIRED", "message": "普通操作员工号不能为空"})
+        _validate_employee_no_available(db, employee_no, exclude_user_id=user.id)
+        user.employee_no = employee_no
+        changed_fields.append("employee_no")
+    write_audit(
+        db,
+        actor_id=_user.id,
+        action="account.admin_profile_updated",
+        resource_type="user",
+        resource_id=user.id,
+        detail={"target_username": user.username, "changed_fields": changed_fields},
+    )
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail={"code": "EMPLOYEE_NO_EXISTS", "message": "工号已存在"}) from exc
+    return {"user": _public_user(user)}
 
 
 @router.post("/users/{user_id}/approve", status_code=status.HTTP_200_OK)
@@ -411,8 +534,19 @@ def approve_user(user_id: int, _user: User = Depends(require_admin), db: Session
         raise HTTPException(status_code=422, detail={"code": "ADMIN_APPROVAL_BLOCKED", "message": "管理员账号不需要审批"})
     if user.status != "pending":
         raise HTTPException(status_code=409, detail={"code": "USER_STATUS_CONFLICT", "message": "该账号当前不在待审批状态"})
+    if not user.employee_no:
+        raise HTTPException(status_code=422, detail={"code": "EMPLOYEE_NO_REQUIRED", "message": "请先为普通操作员设置唯一工号"})
+    _validate_employee_no_available(db, user.employee_no, exclude_user_id=user.id)
     user.status = "active"
     user.is_active = True
+    write_audit(
+        db,
+        actor_id=_user.id,
+        action="account.approved",
+        resource_type="user",
+        resource_id=user.id,
+        detail={"username": user.username, "employee_no": user.employee_no},
+    )
     db.commit()
     return {"user": _public_user(user)}
 
@@ -428,6 +562,15 @@ def reject_user(user_id: int, _user: User = Depends(require_admin), db: Session 
         raise HTTPException(status_code=409, detail={"code": "USER_STATUS_CONFLICT", "message": "该账号当前不在待审批状态"})
     user.status = "rejected"
     user.is_active = False
+    write_audit(
+        db,
+        actor_id=_user.id,
+        action="account.rejected",
+        resource_type="user",
+        resource_id=user.id,
+        result="rejected",
+        detail={"username": user.username},
+    )
     db.commit()
     return {"user": _public_user(user)}
 
@@ -443,6 +586,14 @@ def reset_user_password(user_id: int, _user: User = Depends(require_admin), db: 
     user.password_hash = hash_password(temporary_password)
     user.must_change_password = True
     user.auth_version = (user.auth_version or 1) + 1
+    write_audit(
+        db,
+        actor_id=_user.id,
+        action="account.password_reset",
+        resource_type="user",
+        resource_id=user.id,
+        detail={"username": user.username},
+    )
     db.commit()
     return {
         "username": user.username,
@@ -461,5 +612,13 @@ def set_user_active(user_id: int, body: UserActiveRequest, _user: User = Depends
     if user.role == "admin":
         raise HTTPException(status_code=422, detail={"code": "ADMIN_STATUS_BLOCKED", "message": "管理员账号不能停用"})
     user.is_active = body.is_active
+    write_audit(
+        db,
+        actor_id=_user.id,
+        action="account.activation_changed",
+        resource_type="user",
+        resource_id=user.id,
+        detail={"username": user.username, "is_active": body.is_active},
+    )
     db.commit()
     return {"user": _public_user(user)}

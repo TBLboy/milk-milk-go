@@ -98,6 +98,149 @@
   background: #f7f9f8;
 }
 
+/* Audit log */
+.audit-filter-panel {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 18px;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #e1e9e5;
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(22, 52, 41, 0.045);
+}
+
+.audit-filter-panel label {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  color: #52625c;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.audit-filter-panel input,
+.audit-filter-panel select {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0 10px;
+  color: #1f312a;
+  background: #fbfdfc;
+  border: 1px solid #d7e2dd;
+  border-radius: 6px;
+  outline: none;
+  font-size: 14px;
+}
+
+.audit-filter-panel input:focus,
+.audit-filter-panel select:focus {
+  background: #ffffff;
+  border-color: #65ac8e;
+  box-shadow: 0 0 0 3px rgba(40, 139, 101, 0.1);
+}
+
+.audit-filter-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  grid-column: span 2;
+}
+
+.audit-filter-actions button {
+  min-width: 92px;
+  justify-content: center;
+}
+
+.audit-log-panel .table-wrap {
+  min-height: 260px;
+}
+
+.audit-subline {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.audit-time {
+  min-width: 150px;
+  white-space: nowrap;
+}
+
+.audit-empty {
+  padding: 44px 12px !important;
+  text-align: center;
+}
+
+.audit-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.audit-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.audit-detail-grid > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  color: #83908b;
+  background: #f7faf8;
+  border: 1px solid #e5ece8;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.audit-detail-grid strong {
+  overflow-wrap: anywhere;
+  color: #24352e;
+  font-size: 14px;
+}
+
+.audit-detail-json {
+  max-height: 300px;
+  margin: 7px 0 0;
+  padding: 13px;
+  overflow: auto;
+  color: #294238;
+  background: #f4f8f6;
+  border: 1px solid #dfe9e4;
+  border-radius: 6px;
+  font: 12px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+@media (max-width: 1100px) {
+  .audit-filter-panel {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .audit-filter-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .audit-filter-actions {
+    grid-column: auto;
+  }
+
+  .audit-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Modal Dialog Styles */
 .modal-backdrop {
   position: fixed;
@@ -772,6 +915,90 @@
   padding: 0;
   background: transparent;
 }
+.recipe-version-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: -2px;
+  color: #708078;
+  font-size: 13px;
+}
+.recipe-version-panel {
+  padding: 12px;
+  background: #f7faf9;
+  border: 1px solid #e1ebe6;
+  border-radius: 6px;
+}
+.recipe-version-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.recipe-version-heading strong {
+  color: #2b3a34;
+  font-size: 14px;
+}
+.recipe-version-heading span {
+  color: #8a9691;
+  font-size: 12px;
+}
+.recipe-version-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+.recipe-version-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+  padding: 10px;
+  color: #52635b;
+  text-align: left;
+  background: #ffffff;
+  border: 1px solid #dfe9e4;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.recipe-version-item:hover,
+.recipe-version-item.active {
+  color: #1f7355;
+  background: #edf8f2;
+  border-color: #91cbb2;
+}
+.recipe-version-item strong {
+  color: #254d3d;
+  font-size: 14px;
+}
+.recipe-version-item span,
+.recipe-version-item small {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recipe-version-item span {
+  font-size: 12px;
+}
+.recipe-version-item small {
+  color: #87938e;
+  font-size: 11px;
+}
+.recipe-version-item em {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 1px 5px;
+  color: #1f7355;
+  font-size: 10px;
+  font-style: normal;
+  background: #d9f0e4;
+  border-radius: 3px;
+}
 .detail-progress {
   padding: 10px 12px;
   background: #ffffff;
@@ -1122,6 +1349,11 @@ button.preview-tag:hover {
   background: #fff5f4;
   border-color: #f4d4d1;
 }
+.network-message.success {
+  color: #277758;
+  background: #f1f9f4;
+  border-color: #d7ece0;
+}
 .network-address-list {
   margin-top: 16px;
   border-top: 1px solid #edf1ef;
@@ -1149,6 +1381,298 @@ button.preview-tag:hover {
 .network-address-row small {
   color: #9aa49f;
   text-align: right;
+}
+
+/* Evidence integrity */
+.integrity-panel {
+  margin-top: 24px;
+  overflow: hidden;
+}
+
+.integrity-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 19px 22px;
+  border-bottom: 1px solid #edf1ef;
+}
+
+.integrity-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.integrity-title-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  color: #27805e;
+  background: #eaf6f0;
+  border: 1px solid #d7ece1;
+  border-radius: 9px;
+}
+
+.integrity-title h2 {
+  margin: 0;
+  color: #34443e;
+  font-size: 16px;
+}
+
+.integrity-title p {
+  margin: 5px 0 0;
+  color: #919d97;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.integrity-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 9px;
+}
+
+.integrity-actions .outline-button {
+  margin-top: 0;
+  white-space: nowrap;
+}
+
+.integrity-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.integrity-message {
+  max-width: none;
+  margin: 16px 22px 0;
+}
+
+.integrity-summary {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  padding: 18px 22px 0;
+}
+
+.integrity-stat {
+  padding: 13px 14px;
+  background: #f7faf8;
+  border: 1px solid #e5ece8;
+  border-radius: 6px;
+}
+
+.integrity-stat span,
+.integrity-stat strong {
+  display: block;
+}
+
+.integrity-stat span {
+  color: #84908a;
+  font-size: 12px;
+}
+
+.integrity-stat strong {
+  margin-top: 5px;
+  color: #34473f;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.integrity-stat.ok {
+  background: #f1f9f4;
+  border-color: #d9ede1;
+}
+
+.integrity-stat.ok strong {
+  color: #25815d;
+}
+
+.integrity-stat.issue {
+  background: #fff6f4;
+  border-color: #f2d7d2;
+}
+
+.integrity-stat.issue strong {
+  color: #b14940;
+}
+
+.integrity-stat.warning {
+  background: #fffaf0;
+  border-color: #f1e3c8;
+}
+
+.integrity-stat.warning strong {
+  color: #a2732e;
+}
+
+.integrity-result-meta {
+  padding: 13px 22px 0;
+  color: #929d98;
+  font-size: 12px;
+}
+
+.integrity-success {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 15px 22px 20px;
+  padding: 13px 15px;
+  color: #287a5a;
+  background: #f1f9f4;
+  border: 1px solid #d7ece0;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.integrity-empty {
+  margin: 18px 22px 22px;
+  padding: 28px 16px;
+  color: #8c9993;
+  text-align: center;
+  background: #fafcfb;
+  border: 1px dashed #dce6e1;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.integrity-table {
+  margin: 14px 22px 22px;
+  border: 1px solid #e6ede9;
+  border-radius: 6px;
+}
+
+.integrity-table table {
+  min-width: 1080px;
+}
+
+.integrity-hash {
+  display: block;
+  max-width: 230px;
+  overflow: hidden;
+  color: #50655b;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bug-report-panel {
+  margin-top: 24px;
+  overflow: hidden;
+}
+
+.bug-report-title-icon {
+  color: #a3662d;
+  background: #fff7ed;
+  border-color: #f0dfca;
+}
+
+.bug-report-message {
+  max-width: none;
+  margin: 16px 22px 0;
+}
+
+.bug-report-table {
+  margin: 14px 22px 22px;
+  border: 1px solid #e6ede9;
+  border-radius: 6px;
+}
+
+.bug-report-table table {
+  min-width: 980px;
+}
+
+.bug-report-table td {
+  vertical-align: top;
+}
+
+.bug-report-description {
+  display: block;
+  max-width: 340px;
+  overflow: hidden;
+  color: #34443e;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bug-report-error,
+.bug-report-reporter {
+  display: block;
+  max-width: 340px;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bug-report-error {
+  color: #ad4f47;
+}
+
+.bug-report-table .text-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.excel-import-result {
+  margin: 0 0 18px;
+}
+
+.excel-import-result .info-note {
+  margin: 0;
+}
+
+.excel-error-list {
+  margin-top: 8px;
+  padding: 12px 14px;
+  background: #fffaf8;
+  border: 1px solid #f3d8d2;
+  border-radius: 6px;
+}
+
+.excel-error-list > strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #a54840;
+  font-size: 14px;
+}
+
+.excel-error-table {
+  max-height: 220px;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #f0dfdb;
+  border-radius: 5px;
+}
+
+.excel-error-row {
+  display: grid;
+  grid-template-columns: 76px minmax(180px, 0.7fr) minmax(260px, 1.3fr);
+  gap: 12px;
+  align-items: start;
+  padding: 9px 11px;
+  color: #6f5a56;
+  font-size: 13px;
+  border-bottom: 1px solid #f5e9e6;
+}
+
+.excel-error-row:last-child {
+  border-bottom: 0;
+}
+
+.excel-error-row code {
+  color: #7c625b;
+  overflow-wrap: anywhere;
+}
+
+.excel-error-row em {
+  color: #b04c42;
+  font-style: normal;
+  line-height: 1.45;
 }
 
 @media (max-width: 760px) {
@@ -1190,5 +1714,27 @@ button.preview-tag:hover {
   .network-address-row small {
     grid-column: 1 / -1;
     text-align: left;
+  }
+  .integrity-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .integrity-actions {
+    width: 100%;
+  }
+  .integrity-actions .outline-button {
+    flex: 1;
+    justify-content: center;
+  }
+  .integrity-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .integrity-table {
+    margin-right: 14px;
+    margin-left: 14px;
+  }
+  .excel-error-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
   }
 }

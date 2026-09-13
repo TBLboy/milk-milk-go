@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { AppShell } from './layouts/AppShell'
 import { Login } from './components/Login'
 import { Dashboard } from './pages/Dashboard'
-import { LabelsPage, MaterialsPage, SettingsPage, WorkOrdersPage } from './pages/ManagementPages'
+import { AuditLogsPage, LabelsPage, MaterialsPage, SettingsPage, WorkOrdersPage } from './pages/ManagementPages'
 import { api } from './services/api'
 import './styles/global.css'
 import './styles/app.css'
@@ -66,6 +66,8 @@ function App() {
         return <LabelsPage />
       case 'accounts':
         return <SettingsPage accounts />
+      case 'audit':
+        return <AuditLogsPage />
       case 'settings':
       default:
         return <SettingsPage />

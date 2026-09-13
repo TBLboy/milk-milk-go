@@ -1,13 +1,15 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
-from sqlalchemy import case, select
+from sqlalchemy import case, select, update
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.auth import current_user, require_admin
 from app.db.models import Product, Recipe, RecipeItem, SystemSetting, User, WorkOrder, WorkOrderStep
 from app.db.session import get_db
+from app.services.audit import write_audit
+from app.services.idempotency import execute_idempotent
 
 router = APIRouter(prefix="/work-orders", tags=["work-orders"])
 
@@ -43,6 +45,7 @@ def order_view(order: WorkOrder, users: dict[int, User] | None = None) -> dict:
                 "method": item.method,
                 "status": item.status,
                 "scanned_material_id": item.scanned_material_id,
+                "scanned_label_id": item.scanned_label_id,
                 "reason": item.reason,
                 "evidence_file_id": item.evidence_file_id,
                 "created_at": item.created_at.isoformat() if item.created_at else None,
@@ -105,6 +108,22 @@ def create_work_order(body: WorkOrderInput, user: User = Depends(current_user), 
     min_absolute_kg = _setting_float(db, "min_absolute_tolerance_grams", 5.0) / 1000
     order.steps = [WorkOrderStep(step_no=index + 1, material_id_snapshot=item.material.material_id, material_code_snapshot=item.material.material_code, material_name_snapshot=item.material.name_zh, required_weight_kg=round(item.quantity_per_ton_kg * tons, 6), tolerance_kg=max(round(item.quantity_per_ton_kg * tons * tolerance_percent / 100, 6), min_absolute_kg)) for index, item in enumerate(product.recipe.items)]
     db.add(order)
+    db.flush()
+    write_audit(
+        db,
+        actor_id=user.id,
+        action="work_order.created",
+        resource_type="work_order",
+        resource_id=order.order_no,
+        work_order_no=order.order_no,
+        detail={
+            "product_id": product.id,
+            "product_name": product.name,
+            "target_weight_kg": body.target_weight_kg,
+            "operator_id": order.operator_id,
+            "created_status": order.status,
+        },
+    )
     db.commit()
     db.refresh(order)
     return order_view(order)
@@ -147,83 +166,195 @@ def get_work_order(order_no: str, user: User = Depends(current_user), db: Sessio
 
 
 @router.post("/{order_no}/approve")
-def approve_work_order(order_no: str, _: User = Depends(require_admin), db: Session = Depends(get_db)) -> dict:
-    order = _load_order(db, order_no)
-    if order is None:
-        raise HTTPException(status_code=404, detail={"code": "WORK_ORDER_NOT_FOUND", "message": "工单不存在"})
-    if order.status != "pending_approval":
-        raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STATE_CONFLICT", "message": "工单当前状态不可审批"})
-    order.status = "approved"
-    order.operator_id = order.operator_id or order.created_by
-    db.commit()
-    user_ids = {order.created_by}
-    if order.operator_id:
-        user_ids.add(order.operator_id)
-    for request in order.requests:
-        user_ids.add(request.requested_by)
-        if request.decided_by:
-            user_ids.add(request.decided_by)
-    users = {item.id: item for item in db.scalars(select(User).where(User.id.in_(user_ids))).all()}
-    return order_view(order, users)
+def approve_work_order(
+    order_no: str,
+    request: Request,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> dict:
+    def operation() -> dict:
+        order = _load_order(db, order_no)
+        if order is None:
+            raise HTTPException(status_code=404, detail={"code": "WORK_ORDER_NOT_FOUND", "message": "工单不存在"})
+        result = db.execute(
+            update(WorkOrder)
+            .where(WorkOrder.id == order.id, WorkOrder.status == "pending_approval")
+            .values(status="approved", operator_id=order.operator_id or order.created_by)
+        )
+        if result.rowcount != 1:
+            raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STATE_CONFLICT", "message": "工单当前状态不可审批"})
+        db.flush()
+        db.refresh(order)
+        write_audit(
+            db,
+            actor_id=admin.id,
+            action="work_order.approved",
+            resource_type="work_order",
+            resource_id=order.order_no,
+            work_order_no=order.order_no,
+            detail={"operator_id": order.operator_id},
+        )
+        user_ids = {order.created_by}
+        if order.operator_id:
+            user_ids.add(order.operator_id)
+        for item in order.requests:
+            user_ids.add(item.requested_by)
+            if item.decided_by:
+                user_ids.add(item.decided_by)
+        users = {item.id: item for item in db.scalars(select(User).where(User.id.in_(user_ids))).all()}
+        return order_view(order, users)
+
+    return execute_idempotent(
+        db,
+        request,
+        user_id=admin.id,
+        endpoint="POST /work-orders/{order_no}/approve",
+        payload={"order_no": order_no},
+        operation=operation,
+    )
 
 
 @router.post("/{order_no}/start")
-def start_work_order(order_no: str, user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
-    order = _load_order(db, order_no)
-    if order is None or (user.role != "admin" and order.operator_id != user.id and order.created_by != user.id):
-        raise HTTPException(status_code=404, detail={"code": "WORK_ORDER_NOT_FOUND", "message": "工单不存在"})
-    if order.status != "approved":
-        raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STATE_CONFLICT", "message": "工单尚未获得执行许可"})
-    order.status = "in_progress"
-    db.commit()
-    user_ids = {order.created_by}
-    if order.operator_id:
-        user_ids.add(order.operator_id)
-    for request in order.requests:
-        user_ids.add(request.requested_by)
-        if request.decided_by:
-            user_ids.add(request.decided_by)
-    users = {item.id: item for item in db.scalars(select(User).where(User.id.in_(user_ids))).all()}
-    return order_view(order, users)
+def start_work_order(
+    order_no: str,
+    request: Request,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    def operation() -> dict:
+        order = _load_order(db, order_no)
+        if order is None or (user.role != "admin" and order.operator_id != user.id and order.created_by != user.id):
+            raise HTTPException(status_code=404, detail={"code": "WORK_ORDER_NOT_FOUND", "message": "工单不存在"})
+        result = db.execute(
+            update(WorkOrder)
+            .where(WorkOrder.id == order.id, WorkOrder.status == "approved")
+            .values(status="in_progress")
+        )
+        if result.rowcount != 1:
+            raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STATE_CONFLICT", "message": "工单尚未获得执行许可"})
+        db.flush()
+        db.refresh(order)
+        write_audit(
+            db,
+            actor_id=user.id,
+            action="work_order.started",
+            resource_type="work_order",
+            resource_id=order.order_no,
+            work_order_no=order.order_no,
+        )
+        user_ids = {order.created_by}
+        if order.operator_id:
+            user_ids.add(order.operator_id)
+        for item in order.requests:
+            user_ids.add(item.requested_by)
+            if item.decided_by:
+                user_ids.add(item.decided_by)
+        users = {item.id: item for item in db.scalars(select(User).where(User.id.in_(user_ids))).all()}
+        return order_view(order, users)
+
+    return execute_idempotent(
+        db,
+        request,
+        user_id=user.id,
+        endpoint="POST /work-orders/{order_no}/start",
+        payload={"order_no": order_no},
+        operation=operation,
+    )
 
 
 @router.post("/{order_no}/cancel")
-def cancel_work_order(order_no: str, _: User = Depends(require_admin), db: Session = Depends(get_db)) -> dict:
-    order = _load_order(db, order_no)
-    if order is None:
-        raise HTTPException(status_code=404, detail={"code": "WORK_ORDER_NOT_FOUND", "message": "工单不存在"})
-    if order.status not in {"pending_approval", "approved", "in_progress"}:
-        raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STATE_CONFLICT", "message": "工单当前状态不可撤销"})
-    order.status = "cancelled"
-    db.commit()
-    user_ids = {order.created_by}
-    if order.operator_id:
-        user_ids.add(order.operator_id)
-    for request in order.requests:
-        user_ids.add(request.requested_by)
-        if request.decided_by:
-            user_ids.add(request.decided_by)
-    users = {item.id: item for item in db.scalars(select(User).where(User.id.in_(user_ids))).all()}
-    return order_view(order, users)
+def cancel_work_order(
+    order_no: str,
+    request: Request,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> dict:
+    def operation() -> dict:
+        order = _load_order(db, order_no)
+        if order is None:
+            raise HTTPException(status_code=404, detail={"code": "WORK_ORDER_NOT_FOUND", "message": "工单不存在"})
+        result = db.execute(
+            update(WorkOrder)
+            .where(WorkOrder.id == order.id, WorkOrder.status.in_(("pending_approval", "approved", "in_progress")))
+            .values(status="cancelled")
+        )
+        if result.rowcount != 1:
+            raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STATE_CONFLICT", "message": "工单当前状态不可撤销"})
+        db.flush()
+        db.refresh(order)
+        write_audit(
+            db,
+            actor_id=admin.id,
+            action="work_order.cancelled",
+            resource_type="work_order",
+            resource_id=order.order_no,
+            work_order_no=order.order_no,
+        )
+        user_ids = {order.created_by}
+        if order.operator_id:
+            user_ids.add(order.operator_id)
+        for item in order.requests:
+            user_ids.add(item.requested_by)
+            if item.decided_by:
+                user_ids.add(item.decided_by)
+        users = {item.id: item for item in db.scalars(select(User).where(User.id.in_(user_ids))).all()}
+        return order_view(order, users)
+
+    return execute_idempotent(
+        db,
+        request,
+        user_id=admin.id,
+        endpoint="POST /work-orders/{order_no}/cancel",
+        payload={"order_no": order_no},
+        operation=operation,
+    )
 
 
 @router.post("/{order_no}/complete")
-def complete_work_order(order_no: str, user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
-    order = _load_order(db, order_no)
-    if order is None or (user.role != "admin" and order.operator_id != user.id and order.created_by != user.id):
-        raise HTTPException(status_code=404, detail={"code": "WORK_ORDER_NOT_FOUND", "message": "工单不存在"})
-    if order.status != "in_progress":
-        raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STATE_CONFLICT", "message": "只有执行中的工单可以完成"})
-    if any(step.status != "completed" for step in order.steps):
-        raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STEPS_INCOMPLETE", "message": "所有辅料步骤完成前不能提交工单"})
-    order.status = "completed"
-    db.commit()
-    user_ids = {order.created_by}
-    if order.operator_id:
-        user_ids.add(order.operator_id)
-    for request in order.requests:
-        user_ids.add(request.requested_by)
-        if request.decided_by:
-            user_ids.add(request.decided_by)
-    users = {item.id: item for item in db.scalars(select(User).where(User.id.in_(user_ids))).all()}
-    return order_view(order, users)
+def complete_work_order(
+    order_no: str,
+    request: Request,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    def operation() -> dict:
+        order = _load_order(db, order_no)
+        if order is None or (user.role != "admin" and order.operator_id != user.id and order.created_by != user.id):
+            raise HTTPException(status_code=404, detail={"code": "WORK_ORDER_NOT_FOUND", "message": "工单不存在"})
+        if any(step.status != "completed" for step in order.steps):
+            raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STEPS_INCOMPLETE", "message": "所有辅料步骤完成前不能提交工单"})
+        result = db.execute(
+            update(WorkOrder)
+            .where(WorkOrder.id == order.id, WorkOrder.status == "in_progress")
+            .values(status="completed")
+        )
+        if result.rowcount != 1:
+            raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STATE_CONFLICT", "message": "只有执行中的工单可以完成"})
+        db.flush()
+        db.refresh(order)
+        write_audit(
+            db,
+            actor_id=user.id,
+            action="work_order.completed",
+            resource_type="work_order",
+            resource_id=order.order_no,
+            work_order_no=order.order_no,
+        )
+        user_ids = {order.created_by}
+        if order.operator_id:
+            user_ids.add(order.operator_id)
+        for item in order.requests:
+            user_ids.add(item.requested_by)
+            if item.decided_by:
+                user_ids.add(item.decided_by)
+        users = {item.id: item for item in db.scalars(select(User).where(User.id.in_(user_ids))).all()}
+        return order_view(order, users)
+
+    return execute_idempotent(
+        db,
+        request,
+        user_id=user.id,
+        endpoint="POST /work-orders/{order_no}/complete",
+        payload={"order_no": order_no},
+        operation=operation,
+    )

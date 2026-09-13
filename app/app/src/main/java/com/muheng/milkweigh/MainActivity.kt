@@ -11,7 +11,6 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Matrix
 import android.graphics.Paint
-import android.media.ExifInterface
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
@@ -128,6 +127,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.core.content.ContextCompat
+import androidx.exifinterface.media.ExifInterface
 import com.google.zxing.BinaryBitmap
 import com.google.zxing.DecodeHintType
 import com.google.zxing.MultiFormatReader
@@ -197,7 +197,7 @@ private val Green = Color(0xFF1F9469)
 private val Ink = Color(0xFF17202B)
 private val Muted = Color(0xFF77858F)
 private val Page = Color(0xFFF5F7F9)
-private const val UserAgreementVersion = "1.0"
+private const val UserAgreementVersion = "1.1"
 private val UserAgreementText = """
     牧衡辅料称重防错系统用户协议
 
@@ -234,9 +234,9 @@ private val UserAgreementText = """
     7. 用户发现二维码异常、辅料包装不一致、称量超差、设备故障、网络中断、数据冲突或其他可能影响生产安全的情况时，应停止相关操作并按运营方制度报告，不得隐瞒或强行绕过。
 
     四、个人信息与数据处理
-    1. 为实现账号管理、身份核验、生产追溯、质量审计、安全管理和系统运维，系统可能处理用户提供的姓名或显示名、账号、电话、身份证信息、头像，以及用户在使用过程中形成的登录记录、设备或网络信息、操作日志、工单记录、审批记录、称重数据和现场照片。
+    1. 为实现账号管理、身份核验、生产追溯、质量审计、安全管理和系统运维，系统可能处理用户提供的姓名或显示名、账号、电话、工号、头像，以及用户在使用过程中形成的登录记录、设备或网络信息、操作日志、工单记录、审批记录、称重数据和现场照片。
     2. 运营方按照合法、正当、必要和诚信原则处理个人信息，处理目的包括履行内部管理职责、保障食品安全和生产追溯、维护系统安全、处理争议及履行法律法规要求的义务。
-    3. 身份证等敏感个人信息仅限有必要权限的管理员或用户本人在相应场景查看。系统在账号列表等非必要场景中采取脱敏展示措施。
+    3. 系统不采集、不保存身份证件号码。工号用于内部账号识别和生产追溯，普通用户仅可查看本人工号，管理员可按内部制度维护工号。
     4. 现场照片可能包含人员、辅料、电子秤读数或生产环境信息。用户应避免拍摄与业务无关的人员面部、私密信息或其他不必要内容。相关照片仅用于生产管理、追溯、审计和异常核查，未经授权不得对外提供。
     5. 本系统原则上在运营方内部网络运行，不主动将业务数据上传至互联网。用户主动提交 BUG 反馈时，系统会将问题描述、所选图片、提交账号及必要的技术信息发送至运营方配置的指定维护邮箱，用于问题排查和系统维护。
     6. 生产工单、称重记录、审批记录、操作证据和审计日志按照运营方的追溯要求长期保存。第一版不提供物理删除功能。因法律法规、食品安全追溯、审计或争议处理需要，运营方可以在必要期限内继续保存相关记录。
@@ -306,18 +306,25 @@ private fun parseIpParts(url: String): Pair<String, String> {
     }
 }
 
-private fun extractScannedMaterialId(raw: String): String {
+private data class ScannedQrPayload(
+    val labelId: String,
+    val materialId: String,
+)
+
+private fun extractScannedQrPayload(raw: String): ScannedQrPayload? {
     val trimmed = raw.trim()
-    if (trimmed.isEmpty()) return ""
+    if (trimmed.isEmpty()) return null
     return runCatching {
         val json = JSONObject(trimmed)
-        json.optString("materialId").ifBlank { json.optString("material_id") }
-    }.getOrElse { trimmed }
+        val materialId = json.optString("materialId").ifBlank { json.optString("material_id") }
+        val labelId = json.optString("labelId").ifBlank { json.optString("label_id") }
+        if (materialId.isBlank() || labelId.isBlank()) null else ScannedQrPayload(labelId = labelId, materialId = materialId)
+    }.getOrNull()
 }
 
 private data class ProcessedEvidence(
     val photoUri: String,
-    val scannedMaterialId: String?,
+    val scannedQr: ScannedQrPayload?,
 )
 
 private fun decodeEvidenceBitmap(file: File, maxDimension: Int = 2400): Bitmap {
@@ -386,7 +393,7 @@ private suspend fun processCapturedEvidence(
     scanQr: Boolean,
 ): ProcessedEvidence = withContext(Dispatchers.Default) {
     val bitmap = normalizeEvidenceOrientation(sourceFile, decodeEvidenceBitmap(sourceFile))
-    val scannedMaterialId = if (scanQr) scanQrFromBitmap(bitmap)?.let(::extractScannedMaterialId) else null
+    val scannedQr = if (scanQr) scanQrFromBitmap(bitmap)?.let(::extractScannedQrPayload) else null
     val output = bitmap.copy(Bitmap.Config.ARGB_8888, true) ?: error("无法处理拍摄照片")
     bitmap.recycle()
 
@@ -419,7 +426,7 @@ private suspend fun processCapturedEvidence(
     output.recycle()
     ProcessedEvidence(
         photoUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", outputFile).toString(),
-        scannedMaterialId = scannedMaterialId,
+        scannedQr = scannedQr,
     )
 }
 
@@ -1097,7 +1104,7 @@ private fun UserProfileDialog(
                 }
                 OutlinedTextField(displayName, { displayName = it }, modifier = Modifier.fillMaxWidth(), label = { Text("姓名") }, singleLine = true)
                 OutlinedTextField(phone, { phone = it.filter { char -> char.isDigit() || char == '-' } }, modifier = Modifier.fillMaxWidth(), label = { Text("电话") }, singleLine = true)
-                Text("身份证：${user.idCard.ifBlank { "未录入" }}", color = Muted, fontSize = 15.sp)
+                Text("工号：${user.employeeNo.ifBlank { "未录入" }}", color = Muted, fontSize = 15.sp)
                 error?.let { Text(it, color = Color(0xFFC7473C), fontSize = 14.sp) }
             }
         },
@@ -2106,6 +2113,7 @@ private fun TypeConfirmationDialog(
     onUpdated: (WorkOrder) -> Unit,
 ) {
     val approvalMode = step.status == StepStatus.TYPE_CONFIRMATION
+    var labelId by remember { mutableStateOf("") }
     var materialId by remember { mutableStateOf("") }
     var reason by remember { mutableStateOf("") }
     var photoUri by remember { mutableStateOf<String?>(null) }
@@ -2120,6 +2128,7 @@ private fun TypeConfirmationDialog(
         if (captured) {
             working = true
             error = null
+            labelId = ""
             materialId = ""
             reason = ""
             photoUri = null
@@ -2133,7 +2142,8 @@ private fun TypeConfirmationDialog(
                     )
                 }.onSuccess { processed ->
                     photoUri = processed.photoUri
-                    materialId = processed.scannedMaterialId.orEmpty()
+                    labelId = processed.scannedQr?.labelId.orEmpty()
+                    materialId = processed.scannedQr?.materialId.orEmpty()
                 }.onFailure {
                     error = "照片处理失败：${it.message}"
                 }
@@ -2172,8 +2182,8 @@ private fun TypeConfirmationDialog(
                         Text("正在处理照片并识别二维码...", color = Muted)
                     }
                     if (photoUri != null && !working) {
-                        if (materialId.isNotBlank()) {
-                            Text("二维码识别结果：$materialId", color = Ink, fontWeight = FontWeight.Bold)
+                        if (labelId.isNotBlank() && materialId.isNotBlank()) {
+                            Text("二维码识别结果：$materialId · $labelId", color = Ink, fontWeight = FontWeight.Bold)
                         } else {
                             Text("未识别到二维码，可填写原因后提交后台拍照审批。", color = Color(0xFFC9854C), fontSize = 14.sp)
                             OutlinedTextField(
@@ -2203,12 +2213,12 @@ private fun TypeConfirmationDialog(
                         }
                     }
                 }, enabled = !working) { Text("审批通过") }
-                materialId.isNotBlank() -> Button(onClick = {
+                labelId.isNotBlank() && materialId.isNotBlank() -> Button(onClick = {
                     if (!working) {
                         working = true
                         error = null
                         scope.launch {
-                            runCatching { repository.confirmStepQr(order.orderNo, step.stepNo, materialId, photoUri.orEmpty()) }
+                            runCatching { repository.confirmStepQr(order.orderNo, step.stepNo, labelId, materialId, photoUri.orEmpty()) }
                                 .onSuccess { onUpdated(it) }
                                 .onFailure { error = it.message }
                                 .also { working = false }
@@ -2464,6 +2474,7 @@ private fun AdminMasterDataScreen(repository: MilkRepository) {
     var viewingMaterial by remember { mutableStateOf<Material?>(null) }
     var showRecipeDialog by remember { mutableStateOf(false) }
     var editingRecipe by remember { mutableStateOf<ProductRecipe?>(null) }
+    var historyRecipe by remember { mutableStateOf<ProductRecipe?>(null) }
     var previewImage by remember { mutableStateOf<ImagePreviewTarget?>(null) }
     var isRefreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -2583,9 +2594,12 @@ private fun AdminMasterDataScreen(repository: MilkRepository) {
                             Spacer(Modifier.width(14.dp))
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(recipe.name, color = Ink, fontWeight = FontWeight.Bold)
-                                Text("${recipe.items.size} 种辅料 · ${if (recipe.enabled) "启用" else "停用"}", color = Muted, fontSize = 14.sp)
+                                Text("V${recipe.version} · ${recipe.items.size} 种辅料 · ${if (recipe.enabled) "启用" else "停用"}", color = Muted, fontSize = 14.sp)
                             }
-                            TextButton(onClick = { editingRecipe = recipe }) { Text("编辑") }
+                            Column(horizontalAlignment = Alignment.End) {
+                                TextButton(onClick = { historyRecipe = recipe }) { Text("历史") }
+                                TextButton(onClick = { editingRecipe = recipe }) { Text("编辑") }
+                            }
                         }
                     }
                 }
@@ -2628,6 +2642,13 @@ private fun AdminMasterDataScreen(repository: MilkRepository) {
             },
         )
     }
+    historyRecipe?.let { recipe ->
+        RecipeHistoryDialog(
+            recipe = recipe,
+            repository = repository,
+            onDismiss = { historyRecipe = null },
+        )
+    }
     previewImage?.let { target ->
         ImagePreviewDialog(
             target = target,
@@ -2635,6 +2656,97 @@ private fun AdminMasterDataScreen(repository: MilkRepository) {
             onDismiss = { previewImage = null },
         )
     }
+}
+
+@Composable
+private fun RecipeHistoryDialog(
+    recipe: ProductRecipe,
+    repository: MilkRepository,
+    onDismiss: () -> Unit,
+) {
+    var versions by remember(recipe.id) { mutableStateOf<List<RecipeVersion>?>(null) }
+    var error by remember(recipe.id) { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    androidx.compose.runtime.LaunchedEffect(recipe.id) {
+        runCatching { repository.listRecipeVersions(recipe.id) }
+            .onSuccess { versions = it }
+            .onFailure { error = it.message ?: "配方历史版本加载失败" }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("配方历史 · ${recipe.name}") },
+        text = {
+            when {
+                error != null -> Text(error ?: "", color = Color(0xFFC7473C))
+                versions == null -> Text("正在加载历史版本...", color = Muted)
+                versions?.isEmpty() == true -> Text("当前配方尚无历史版本记录。", color = Muted)
+                else -> LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 500.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    items(versions.orEmpty(), key = { it.version }) { version ->
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (version.isCurrent) Green.copy(alpha = 0.08f) else Color(0xFFF7F9F8),
+                            ),
+                        ) {
+                            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        "V${version.version}${if (version.isCurrent) " · 当前版本" else ""}",
+                                        color = Ink,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                    Text(version.createdByName, color = Muted, fontSize = 13.sp)
+                                }
+                                Text(
+                                    version.createdAt.replace("T", " ").take(16).ifBlank { "时间未记录" },
+                                    color = Muted,
+                                    fontSize = 12.sp,
+                                )
+                                HorizontalDivider(color = Color(0xFFE2EAE7))
+                                version.items.forEach { item ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                    ) {
+                                        Text(
+                                            "${item.nameZh} · ${item.materialCode}",
+                                            color = Ink,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        Text("${item.quantityPerTonKg} kg/吨", color = Green, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    error = null
+                    versions = null
+                    scope.launch {
+                        runCatching { repository.listRecipeVersions(recipe.id) }
+                            .onSuccess { versions = it }
+                            .onFailure { error = it.message ?: "配方历史版本加载失败" }
+                    }
+                },
+            ) { Text("刷新") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("关闭") } },
+    )
 }
 
 private fun materialImageCount(material: Material): Int {

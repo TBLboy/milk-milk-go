@@ -852,3 +852,1995 @@ evidence:
   recorded_at: '2026-09-13T04:49:23Z'
   invalidated_at: null
   invalidation_reason: null
+- id: EV-TASK-071-FOCUSED-TESTS
+  kind: test
+  subject: TASK-071 标签 labelId 校验聚焦回归测试
+  status: valid
+  command: cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest tests/test_evidence.py -q
+  result_ref: 9 passed；覆盖合法标签、缺失 labelId、未知标签、作废标签和标签辅料错配
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-071
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: aa7b0e67a0321ac449e0de6e58bae8fd6601e4b91395d5a53cadd4050655a87e
+    file_hashes: {}
+  recorded_at: '2026-09-13T05:20:40Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-071-BACKEND
+  kind: test
+  subject: TASK-071 后端全量回归测试
+  status: valid
+  command: cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q
+  result_ref: exit code 0，全量测试通过；仅有 FastAPI/Starlette 依赖弃用警告
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-071
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 674cc2395a6cd70c60a656b69923f374af4a08f01145aff05d727463b3a77fc8
+    file_hashes: {}
+  recorded_at: '2026-09-13T05:20:46Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-071-PC-BUILD
+  kind: build
+  subject: TASK-071 PC 管理端生产构建
+  status: valid
+  command: cd pc && npm run build
+  result_ref: tsc -b 与 vite build 成功，1887 modules transformed
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-071
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 665737b928eefc25dd16ba70c189eb4bd1ffd1cc6036ef13c8c8c86e369d6738
+    file_hashes: {}
+  recorded_at: '2026-09-13T05:20:50Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-071-APP-BUILD
+  kind: build
+  subject: TASK-071 Android 平板调试验证构建
+  status: valid
+  command: cd app && JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk
+    ./gradlew assembleDebug --no-daemon
+  result_ref: BUILD SUCCESSFUL，37 actionable tasks，仅 Kotlin 既有废弃 API 警告
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-071
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 42b601543f56265c1066ae9b05611f7af595d124ac57325c927715e0e43360c5
+    file_hashes: {}
+  recorded_at: '2026-09-13T05:20:55Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-072-FOCUSED-TESTS
+  kind: test
+  subject: TASK-072 完整备份与调度聚焦测试
+  status: valid
+  command: cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest tests/test_operations.py -q
+  result_ref: 5 passed；覆盖完整备份内容、manifest/文件哈希、失败留痕、到期判定、自动调度去重和服务式带空格数据路径
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-072
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 7664c7639ee5550eed0e318b6e3b60b49fa4ae21e46ea8008ffc4d02181fde1e
+    file_hashes: {}
+  recorded_at: '2026-09-13T05:26:12Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-072-BACKEND
+  kind: test
+  subject: TASK-072 后端全量回归测试
+  status: valid
+  command: cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q
+  result_ref: exit code 0；新增完整备份、失败记录和调度测试后全量回归通过
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-072
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 5f94c9cb3e90d45130761cf9c4d326b0db8b73d81c21942b0388abde1e73ae10
+    file_hashes: {}
+  recorded_at: '2026-09-13T05:26:17Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-072-PC-BUILD
+  kind: build
+  subject: TASK-072 PC 管理端生产构建
+  status: valid
+  command: cd pc && npm run build
+  result_ref: tsc -b 与 vite build 成功；自动备份时间、完整备份按钮和备份历史字段已通过类型检查与生产构建
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-072
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: ed770a490264554a8a4cc7985100ccad8b73b64e644e314e0f9a0612173ef2c5
+    file_hashes: {}
+  recorded_at: '2026-09-13T05:26:23Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-073-FOCUSED-TESTS
+  kind: test
+  subject: TASK-073 备份恢复与恢复演练聚焦测试
+  status: valid
+  command: cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest tests/test_restore.py -q
+  result_ref: 5 passed；覆盖完整 CLI 恢复、干净目录应用重放、损坏包拒绝、不完整包拒绝、恢复失败回滚和启动时中断恢复
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-073
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: ba4c8e77a6a6921ef35cb70400b240d5f5d7fcfc7826c9b00472477742f431ef
+    file_hashes: {}
+  recorded_at: '2026-09-13T05:33:08Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-073-BACKEND
+  kind: test
+  subject: TASK-073 后端全量回归测试
+  status: valid
+  command: cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q
+  result_ref: 64 项测试收集，全量执行 exit code 0；仅有 FastAPI/Starlette 依赖弃用警告
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-073
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: b4607f3c2f3f4ab4336b7916be7c99cbddabf40ad9575052df87298edc4d0465
+    file_hashes: {}
+  recorded_at: '2026-09-13T05:33:15Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-073-PC-BUILD
+  kind: build
+  subject: TASK-073 PC 管理端生产构建
+  status: valid
+  command: cd pc && npm run build
+  result_ref: tsc -b 与 vite build 成功；恢复前备份类型展示已通过生产构建
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-073
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 7af193b8d9f32dbede34112daeb86bfdbab35a95eda30ecaf3260463ebc4f4d0
+    file_hashes: {}
+  recorded_at: '2026-09-13T05:33:22Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-074-FOCUSED-TESTS
+  kind: test
+  subject: 幂等、并发与WAL恢复聚焦测试
+  status: valid
+  command: PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q tests/test_idempotency_concurrency.py tests/test_restore.py
+  result_ref: 幂等并发测试 6 passed；恢复测试 5 passed
+  covers:
+    files:
+    - pc/server/tests/test_idempotency_concurrency.py
+    - pc/server/tests/test_restore.py
+    requirements: []
+    tasks:
+    - TASK-074
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      pc/server/tests/test_idempotency_concurrency.py: a639c88124d542a718b2b9051f199df724eb1a3d30a4d1813cb8ad301a0e3cde
+      pc/server/tests/test_restore.py: 49742a82751fa139297714678917f1ce4b9a898dc6967c4f6924ab46d5be61ac
+  recorded_at: '2026-09-13T05:43:16Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-074-BACKEND
+  kind: test
+  subject: 后端全量回归测试
+  status: valid
+  command: PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q
+  result_ref: 70 passed
+  covers:
+    files:
+    - pc/server/app/services/idempotency.py
+    - pc/server/app/api/evidence.py
+    - pc/server/app/db/session.py
+    - pc/server/app/db/models.py
+    - pc/server/app/main.py
+    requirements: []
+    tasks:
+    - TASK-074
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 9c5ef7a86e790d30c139cfa74f628951d8a5182f92767acdf0670f5a6eb97caa
+    file_hashes:
+      pc/server/app/services/idempotency.py: e5deb396b2206ebba4c1ab9a3958f114d0b0c1acd593d026cdf604f8131797df
+      pc/server/app/api/evidence.py: 137aee5720ca3a9678de946a15fca8114e87330d26bc5e44b06f4c79cf7abf2a
+      pc/server/app/db/session.py: 2e38e926c0214143f029fd6dfa7bee601120bdc0726b573026f648fb8af7ec55
+      pc/server/app/db/models.py: d9b9ebe53b96efa58d94b916de6685acba02232a24b79a1bcb4becd25866c1c6
+      pc/server/app/main.py: 25f792304f18a77389768632eb11f200a2bdd025149756335b1d96b33fc6f9fc
+  recorded_at: '2026-09-13T05:43:21Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-074-PC-BUILD
+  kind: build
+  subject: PC 写请求幂等标识与生产构建
+  status: valid
+  command: cd pc && npm run build
+  result_ref: TypeScript 检查与 Vite 生产构建通过
+  covers:
+    files:
+    - pc/src/services/api.ts
+    - pc/dist/index.html
+    requirements: []
+    tasks:
+    - TASK-074
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 77d440aac3c913f692e0935e02a13432aad22d6e5aa2225e6fdbed63a9ae6b15
+    file_hashes:
+      pc/src/services/api.ts: 3a08c4d5a4d0dc5618f55d62b1ea7fbdaddc77924becca000a17fad0e7c95b33
+      pc/dist/index.html: aecd736bc6c3161e1617aa231f28d3783f022b4ff451842044c7f2ba1eecdff0
+  recorded_at: '2026-09-13T05:43:27Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-074-APP-BUILD
+  kind: build
+  subject: Android 写请求幂等标识与 debug 构建
+  status: valid
+  command: JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug
+  result_ref: BUILD SUCCESSFUL；compileDebugKotlin 与 assembleDebug 通过
+  covers:
+    files:
+    - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
+    requirements: []
+    tasks:
+    - TASK-074
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 712ed167fa89b2a05ade8448f6a1bfff9b7917aa2d651897fc19e66c875b914a
+    file_hashes:
+      app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt: 82e1a154c23273bf8196cd8404222d8146264a68ccf036c8b3b63375bbda2efc
+  recorded_at: '2026-09-13T05:43:38Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-074-RESTORE-FIX
+  kind: test
+  subject: SQLite WAL 恢复原子性回归修复
+  status: valid
+  command: PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q tests/test_restore.py
+  result_ref: 5 passed；恢复校验连接显式关闭，主库与 -wal/-shm 作为整体替换和回滚
+  covers:
+    files:
+    - pc/server/app/services/restore.py
+    - pc/server/tests/test_restore.py
+    requirements: []
+    tasks:
+    - TASK-074
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      pc/server/app/services/restore.py: 66f75907f19d83ffb0e74f2fc9392045cda4a9d5cc3f9b8e4213eb1a04a99870
+      pc/server/tests/test_restore.py: 49742a82751fa139297714678917f1ce4b9a898dc6967c4f6924ab46d5be61ac
+  recorded_at: '2026-09-13T05:43:44Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-075-FOCUSED-TESTS
+  kind: test
+  subject: 证据哈希、不可覆盖和恢复校验聚焦测试
+  status: valid
+  command: PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q tests/test_evidence_integrity.py tests/test_evidence.py tests/test_restore.py
+  result_ref: 19 passed；覆盖正常上传与读取、SHA-256 元数据、篡改和缺失检测、重复 file_id 拒绝覆盖、管理员权限及恢复哈希不一致拒绝
+  covers:
+    files:
+    - pc/server/app/api/evidence.py
+    - pc/server/app/db/models.py
+    - pc/server/app/services/restore.py
+    - pc/server/tests/test_evidence_integrity.py
+    - pc/server/tests/test_restore.py
+    requirements: []
+    tasks:
+    - TASK-075
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e883c8b401440b65b4121c6a3bbab4af2591e652766b9943c918906a0d034b3d
+    file_hashes:
+      pc/server/app/api/evidence.py: d3479f59428fc097b99ee4993f3a06a8591d48d4f2e6987b29a74b68138c79a9
+      pc/server/app/db/models.py: 4035dae35bb903b915c474a3624bca55a25ef2948111d1dca5efc1c9546dd90b
+      pc/server/app/services/restore.py: 25c1818bfbb9f5119e31e20782e2bb573dc49bd5e3596cde8820aa063c937693
+      pc/server/tests/test_evidence_integrity.py: 46afe51d1b7f10e425733895ea2c3a8cb4a2ac0c835e4adafb855fef81f2380c
+      pc/server/tests/test_restore.py: 3fdc23583b525709a9c361e698034e3317f1e540a01c7659461e72e904fafef9
+  recorded_at: '2026-09-13T05:47:44Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-075-BACKEND
+  kind: test
+  subject: 证据完整性后端全量回归
+  status: valid
+  command: PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q
+  result_ref: 75 passed
+  covers:
+    files:
+    - pc/server/app/api/evidence.py
+    - pc/server/app/db/models.py
+    - pc/server/app/services/restore.py
+    requirements: []
+    tasks:
+    - TASK-075
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e883c8b401440b65b4121c6a3bbab4af2591e652766b9943c918906a0d034b3d
+    file_hashes:
+      pc/server/app/api/evidence.py: d3479f59428fc097b99ee4993f3a06a8591d48d4f2e6987b29a74b68138c79a9
+      pc/server/app/db/models.py: 4035dae35bb903b915c474a3624bca55a25ef2948111d1dca5efc1c9546dd90b
+      pc/server/app/services/restore.py: 25c1818bfbb9f5119e31e20782e2bb573dc49bd5e3596cde8820aa063c937693
+  recorded_at: '2026-09-13T05:47:50Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-076-AUTH-TESTS
+  kind: test
+  subject: 工号替换身份证的认证与迁移聚焦测试
+  status: valid
+  command: PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q tests/test_auth.py
+  result_ref: 11 passed；覆盖普通员工工号必填与唯一、本人不可修改工号、管理员维护工号、待审批账号工号要求、响应不含身份证，以及旧 users.id_card
+    字段迁移删除和唯一索引建立
+  covers:
+    files:
+    - pc/server/tests/test_auth.py
+    - pc/server/app/api/auth.py
+    - pc/server/app/db/models.py
+    requirements: []
+    tasks:
+    - TASK-076
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 10368c8ad02471c73c4de6e4bcee704af6157e9cba820190c0d5ba0075125a03
+    file_hashes:
+      pc/server/tests/test_auth.py: b9a583dc7137c38c0c98284d4e2f0d6386fda77420af46a17f1edf5d74fb3b8c
+      pc/server/app/api/auth.py: 280d43b72fa4e678b5d516fb64fbabfee2b0ab1ada3dbb2b313d9c3c58523c93
+      pc/server/app/db/models.py: 9eac8055191ca90c8bba4f1b2850593772125a0d1389ca47e55971fb741e1498
+  recorded_at: '2026-09-13T05:53:20Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-076-BACKEND
+  kind: test
+  subject: 工号字段替换后的后端全量回归
+  status: valid
+  command: PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q
+  result_ref: 78 passed；所有后端接口和回归测试通过
+  covers:
+    files:
+    - pc/server/app/api/auth.py
+    - pc/server/app/db/models.py
+    - pc/server/tests/test_auth.py
+    - pc/server/tests/test_bug_reports.py
+    - pc/server/tests/test_evidence_integrity.py
+    - pc/server/tests/test_idempotency_concurrency.py
+    - pc/server/tests/test_master_data.py
+    - pc/server/tests/test_pc_admin.py
+    - pc/server/tests/test_work_order_requests.py
+    - pc/server/tests/test_work_orders.py
+    requirements: []
+    tasks:
+    - TASK-076
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: f941703a757ed196e1b3787128de80650afc24cebcac9d74b25e2c3d49842ef3
+    file_hashes:
+      pc/server/app/api/auth.py: 280d43b72fa4e678b5d516fb64fbabfee2b0ab1ada3dbb2b313d9c3c58523c93
+      pc/server/app/db/models.py: 9eac8055191ca90c8bba4f1b2850593772125a0d1389ca47e55971fb741e1498
+      pc/server/tests/test_auth.py: b9a583dc7137c38c0c98284d4e2f0d6386fda77420af46a17f1edf5d74fb3b8c
+      pc/server/tests/test_bug_reports.py: f8a0742fbebdb2d8750b305c1172020df47e643ce964eaa3d68fac81647d9b25
+      pc/server/tests/test_evidence_integrity.py: 6a4211b77d7d181db86cb52c037bc0e53146e1af12ed7a38bbdf77d067e8f446
+      pc/server/tests/test_idempotency_concurrency.py: a43a0085944ff98fc742e0bb4bc551d1fb8be63841eec5e0a74c8f33a1701d4a
+      pc/server/tests/test_master_data.py: 831b8cc5b6325b67262e1f217c9c4b108479c9918c6a486ea51141295e73c27f
+      pc/server/tests/test_pc_admin.py: 12eaf648a3823cc694f13e6b4483be525931a550a9bfeb6c0d6d4400a8187d2d
+      pc/server/tests/test_work_order_requests.py: b8ffcb279de37eb5e9e2c10320750be82664bd28398e1fddabcd3a509514419e
+      pc/server/tests/test_work_orders.py: a80cea176b0c3180fdd81a27375dbf1f275df864c753d106fd00b597be30c601
+  recorded_at: '2026-09-13T05:53:25Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-076-PC-BUILD
+  kind: build
+  subject: 工号字段改造后的 PC 生产构建
+  status: valid
+  command: cd pc && npm run build
+  result_ref: TypeScript 检查和 Vite 生产构建通过；账号管理、注册与资料组件不再引用身份证字段
+  covers:
+    files:
+    - pc/src/components/Modals.tsx
+    - pc/src/pages/ManagementPages.tsx
+    - pc/src/services/api.ts
+    requirements: []
+    tasks:
+    - TASK-076
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: cd07ca6a88cf38506e583bce1bfa39549438582e1fdf96594c5916af1d0d9bf9
+    file_hashes:
+      pc/src/components/Modals.tsx: 87c225c22961697606867f6e199ee2260025a0e15341d41ef473582db22b15b4
+      pc/src/pages/ManagementPages.tsx: 72fbcdb7608cb77a48b1b0d52a847d879216d92cc3e36ccfbffefc9b61e3bc1e
+      pc/src/services/api.ts: bda24e43b4b8ccc9c5004d69607bcfb7b25e02cc4bbb0568b680c157e557d951
+  recorded_at: '2026-09-13T05:53:30Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-076-APP-BUILD
+  kind: build
+  subject: 工号字段改造后的 Android debug 构建
+  status: valid
+  command: cd app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug
+  result_ref: BUILD SUCCESSFUL；App 用户模型、资料展示、协议和旧缓存清理可编译；不再持久化 idCard 字段
+  covers:
+    files:
+    - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+    - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+    - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
+    requirements: []
+    tasks:
+    - TASK-076
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 3bbb140f0cc5d9fd1b78b09a45affd015f634a27ebee8df09c1b77efd05e89dd
+    file_hashes:
+      app/app/src/main/java/com/muheng/milkweigh/AppData.kt: ed5b7004d62f4b01a89e582468b31e7ebcb76715a1f42d4c75d30598f9e2df5c
+      app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt: b1364fe7ebc6fb90146b756f53e78bd9691b7a0c8d681cbe7ff91c4afc629488
+      app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt: 35d71f8a0b303474cbf30e35525487186b78d26b9da31ca8c74512a73293d3e6
+  recorded_at: '2026-09-13T05:53:34Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-077-FOCUSED-TESTS
+  kind: test
+  subject: 配方不可变历史版本聚焦测试
+  status: valid
+  command: PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q tests/test_master_data.py tests/test_idempotency_concurrency.py::test_concurrent_recipe_edits_never_duplicate_version_numbers
+  result_ref: 15 passed；覆盖初始版本、仅改名或图片不增版本、配料变化生成新版本、旧工单快照保持不变、普通操作员无历史权限、旧配方补版本以及并发编辑不产生重复版本号
+  covers:
+    files:
+    - pc/server/app/api/master_data.py
+    - pc/server/app/db/models.py
+    - pc/server/tests/test_master_data.py
+    - pc/server/tests/test_idempotency_concurrency.py
+    requirements: []
+    tasks:
+    - TASK-077
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 532650aadcf61e0fb03b90535d0077cedf1872eb7c8eff61730a7bffd2912b4a
+    file_hashes:
+      pc/server/app/api/master_data.py: 43d8f3e38ac574b2553a6473f608d81d0cf16c28a868f74fe9fee6bb7fdce19a
+      pc/server/app/db/models.py: 5810e7266fe896b7cf0d8b9a495c855cb913c6a474bd51cb4f7c5a90d39cadfc
+      pc/server/tests/test_master_data.py: 7f23b9c6b22f6326725a6f29dd7931099302bac0754729a1167805f93ccc3130
+      pc/server/tests/test_idempotency_concurrency.py: acd264060010747cb967add3b9232d2316be3cfef668770893ffacecb8050114
+  recorded_at: '2026-09-13T06:00:29Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-077-BACKEND
+  kind: test
+  subject: 配方历史版本后端全量回归
+  status: valid
+  command: PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q
+  result_ref: 83 passed；配方版本模型、迁移补录、历史接口和既有工单快照均纳入全量回归
+  covers:
+    files:
+    - pc/server/app/api/master_data.py
+    - pc/server/app/db/models.py
+    - pc/server/tests/test_master_data.py
+    - pc/server/tests/test_idempotency_concurrency.py
+    requirements: []
+    tasks:
+    - TASK-077
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 532650aadcf61e0fb03b90535d0077cedf1872eb7c8eff61730a7bffd2912b4a
+    file_hashes:
+      pc/server/app/api/master_data.py: 43d8f3e38ac574b2553a6473f608d81d0cf16c28a868f74fe9fee6bb7fdce19a
+      pc/server/app/db/models.py: 5810e7266fe896b7cf0d8b9a495c855cb913c6a474bd51cb4f7c5a90d39cadfc
+      pc/server/tests/test_master_data.py: 7f23b9c6b22f6326725a6f29dd7931099302bac0754729a1167805f93ccc3130
+      pc/server/tests/test_idempotency_concurrency.py: acd264060010747cb967add3b9232d2316be3cfef668770893ffacecb8050114
+  recorded_at: '2026-09-13T06:00:35Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-077-PC-BUILD
+  kind: build
+  subject: PC 配方历史版本界面生产构建
+  status: valid
+  command: cd pc && npm run build
+  result_ref: TypeScript 检查和 Vite 生产构建通过；产品配方详情可加载并切换历史版本
+  covers:
+    files:
+    - pc/src/components/Modals.tsx
+    - pc/src/services/api.ts
+    - pc/src/styles/app.css
+    requirements: []
+    tasks:
+    - TASK-077
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: eadd72904aa835045801a00cadf6367780c10e505c1a1ccd1b5a5a2edbea512a
+    file_hashes:
+      pc/src/components/Modals.tsx: 853b109c94a9de0198bdbdbcff53a5ae69519ad0c8f20d0c95da58e4e96cd229
+      pc/src/services/api.ts: 5a8ab84a18a330a7a144f407067be97856b67205d7487991ff7a8e78fa8f50e0
+      pc/src/styles/app.css: 5ee94f6b2f4763be2c86eba0e1bfb1c4cbf75f0e223dd9bacd090deee18d3974
+  recorded_at: '2026-09-13T06:00:40Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-077-APP-BUILD
+  kind: build
+  subject: Android 配方历史版本界面 debug 构建
+  status: valid
+  command: cd app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug
+  result_ref: BUILD SUCCESSFUL；App 配方卡片显示当前版本并可打开历史版本弹窗
+  covers:
+    files:
+    - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+    - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
+    - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+    requirements: []
+    tasks:
+    - TASK-077
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 4b4e0457f5b1c87303e86e23c25efdb97c3a522d1841f0e16bdc5b1705a72c1e
+    file_hashes:
+      app/app/src/main/java/com/muheng/milkweigh/AppData.kt: 22a48f1b820b11db6d64272a032053628ab4a90da92dd06ba6cfdc6c1d94c735
+      app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt: 5e6c51c0579f3aec629d0affa3071a37ef1f90425b3b91d51539cd04e81a7b4c
+      app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt: ad54dd1558a9777e4f96492ccd7fff6607b2d7f386f9a72fa83f2307b3925d05
+  recorded_at: '2026-09-13T06:00:45Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-078-KEYSTORE-TESTS
+  kind: android-e2e
+  subject: Android Keystore 凭据存储仪器测试
+  status: valid
+  command: ANDROID_SERIAL=emulator-5554 JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew
+    connectedDebugAndroidTest
+  result_ref: 4 tests passed on Medium_Tablet Android 15；验证令牌和记住密码不再明文落盘、旧明文迁移删除、加密数据可正常读取、Keystore
+    密钥丢失时清理不可解密会话、退出清除持久会话
+  covers:
+    files:
+    - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+    - app/app/src/androidTest/java/com/muheng/milkweigh/SessionStoreTest.kt
+    - app/app/build.gradle.kts
+    requirements: []
+    tasks:
+    - TASK-078
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 23ce9e40bb820fa46fd1cd6c66b62e30d1ea54612fc28f23417f2b96c918453f
+    file_hashes:
+      app/app/src/main/java/com/muheng/milkweigh/AppData.kt: 813838df6d95950f2bedd4d897ed9c0f7458001423993bebd4ecd38d8b387094
+      app/app/src/androidTest/java/com/muheng/milkweigh/SessionStoreTest.kt: ccf8b88bf66bc96632098dfb4930eadfc6c2e2f75003a79226a7b7523be45f8c
+      app/app/build.gradle.kts: 29773e9548a9f3825d2756f1b4706b3e89788a69aa2384ec719290f145187ea8
+  recorded_at: '2026-09-13T06:05:59Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-078-APP-BUILD
+  kind: build
+  subject: Android Keystore 改造后的 debug 构建
+  status: valid
+  command: cd app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug
+  result_ref: BUILD SUCCESSFUL；debug APK 生成成功
+  covers:
+    files:
+    - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+    - app/app/build.gradle.kts
+    requirements: []
+    tasks:
+    - TASK-078
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 23ce9e40bb820fa46fd1cd6c66b62e30d1ea54612fc28f23417f2b96c918453f
+    file_hashes:
+      app/app/src/main/java/com/muheng/milkweigh/AppData.kt: 813838df6d95950f2bedd4d897ed9c0f7458001423993bebd4ecd38d8b387094
+      app/app/build.gradle.kts: 29773e9548a9f3825d2756f1b4706b3e89788a69aa2384ec719290f145187ea8
+  recorded_at: '2026-09-13T06:06:06Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-079-AUDIT-TESTS
+  kind: test
+  subject: 审计日志专项自动化测试
+  status: valid
+  command: PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q tests/test_audit.py
+  result_ref: 5 passed; 覆盖权限、筛选分页、脱敏、关键工作流、驳回称重和幂等重放不重复审计
+  covers:
+    files:
+    - pc/server/tests/test_audit.py
+    requirements: []
+    tasks:
+    - TASK-079
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      pc/server/tests/test_audit.py: 9e77d5621f140864fe107bbe29a51bdca505b4c716342c6503e8fcee9495d565
+  recorded_at: '2026-09-13T06:18:19Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-079-BACKEND
+  kind: test
+  subject: 后端完整回归测试
+  status: valid
+  command: PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q
+  result_ref: 完整后端测试集通过，包含审计专项及恢复审计回归
+  covers:
+    files:
+    - pc/server
+    requirements: []
+    tasks:
+    - TASK-079
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: f1be4df1c295b4d2d8c4ce775639aae1e37f3663e4f37209c70f0a41f16e0b1b
+    file_hashes: {}
+  recorded_at: '2026-09-13T06:18:25Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-079-PC-BUILD
+  kind: build
+  subject: PC 管理端生产构建
+  status: valid
+  command: cd pc && npm run build
+  result_ref: TypeScript 与 Vite 生产构建成功，包含审计日志页面
+  covers:
+    files:
+    - pc/src
+    requirements: []
+    tasks:
+    - TASK-079
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 673051ac0ff991706f91fa3e6e65f2a6ce9d14516ac5c3aab0811ee91c93d23f
+    file_hashes: {}
+  recorded_at: '2026-09-13T06:18:32Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-079-PC-UI
+  kind: ui
+  subject: PC 审计日志页面浏览器验收
+  status: valid
+  command: 'Playwright: admin login -> audit nav -> result=failure -> query -> detail
+    modal'
+  result_ref: 筛选后显示20行、分页23条共2页、结果均为失败、详情弹窗可见且无页面错误
+  covers:
+    files:
+    - .build/task079-audit-log.png
+    requirements: []
+    tasks:
+    - TASK-079
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      .build/task079-audit-log.png: 17c343eea4c2be810b6651921c41f5da77cea131034a0c7c5ba2061ab89d20b1
+  recorded_at: '2026-09-13T06:18:38Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-079-APP-BUILD
+  kind: build
+  subject: Android 回归构建
+  status: valid
+  command: cd app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug
+  result_ref: Android debug APK 构建成功，未受 PC 审计日志改造影响
+  covers:
+    files:
+    - app
+    requirements: []
+    tasks:
+    - TASK-079
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 01eca981a171e553b4fca40d9e6c400e27ed970dbe6f5132a0a681eb55f41422
+    file_hashes: {}
+  recorded_at: '2026-09-13T06:18:46Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-079-DIFF
+  kind: check
+  subject: 工作区差异格式检查
+  status: valid
+  command: git diff --check
+  result_ref: 无尾随空白或补丁格式错误
+  covers:
+    files:
+    - git-diff
+    requirements: []
+    tasks:
+    - TASK-079
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes: {}
+  recorded_at: '2026-09-13T06:18:53Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-080-FOCUSED-TESTS
+  kind: test
+  subject: 产品配方 Excel 模板、校验、原子导入、导出和权限专项测试
+  status: valid
+  command: cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q tests/test_product_excel.py
+  result_ref: 4 passed；模板/导出表头、分组原子导入、已有产品不覆盖、未知辅料/重复辅料/非法用量、配方 V1、审计事件和普通操作员 403
+    均通过
+  covers:
+    files:
+    - pc/server/tests/test_product_excel.py
+    requirements:
+    - AC-DATA-002
+    tasks:
+    - TASK-080
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      pc/server/tests/test_product_excel.py: 1ecef783a3cb4322e4cfb9b7e2b0759f7ab895ecc84903aa352170b94686b033
+  recorded_at: '2026-09-13T06:28:47Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-080-BACKEND
+  kind: test
+  subject: TASK-080 后端全量回归测试
+  status: valid
+  command: cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q
+  result_ref: 后端收集 92 项测试，完整测试集运行至 100% 且无失败
+  covers:
+    files:
+    - pc/server/app/api/master_data.py
+    requirements:
+    - AC-DATA-001
+    tasks:
+    - TASK-080
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: f2a66633ed46690676061f69f0345357dc7273a06b379bf8aeff4662ac3b95e5
+    file_hashes:
+      pc/server/app/api/master_data.py: 02b38e37dd479066931bd2447cfe29c09237d59c64f21f7f5f07a1e8d0164f64
+  recorded_at: '2026-09-13T06:28:53Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-080-PC-BUILD
+  kind: build
+  subject: TASK-080 PC 管理端生产构建
+  status: valid
+  command: cd pc && npm run build
+  result_ref: TypeScript 与 Vite 生产构建通过；1887 modules transformed；生成 index-DVuknFib.css
+    和 index-C8yi4p7c.js
+  covers:
+    files:
+    - pc/src/pages/ManagementPages.tsx
+    requirements:
+    - AC-DATA-002
+    tasks:
+    - TASK-080
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: f0d10776b69a6893f07ede5d9662e2cf50603b219c6c67f3415c304557ffe0ad
+    file_hashes:
+      pc/src/pages/ManagementPages.tsx: bcd23ee46e4b3f73a4d0fcb7acbd48bcc6a78069227998d54dd788a8609d7c38
+  recorded_at: '2026-09-13T06:28:59Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-080-PC-UI
+  kind: browser-e2e
+  subject: PC 产品配方模板下载、导出和错误行展示
+  status: valid
+  command: 'Chrome + Playwright: isolated backend -> admin login -> 产品与配方 -> download
+    template -> export recipes -> upload invalid xlsx'
+  result_ref: 模板下载 products-recipes-template.xlsx；导出 products-recipes-export.xlsx；无效辅料行显示第
+    2 行、产品和辅料代号及具体原因；无 pageerror/console error；截图 .build/task080-product-excel.png
+    和 .build/task080-product-excel-errors.png
+  covers:
+    files:
+    - pc/src/services/api.ts
+    requirements:
+    - AC-DATA-002
+    tasks:
+    - TASK-080
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: ab2eaeb28f0ee15fac6b5b8ed73218e6c9bf7bc17028589dfa6b627b7ee783b5
+    file_hashes:
+      pc/src/services/api.ts: 7823ecc44916cfb7009587e9c0aea939ff57a91b5d7c6da024f70736536214b5
+  recorded_at: '2026-09-13T06:29:12Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-080-APP-BUILD
+  kind: build
+  subject: TASK-080 后端变更后的 Android 回归构建
+  status: valid
+  command: cd app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew assembleDebug
+  result_ref: Android debug APK 构建成功；37 个任务完成，无编译错误
+  covers:
+    files:
+    - app/app/build.gradle.kts
+    requirements:
+    - AC-DATA-004
+    tasks:
+    - TASK-080
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: d217fe98e4e1342cd136c359f159ca8d9f463d606778a1352a3f0d33f74de6cf
+    file_hashes:
+      app/app/build.gradle.kts: 29773e9548a9f3825d2756f1b4706b3e89788a69aa2384ec719290f145187ea8
+  recorded_at: '2026-09-13T06:29:20Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-080-DIFF
+  kind: static-check
+  subject: TASK-080 变更差异检查
+  status: valid
+  command: git diff --check
+  result_ref: 无空白错误或冲突标记
+  covers:
+    files:
+    - pc/src/styles/app.css
+    requirements:
+    - AC-DATA-002
+    tasks:
+    - TASK-080
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: d54c06a0a591093da9defacb3353d955699744854192991e4302cd2fb0c53a72
+    file_hashes:
+      pc/src/styles/app.css: 809c98a2351afeb2ed2558f60388b143032c8ee65c535addb13873f3510b57e3
+  recorded_at: '2026-09-13T06:29:28Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-081-APK
+  kind: build
+  subject: Android 1.0.1 发布 APK 构建、签名和模拟器冷启动
+  status: valid
+  command: JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk
+    ./app/packaging/build-apk.sh; adb -s emulator-5554 install -r release.apk; adb
+    shell am start -W -n com.muheng.milkweigh/.MainActivity
+  result_ref: APK versionCode=2 versionName=1.0.1；v2/v3 签名校验通过；模拟器覆盖安装成功并冷启动进入登录页；无
+    FATAL EXCEPTION；截图 .build/task081-android-1.0.1-launch.png
+  covers:
+    files:
+    - 发布版本/牧衡辅料称重防错系统-Android-1.0.1.apk
+    requirements: []
+    tasks:
+    - TASK-081
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      发布版本/牧衡辅料称重防错系统-Android-1.0.1.apk: 9523f5ade4197aeb5b3067de29d1f8387c9eee1a2de5f3bed167ca0415df1889
+  recorded_at: '2026-09-13T06:46:28Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-081-WINDOWS-BUILD
+  kind: build
+  subject: Windows 1.0.1 发布候选安装包构建与静态校验
+  status: valid
+  command: ./pc/scripts/build-windows-installer.sh; file release.exe; sha256sum -c
+    发布版本/SHA256SUMS.txt
+  result_ref: NSIS 1.0.1 安装包生成成功；21,623,025 字节；识别为 PE32 GUI Windows 安装程序；SHA-256 校验通过；尚未在
+    Windows 11 运行
+  covers:
+    files:
+    - 发布版本/牧衡辅料称重防错系统-Windows-1.0.1-Setup.exe
+    requirements: []
+    tasks:
+    - TASK-081
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      发布版本/牧衡辅料称重防错系统-Windows-1.0.1-Setup.exe: 9fa2d70e93c167179e366682ebc2235b8f42f8e3ba3a48b043dbbb18fbbc10dc
+  recorded_at: '2026-09-13T06:46:42Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-081-TABLET-BLOCKED
+  kind: android-e2e
+  subject: 真实 HONOR ROL-W60 平板 1.0.0 到 1.0.1 覆盖安装被系统安全确认阻断
+  status: failed
+  command: adb -s AYRHUN6402H01019 install -r 牧衡辅料称重防错系统-Android-1.0.1.apk
+  result_ref: 安装前 versionCode=1 versionName=1.0.0；荣耀安装确认页正确识别 1.0.1；自动流程多次确认后仍被安全模式拦截，安装后版本仍为
+    1.0.0；需要现场人员在设备上完成授权或调整组织允许的外部安装策略
+  covers:
+    files:
+    - app/app/build.gradle.kts
+    requirements: []
+    tasks:
+    - TASK-081
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 9ff4bc50cdd4b90afca4a5b0d87d5f99fdcc6d489be5e2b3218e7e8acb36a157
+    file_hashes:
+      app/app/build.gradle.kts: dc2faddb60e21149aa577e7cecdb52846d78e3e871e02e18897142c8724ac027
+  recorded_at: '2026-09-13T06:46:59Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-081-RELEASE-MANIFEST
+  kind: release
+  subject: 1.0.1 发布候选哈希、版本和限制清单
+  status: valid
+  command: sha256sum -c 发布版本/SHA256SUMS.txt; bash -n packaging scripts; py_compile
+    packaging helpers; git diff --check
+  result_ref: Windows 和 Android 哈希校验通过；版本元数据一致；发布清单记录已验证项和真实设备/Windows 未验证项；差异检查通过
+  covers:
+    files:
+    - .project-log/docs/release-candidate-1.0.1.md
+    requirements: []
+    tasks:
+    - TASK-081
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      .project-log/docs/release-candidate-1.0.1.md: 2ee4e796b529fd4301433bf4d3bc4c90f8dd6a386e376a1665203f2530514841
+  recorded_at: '2026-09-13T06:47:20Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-085-PC-BUILD
+  kind: build
+  subject: PC production build for TASK-085
+  status: valid
+  command: cd pc && npm run build
+  result_ref: tsc -b && vite build passed
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-085
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 200cbbc8ffab93198597fed91456656096bee90ddcd36d41ba581c5ecf859aa7
+    file_hashes: {}
+  recorded_at: '2026-09-13T06:57:34Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-085-BACKEND
+  kind: test
+  subject: Evidence integrity backend regression for TASK-085
+  status: valid
+  command: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q tests/test_evidence_integrity.py
+    && python -m pytest -q
+  result_ref: focused 4 passed; full backend 92 passed
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-085
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 380939a713f5ac7071ce297022f2cc7871f72cd76b86ca5af77947aa89a74290
+    file_hashes: {}
+  recorded_at: '2026-09-13T06:57:42Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-085-UI
+  kind: ui
+  subject: PC evidence integrity check and CSV export UI
+  status: valid
+  command: 'Playwright: admin login -> settings -> integrity check -> mocked issues
+    -> CSV export'
+  result_ref: 'real API: 37 files ok; mocked issues: table and download 证据完整性异常-2026-09-13.csv
+    verified'
+  covers:
+    files:
+    - .build/task085-integrity-issues.png
+    requirements: []
+    tasks:
+    - TASK-085
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      .build/task085-integrity-issues.png: d414825dc613d6a12ffc247bc276f0cd0ef380f5adde39d842442d9001e98151
+  recorded_at: '2026-09-13T06:57:48Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-085-DIFF
+  kind: static-check
+  subject: Task 085 diff and project-log validation
+  status: valid
+  command: git diff --check; validate_project.py; loopctl validate
+  result_ref: all passed after final release-scope task was recorded
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-085
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 8d4e801b4abbda0bc065314fab55c30cf51f5c56925e098ef984a94b625238f8
+    file_hashes: {}
+  recorded_at: '2026-09-13T07:09:52Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-034-AUTH-TESTS
+  kind: test
+  subject: PC account profile and approval auth regression
+  status: valid
+  command: PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q tests/test_auth.py
+  result_ref: 11 passed
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-034
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: bf0b8f905615e9123c63ea84b3c1ebc76d6f8b1793dd74ea5e9eec2cffc544c6
+    file_hashes: {}
+  recorded_at: '2026-09-13T07:06:46Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-034-PC-BUILD
+  kind: build
+  subject: PC production build for account acceptance
+  status: valid
+  command: cd pc && npm run build
+  result_ref: tsc -b && vite build passed
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-034
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 0298cf7595ce26e8b7b2b0e58bcb5b1d06450686158792d2e9c1dd832fb39215
+    file_hashes: {}
+  recorded_at: '2026-09-13T07:06:53Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-034-UI
+  kind: ui
+  subject: PC account profile approval and reset-password browser acceptance
+  status: valid
+  command: 'Playwright: admin login -> account management -> create avatar/employee_no
+    -> reset/copy -> approve/reject/login denial'
+  result_ref: all acceptance steps passed; pending and rejected login returned 403
+  covers:
+    files:
+    - .build/task034-account-approval.png
+    requirements: []
+    tasks:
+    - TASK-034
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      .build/task034-account-approval.png: a9299f1da1597e63e5ba3d3a680e5342d273943c1f4aef90c1c6f77336d5b86f
+  recorded_at: '2026-09-13T07:06:59Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-034-DIFF
+  kind: static-check
+  subject: Task 034 diff and project-log validation
+  status: valid
+  command: git diff --check; validate_project.py; loopctl validate
+  result_ref: all passed after final release-scope task was recorded
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-034
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 153b1291498d8c4450a89fb4403c2865ec754863d571e1195fe740090a07e4e8
+    file_hashes: {}
+  recorded_at: '2026-09-13T07:10:01Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-033-REAL-TABLET
+  kind: ui
+  subject: HONOR ROL-W60 real-tablet reset-password profile and mandatory password-change
+    acceptance
+  status: valid
+  command: 'adb -s AYRHUN6402H01019 UiAutomator: reset temporary login -> mandatory
+    change -> profile employee_no/avatar'
+  result_ref: Temporary password login 401 after change; new password 200; must_change_password=false;
+    profile shows QA-0913 and uploaded red-tulip avatar; workbench screenshot .build/task033-password-changed.png
+  covers:
+    files:
+    - .build/task033-real-profile.png
+    requirements: []
+    tasks:
+    - TASK-033
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      .build/task033-real-profile.png: 5103a36216ccb3891d82a5197c88f375dca1c48520392fef6e20135d6748bb52
+  recorded_at: '2026-09-13T07:44:39Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-033-AUTH-API
+  kind: integration
+  subject: registration approval and reset-password direct API acceptance
+  status: valid
+  command: 'curl: register -> pending login 403 -> admin profile employee_no 200 ->
+    approve 200 -> login 200; temporary password 401 -> new password 200 -> /auth/me
+    200'
+  result_ref: Pending account tabletqa0913pending returned ACCOUNT_PENDING_APPROVAL
+    before approval; approved login returned user status active with employee_no QA-0913-P;
+    tabletqa0913 temporary password returned 401 and TabletQA2026 returned 200 with
+    employee_no QA-0913 and avatar FILE-a03583f01dce2678eef5e155
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-033
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 117a82cb45935264b85881144d103dbb87fa90996248ecb813d680673c863673
+    file_hashes: {}
+  recorded_at: '2026-09-13T07:44:47Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-033-AVATAR-SYNC
+  kind: ui
+  subject: Android cross-device avatar synchronization
+  status: valid
+  command: 'Android emulator: configure 192.168.20.147 -> login tabletqa0913 -> render
+    top-right avatar'
+  result_ref: Emulator workbench displays the same red-tulip avatar uploaded on the
+    real tablet/backend; screenshot .build/task033-emulator-avatar-menu.png shows
+    tabletqa0913 avatar menu
+  covers:
+    files:
+    - .build/task033-emulator-workbench.png
+    requirements: []
+    tasks:
+    - TASK-033
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      .build/task033-emulator-workbench.png: b0d79ca73a2a50b4831563b088bdd9195c44574ebd59247e212bb0da8be58412
+  recorded_at: '2026-09-13T07:44:55Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-033-SESSION
+  kind: ui
+  subject: Android session restart logout and remembered-password acceptance
+  status: valid
+  command: 'Android emulator: force-stop/restart -> workbench; logout -> remembered
+    account/password; force-stop/restart -> prefilled login -> workbench'
+  result_ref: 'Force-stop/restart restored the authenticated workbench; logout retained
+    tabletqa0913 with encrypted remembered password and checked remember-password;
+    prefilled login succeeded. Related screenshots: .build/task033-emulator-restart-workbench.png
+    and .build/task033-emulator-avatar-menu.png'
+  covers:
+    files:
+    - .build/task033-emulator-prefilled-login.png
+    requirements: []
+    tasks:
+    - TASK-033
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      .build/task033-emulator-prefilled-login.png: d54539edf39f28378abf351c4bd20b2c3e27568ee1f2c4aa11af771e0d162462
+  recorded_at: '2026-09-13T07:45:03Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-033-DIFF
+  kind: static-check
+  subject: Task 033 Project Log and diff validation
+  status: valid
+  command: git diff --check; validate_project.py; loopctl validate
+  result_ref: all passed after TASK-033 real-device and cross-device evidence was
+    recorded
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-033
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 2f8e3a728648048815ffa5c2afce0412029986ea1107657e45b7575b5b552ef6
+    file_hashes: {}
+  recorded_at: '2026-09-13T07:45:50Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-082-APK
+  kind: artifact
+  subject: Android 1.0.0 and 1.0.1 release package hashes and signer identity
+  status: valid
+  command: sha256sum 1.0.0.apk 1.0.1.apk; apksigner verify --print-certs both APKs
+  result_ref: 1.0.0 SHA-256=4d87e57aed1ec9bed1248d30a6cc8e987b89c637b35c02a0e1d8b58094296bf2;
+    1.0.1 SHA-256=9523f5ade4197aeb5b3067de29d1f8387c9eee1a2de5f3bed167ca0415df1889;
+    both signed by the same CN=MilkWeigh certificate.
+  covers:
+    files:
+    - 发布版本/牧衡辅料称重防错系统-Android-1.0.0.apk
+    - 发布版本/牧衡辅料称重防错系统-Android-1.0.1.apk
+    requirements: []
+    tasks:
+    - TASK-082
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      发布版本/牧衡辅料称重防错系统-Android-1.0.0.apk: 4d87e57aed1ec9bed1248d30a6cc8e987b89c637b35c02a0e1d8b58094296bf2
+      发布版本/牧衡辅料称重防错系统-Android-1.0.1.apk: 9523f5ade4197aeb5b3067de29d1f8387c9eee1a2de5f3bed167ca0415df1889
+  recorded_at: '2026-09-13T08:15:55Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-082-UPGRADE
+  kind: device
+  subject: HONOR ROL-W60 Android 1.0.0 to 1.0.1 in-place upgrade
+  status: valid
+  command: adb -s AYRHUN6402H01019 install 1.0.0 APK; configure server and login;
+    adb install -r 1.0.1 APK; dumpsys package com.muheng.milkweigh
+  result_ref: 1.0.0 firstInstallTime=2026-09-13 15:56:03; 1.0.1 install replaced it
+    at 16:01:23 with firstInstallTime preserved and versionCode=2/versionName=1.0.1;
+    app cold-started to the authenticated workbench.
+  covers:
+    files:
+    - .build/task082-100-workbench.png
+    - .build/task082-101-post-upgrade.png
+    requirements: []
+    tasks:
+    - TASK-082
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      .build/task082-100-workbench.png: 03fa727da004bf539e75e781d4db2a551ac4155703eb34e24ebdb3d8f1639e79
+      .build/task082-101-post-upgrade.png: 84655e4628a50d997bf90ab95ecdc080aa650041655b97933e179e936a2d55c4
+  recorded_at: '2026-09-13T08:16:08Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-082-RETENTION
+  kind: ui
+  subject: Android upgrade preserves server settings saved account and encrypted remembered
+    password
+  status: valid
+  command: Open server settings after upgrade; logout; inspect prefilled account/password
+    and remember-password checkbox; login again
+  result_ref: After 1.0.1 upgrade the server dialog still showed 192.168.20.147; after
+    logout the login form retained tabletqa0913, a 12-character masked password, and
+    remember-password checked; re-login succeeded.
+  covers:
+    files:
+    - .build/task082-101-server-preserved.png
+    - .build/task082-101-login-preserved.png
+    requirements: []
+    tasks:
+    - TASK-082
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      .build/task082-101-server-preserved.png: 46150c0251c714b594ab2cdafe3a6137c9968ebb8ad687dbdb64a7302e98a353
+      .build/task082-101-login-preserved.png: 71609d07ce10f8bd7c3452284cc2dcfdc5f13d9cf8664db0a40c3cded08ed9e6
+  recorded_at: '2026-09-13T08:16:18Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-082-SMOKE
+  kind: ui
+  subject: Android 1.0.1 work-order scan weight-photo and BUG-entry smoke test
+  status: valid
+  command: Open work-order type confirmation, weight entry and BUG report; invoke
+    camera entries; inspect app process and logcat
+  result_ref: Type confirmation displayed photo-scan action; weight entry displayed
+    manual reading and camera action; BUG dialog displayed description/image controls;
+    camera activity opened for scan and scale photo; app pid remained alive and logcat
+    contained no app fatal exception.
+  covers:
+    files:
+    - .build/task082-101-type-entry.png
+    - .build/task082-101-weight-entry.png
+    - .build/task082-101-bug-dialog.png
+    requirements: []
+    tasks:
+    - TASK-082
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      .build/task082-101-type-entry.png: 026a3221675438a925616cc4674027ff2fba0d54dc840f1e27961088c2dac58f
+      .build/task082-101-weight-entry.png: e69a4a64f43c2118aa365dcd7b5d9ad99305006d41c24d941117d2744f26a70f
+      .build/task082-101-bug-dialog.png: 99ecd9863971de48eb4658fe9a6c3e0f75a85e3eb980cff31fd37b06f34c1131
+  recorded_at: '2026-09-13T08:16:29Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-082-DIFF
+  kind: static-check
+  subject: Task 082 Project Log and repository validation
+  status: valid
+  command: git diff --check; validate_project.py; loopctl validate
+  result_ref: All passed after TASK-082 evidence, task status, current-session and
+    progress updates.
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-082
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 0d02a95d0d43de660faeff8d759537b1a4e4e65961f622532e298e779a016818
+    file_hashes: {}
+  recorded_at: '2026-09-13T08:19:54Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-090-STATIC
+  kind: unit
+  subject: Windows 安装器升级时保留已有配置的静态回归测试
+  status: valid
+  command: PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q tests/test_windows_installer.py
+  result_ref: 1 passed；配置复制块按 SetOverwrite off -> .env -> 配置资源 -> SetOverwrite on
+    顺序执行
+  covers:
+    files:
+    - pc/packaging/windows/installer.nsi
+    - pc/server/tests/test_windows_installer.py
+    requirements: []
+    tasks:
+    - TASK-090
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 504dade21306fa5d3084fc306a7fd72580178b3eeb134436f1a747c56d3b4516
+    file_hashes:
+      pc/packaging/windows/installer.nsi: e8910c2aed58dd02ac759c0cdda42d8e645654e36a22c0f08b1aa2cd6fdb3183
+      pc/server/tests/test_windows_installer.py: d0a0cc38c8130bb4020015b771f436f24905cf6713c4cf4f0f08ffe37b1b44d2
+  recorded_at: '2026-09-13T08:25:43Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-090-NSIS
+  kind: build
+  subject: Windows 安装器临时编译验证
+  status: valid
+  command: makensis -DROOT_DIR=.build/windows-installer -DOUT_FILE=.build/task090-nsis/MilkWeigh-Setup-config-preservation.exe
+    -DAPP_VERSION=1.0.1 pc/packaging/windows/installer.nsi
+  result_ref: 编译成功；临时 EXE 21 MB；SHA-256 8cc155cb5a4985a84499fb74abbd50e0ebc6b70d33c442ea37fc835638f97a69
+  covers:
+    files:
+    - pc/packaging/windows/installer.nsi
+    requirements: []
+    tasks:
+    - TASK-090
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 504dade21306fa5d3084fc306a7fd72580178b3eeb134436f1a747c56d3b4516
+    file_hashes:
+      pc/packaging/windows/installer.nsi: e8910c2aed58dd02ac759c0cdda42d8e645654e36a22c0f08b1aa2cd6fdb3183
+  recorded_at: '2026-09-13T08:25:43Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-090-SUITE
+  kind: test-suite
+  subject: TASK-090 后端完整回归与项目校验
+  status: valid
+  command: pytest -q; validate_project.py; loopctl validate; git diff --check
+  result_ref: 后端 93 项测试通过；Project Log 与 Loop 校验通过；git diff --check 无错误
+  covers:
+    files:
+    - pc/server/tests/test_windows_installer.py
+    requirements: []
+    tasks:
+    - TASK-090
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      pc/server/tests/test_windows_installer.py: d0a0cc38c8130bb4020015b771f436f24905cf6713c4cf4f0f08ffe37b1b44d2
+  recorded_at: '2026-09-13T08:25:43Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-091-FOCUSED
+  kind: unit
+  subject: Windows 安装后 SMTP 自检脚本与安装器静态回归
+  status: valid
+  command: PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q tests/test_smtp_installer.py tests/test_windows_installer.py
+  result_ref: 5 passed；成功发送、缺失配置、凭据脱敏和安装器有限超时调用均有测试覆盖
+  covers:
+    files:
+    - pc/packaging/windows/smtp_test.py
+    - pc/server/tests/test_smtp_installer.py
+    - pc/server/tests/test_windows_installer.py
+    requirements: []
+    tasks:
+    - TASK-091
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      pc/packaging/windows/smtp_test.py: cff805fe6a3aa4d5686209266deb91841a737c191702a1935208a029e79284f1
+      pc/server/tests/test_smtp_installer.py: 310384f3956aa203ad1ec1b16609f2c4287a41247f67c230f6297622ed3d0c7d
+      pc/server/tests/test_windows_installer.py: 27e22eff2fbd7e08646b83dd440ef69d1efba3a412625f90eb1e2a5a96afbeca
+  recorded_at: '2026-09-13T08:32:27Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-091-BACKEND
+  kind: test-suite
+  subject: TASK-091 后端完整回归
+  status: valid
+  command: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q
+  result_ref: 后端完整测试集通过；新增自检脚本未破坏现有 BUG 邮件、审计和恢复测试
+  covers:
+    files:
+    - pc/packaging/windows/smtp_test.py
+    requirements: []
+    tasks:
+    - TASK-091
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      pc/packaging/windows/smtp_test.py: cff805fe6a3aa4d5686209266deb91841a737c191702a1935208a029e79284f1
+  recorded_at: '2026-09-13T08:32:27Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-091-NSIS
+  kind: build
+  subject: 包含 SMTP 自检的临时 Windows 安装器编译
+  status: valid
+  command: makensis -DROOT_DIR=.build/windows-installer -DOUT_FILE=.build/task091-nsis/MilkWeigh-Setup-smtp-self-test.exe
+    -DAPP_VERSION=1.0.1 pc/packaging/windows/installer.nsi
+  result_ref: 编译成功；临时 EXE 21 MB；SHA-256 c7308047e56b19910fabb5abc81dab27ff04a24f4eef8bd33bfeb33645d82e60
+  covers:
+    files:
+    - pc/packaging/windows/installer.nsi
+    - pc/scripts/build-windows-installer.sh
+    requirements: []
+    tasks:
+    - TASK-091
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 3a39dd7bad850487e9702a04061b5bd6b42c06002408460d91246fc5e5ae1a26
+    file_hashes:
+      pc/packaging/windows/installer.nsi: bcd9362969782d9a8e34ac69a23a5422a0596d8ec960ac972d2131b1dd46347e
+      pc/scripts/build-windows-installer.sh: 3b145dd783c25589f80e2f9f6015f2360cd461a07afaf500ff2aa1b84dee07d8
+  recorded_at: '2026-09-13T08:32:27Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-091-SMTP-REAL
+  kind: integration
+  subject: 安装后 SMTP 自检真实提交
+  status: valid
+  command: PROGRAMDATA=<临时ProgramData> /home/tbl/miniforge3/envs/milk/bin/python <临时安装目录>/server/smtp_test.py
+  result_ref: 退出码 0；固定收件邮箱 SMTP 服务器接受测试邮件；脱敏日志写入 status=success/category=SMTP_TEST_SUBMITTED
+  covers:
+    files:
+    - pc/packaging/windows/smtp_test.py
+    requirements: []
+    tasks:
+    - TASK-091
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      pc/packaging/windows/smtp_test.py: cff805fe6a3aa4d5686209266deb91841a737c191702a1935208a029e79284f1
+  recorded_at: '2026-09-13T08:32:28Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-091-DIFF
+  kind: verification
+  subject: TASK-091 差异和项目日志校验
+  status: valid
+  command: bash -n build-windows-installer.sh; py_compile smtp_test.py; git diff --check;
+    validate_project.py; loopctl validate
+  result_ref: 脚本语法、Python 编译、差异检查、Project Log 和 Loop 校验均通过
+  covers:
+    files:
+    - pc/packaging/windows/installer.nsi
+    - pc/packaging/windows/smtp_test.py
+    requirements: []
+    tasks:
+    - TASK-091
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: b6139a4f6718149c0c69c0fa284a05f8026f6112501ef5b780914957dc602d63
+    file_hashes:
+      pc/packaging/windows/installer.nsi: bcd9362969782d9a8e34ac69a23a5422a0596d8ec960ac972d2131b1dd46347e
+      pc/packaging/windows/smtp_test.py: cff805fe6a3aa4d5686209266deb91841a737c191702a1935208a029e79284f1
+  recorded_at: '2026-09-13T08:32:28Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-092-FOCUSED
+  kind: unit
+  subject: BUG 邮件状态、自检和手动重试专项测试
+  status: valid
+  command: PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q tests/test_bug_reports.py
+  result_ref: 8 passed；覆盖管理员列表、权限、SMTP 测试、成功重试、失败脱敏、已发送幂等和原图片缺失
+  covers:
+    files:
+    - pc/server/app/api/bug_reports.py
+    - pc/server/tests/test_bug_reports.py
+    requirements: []
+    tasks:
+    - TASK-092
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 11e33a422478a83f393c5704a18e32826d430c3add848d68168763842f7c0545
+    file_hashes:
+      pc/server/app/api/bug_reports.py: ecad96318cbc47e2159aaf970bd76b80dbd4a717b5cb7f5cec3df4a03daa678e
+      pc/server/tests/test_bug_reports.py: fc42080d213e8ca404ce221f6c1baab12275d70d375695a0cca2dd9b81fe3b0b
+  recorded_at: '2026-09-13T08:41:46Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-092-BACKEND
+  kind: test-suite
+  subject: TASK-092 后端完整回归
+  status: valid
+  command: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q
+  result_ref: 后端 102 项测试通过
+  covers:
+    files:
+    - pc/server/app/api/bug_reports.py
+    requirements: []
+    tasks:
+    - TASK-092
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: fe5223236785f0969cb57d202e40904d7b094a76dc2f693f2532bb99248d6710
+    file_hashes:
+      pc/server/app/api/bug_reports.py: ecad96318cbc47e2159aaf970bd76b80dbd4a717b5cb7f5cec3df4a03daa678e
+  recorded_at: '2026-09-13T08:41:46Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-092-PC-BUILD
+  kind: build
+  subject: TASK-092 PC 生产构建
+  status: valid
+  command: cd pc && npm run build
+  result_ref: TypeScript 与 Vite 生产构建通过
+  covers:
+    files:
+    - pc/src/pages/ManagementPages.tsx
+    - pc/src/services/api.ts
+    - pc/src/types/domain.ts
+    - pc/src/styles/app.css
+    requirements: []
+    tasks:
+    - TASK-092
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 384f32eed0d5ee76f38f3ade3b1c27f4fa89ee834eacd4a6c7dfd0d84ec13d27
+    file_hashes:
+      pc/src/pages/ManagementPages.tsx: 80aca3b0fa431725fb1753385b8ea2baa3db38e8192980b733fa13a48d577820
+      pc/src/services/api.ts: 4f22d174a53af914b162dd8edb22975b27407607086ea7eaec76ee4e5f969b54
+      pc/src/types/domain.ts: a03e30fc6a5505164d1c1a9162b7ff8d48a1cf69e01804bb3a38bfac507148f0
+      pc/src/styles/app.css: aa1deb78e55fe4f36192dffbb7cc7d3d8acf7361ab6a8fdb894595e55b88772c
+  recorded_at: '2026-09-13T08:41:46Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-092-UI
+  kind: browser-e2e
+  subject: 系统设置 BUG 反馈邮件管理面板
+  status: valid
+  command: /usr/bin/python3 .build/verify_task092.py
+  result_ref: 管理员可查看失败记录，发送 SMTP 测试邮件，重试后列表更新为已提交且重试按钮消失；截图已记录
+  covers:
+    files:
+    - .build/task092-bug-report-panel.png
+    requirements: []
+    tasks:
+    - TASK-092
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      .build/task092-bug-report-panel.png: ad47c6ae412ecc1afdf42a638bc2352c407caa356770aa641cad821acd5d4ad9
+  recorded_at: '2026-09-13T08:41:46Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-092-DIFF
+  kind: verification
+  subject: TASK-092 项目校验与差异检查
+  status: valid
+  command: git diff --check; validate_project.py; loopctl validate
+  result_ref: 差异检查、Project Log 和 Loop 校验均通过
+  covers:
+    files:
+    - pc/server/app/api/bug_reports.py
+    - pc/src/pages/ManagementPages.tsx
+    requirements: []
+    tasks:
+    - TASK-092
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 2a8a4e28c52170eb5e86341b3af5fecc5a0f0a7e7abe7e382f92d2561f40c62e
+    file_hashes:
+      pc/server/app/api/bug_reports.py: ecad96318cbc47e2159aaf970bd76b80dbd4a717b5cb7f5cec3df4a03daa678e
+      pc/src/pages/ManagementPages.tsx: 80aca3b0fa431725fb1753385b8ea2baa3db38e8192980b733fa13a48d577820
+  recorded_at: '2026-09-13T08:41:46Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-093-FOCUSED
+  kind: unit
+  subject: TASK-093 辅料 Excel 导出专项测试
+  status: valid
+  command: PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q tests/test_pc_admin.py tests/test_labels.py
+  result_ref: 10 passed；覆盖导出表头、全部字段、代号排序、空库工作簿和普通操作员权限拒绝
+  covers:
+    files:
+    - pc/server/tests/test_pc_admin.py
+    requirements: []
+    tasks:
+    - TASK-093
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: c4f713a96b1de051be8112351556bf3e05dc6f2b0a47a7b7e4ce23afd24c4ae5
+    file_hashes:
+      pc/server/tests/test_pc_admin.py: 2b42a2ed9f1b652664c74ed2bb35ed64696aa1a5919e0acb3f97a37bc6c73762
+  recorded_at: '2026-09-13T08:52:21Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-093-BACKEND
+  kind: test-suite
+  subject: TASK-093 后端完整回归
+  status: valid
+  command: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q
+  result_ref: 后端 105 项测试通过
+  covers:
+    files:
+    - pc/server/app/api/labels.py
+    requirements: []
+    tasks:
+    - TASK-093
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: ba2d79289efcdc820799ea5189cb281636ba6e933750a9843df793e233638be0
+    file_hashes:
+      pc/server/app/api/labels.py: e59a110bebe04e88a70991973fa249e428b13a60fca917153a47092787eeeb28
+  recorded_at: '2026-09-13T08:52:29Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-093-PC-BUILD
+  kind: build
+  subject: TASK-093 PC 生产构建
+  status: valid
+  command: cd pc && npm run build
+  result_ref: TypeScript 与 Vite 生产构建通过
+  covers:
+    files:
+    - pc/src/pages/ManagementPages.tsx
+    requirements: []
+    tasks:
+    - TASK-093
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: d10c60ff9eb1f12667c2c46723f6264840160a18c6fba102f76b482c6606e7a5
+    file_hashes:
+      pc/src/pages/ManagementPages.tsx: 3ac0b5bd8fe26ba4b8ceaebbf077c6792c7cf4ecef429f39b5d606f7222bbc06
+  recorded_at: '2026-09-13T08:52:36Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-093-UI
+  kind: browser-e2e
+  subject: PC 辅料 Excel 导出按钮与下载
+  status: valid
+  command: /usr/bin/python3 .build/verify_task093.py
+  result_ref: 辅料管理页显示导出按钮；点击后发起带管理员令牌的 GET /labels/excel-export 请求并下载 materials-export.xlsx；截图已记录
+  covers:
+    files:
+    - .build/task093-material-export.png
+    requirements: []
+    tasks:
+    - TASK-093
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      .build/task093-material-export.png: c89bd4598bc8bfe9df41c4d236e6bffd98e5c54be53b7c1c34c2f1143d9e00a0
+  recorded_at: '2026-09-13T08:52:45Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-093-DIFF
+  kind: verification
+  subject: TASK-093 项目校验与差异检查
+  status: valid
+  command: git diff --check; validate_project.py; loopctl validate
+  result_ref: 差异检查、Project Log 和 Loop 校验均通过
+  covers:
+    files:
+    - pc/server/app/api/labels.py
+    requirements: []
+    tasks:
+    - TASK-093
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: ba2d79289efcdc820799ea5189cb281636ba6e933750a9843df793e233638be0
+    file_hashes:
+      pc/server/app/api/labels.py: e59a110bebe04e88a70991973fa249e428b13a60fca917153a47092787eeeb28
+  recorded_at: '2026-09-13T08:52:55Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-094-FOCUSED
+  kind: unit
+  subject: TASK-094 标签生成专项测试
+  status: valid
+  command: PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q tests/test_labels.py tests/test_pc_admin.py
+  result_ref: 10 passed；覆盖标签批次唯一编号、生成人名称和辅料导出回归
+  covers:
+    files:
+    - pc/server/tests/test_labels.py
+    requirements: []
+    tasks:
+    - TASK-094
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 99f42bade194542edc69e28cdc031b996374a383b91bc89b3ef126a63f7164c2
+    file_hashes:
+      pc/server/tests/test_labels.py: 8d57f626820cc5d3e18f70883a5a0e5c7dba6fee8d0b23a14dc00317bebc1ff0
+  recorded_at: '2026-09-13T09:00:30Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-094-BACKEND
+  kind: test-suite
+  subject: TASK-094 后端完整回归
+  status: valid
+  command: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q
+  result_ref: 后端 105 项测试通过
+  covers:
+    files:
+    - pc/server/app/api/labels.py
+    requirements: []
+    tasks:
+    - TASK-094
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 5779d3875d2ccd7eb93c60b81c53e0cea2f6345d7ec5ba6e7916d78db741cb12
+    file_hashes:
+      pc/server/app/api/labels.py: 8275dc7a3d97df41935e2bba52f9d54d81878f4ae0880a94ea149d8a127048a2
+  recorded_at: '2026-09-13T09:00:38Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-094-PC-BUILD
+  kind: build
+  subject: TASK-094 PC 生产构建
+  status: valid
+  command: cd pc && npm run build
+  result_ref: TypeScript 与 Vite 生产构建通过
+  covers:
+    files:
+    - pc/src/pages/ManagementPages.tsx
+    requirements: []
+    tasks:
+    - TASK-094
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e862f3d07b7be2d57ccc8c13daee6a5133de53f8e8570b63ab0a33ddd04669b5
+    file_hashes:
+      pc/src/pages/ManagementPages.tsx: c67d8a2188abeaba9e509f7ffd16affa0ff02c68861bac08589121a7441f1f1c
+  recorded_at: '2026-09-13T09:00:44Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-094-UI
+  kind: browser-e2e
+  subject: Demo 标签生成语义与生成链路
+  status: valid
+  command: /usr/bin/python3 .build/verify_task094.py
+  result_ref: 页面不再出现“生成并打印标签”或“打印完成后粘贴”；生成请求体正确，成功显示标签记录、真实生成人和已生成状态；截图已记录
+  covers:
+    files:
+    - .build/task094-label-generation.png
+    requirements: []
+    tasks:
+    - TASK-094
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      .build/task094-label-generation.png: 334279edf246853b37034dc3663e3163fc95873258b094c2aa84ff6efee2375c
+  recorded_at: '2026-09-13T09:00:53Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-094-ALIGNMENT
+  kind: verification
+  subject: TASK-094 业务原子对齐、差异与项目校验
+  status: valid
+  command: git diff --check; validate_project.py; loopctl validate
+  result_ref: BL-LABEL-002 已与 DEC-037 对齐；差异检查、Project Log 和 Loop 校验均通过
+  covers:
+    files:
+    - .project-log/business-logic/atoms.yaml
+    requirements: []
+    tasks:
+    - TASK-094
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: c7e64c683378222f5ce97e9065ab58eae34130fb8794a38be5da525ea6873223
+    file_hashes:
+      .project-log/business-logic/atoms.yaml: 57191ec5485d1db64b5f89ed08a9a7076f9d591c8c99b451c72f70e3c005d3e6
+  recorded_at: '2026-09-13T09:01:04Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-095-BUILD
+  kind: build
+  subject: TASK-095 Android Debug 构建
+  status: valid
+  command: cd app && JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk
+    ./gradlew assembleDebug
+  result_ref: BUILD SUCCESSFUL；AndroidX ExifInterface 替换后 Debug APK 编译与打包成功
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-095
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 658fc03c4d4767455791c8a681619f788e5fb9b7b91b9b4fcd1198491beafc87
+    file_hashes: {}
+  recorded_at: '2026-09-13T09:10:32Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-095-LINT
+  kind: test
+  subject: TASK-095 Android Lint 安全告警消除
+  status: valid
+  command: cd app && JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk
+    ./gradlew lintDebug
+  result_ref: BUILD SUCCESSFUL；lint 报告 0 errors，旧 android.media.ExifInterface 告警已消失，剩余
+    17 条非本任务警告
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-095
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: b926526e96f3c4a56ef2584f892e2acd340ce2d902e04f8d8a9fc4070ab1d874
+    file_hashes: {}
+  recorded_at: '2026-09-13T09:10:39Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-095-DIFF
+  kind: static-analysis
+  subject: TASK-095 差异检查
+  status: valid
+  command: git diff --check
+  result_ref: exit code 0；无空白错误
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-095
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 3b6fbf36d66c08edade9fd41478dff2a5b11520d8b01f4e8e0055a8c16b265a2
+    file_hashes: {}
+  recorded_at: '2026-09-13T09:19:34Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-096-BACKEND
+  kind: test
+  subject: TASK-096 后端完整回归
+  status: valid
+  command: cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q
+  result_ref: 105 tests collected；全部通过
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-096
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: d4922365846dd2df27818e3967dccb98bc57d1d9f41cce2c01b32a93722cc251
+    file_hashes: {}
+  recorded_at: '2026-09-13T09:24:47Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-096-PC-BUILD
+  kind: build
+  subject: TASK-096 PC 生产构建
+  status: valid
+  command: cd pc && npm run build
+  result_ref: TypeScript 与 Vite 生产构建成功
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-096
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 5d4a269d0792975aaa00ab3271bfa506484c31a25fc5cb0f8ed987eb00b70096
+    file_hashes: {}
+  recorded_at: '2026-09-13T09:24:56Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-096-ANDROID-BUILD-LINT
+  kind: build
+  subject: TASK-096 Android 构建与 Lint
+  status: valid
+  command: cd app && JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk
+    ./gradlew assembleDebug lintDebug
+  result_ref: Android Debug 构建和 Lint 均成功；0 errors
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-096
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 0bf2a64df152ba3c419b2202eb40bc5bb0db77241c06acf3a71aa3389725adf1
+    file_hashes: {}
+  recorded_at: '2026-09-13T09:25:02Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-096-ANDROID-INSTRUMENTATION
+  kind: test
+  subject: TASK-096 Android 仪器测试
+  status: valid
+  command: cd app && JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk
+    ./gradlew connectedDebugAndroidTest
+  result_ref: Android 15 模拟器完成 4 项 Keystore 会话测试，全部通过
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-096
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: 91206ae5aa4e1c160947053a959dbef9e1c11bce9bcdc1bf378078152e625028
+    file_hashes: {}
+  recorded_at: '2026-09-13T09:25:08Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-096-ALIGNMENT
+  kind: manual
+  subject: TASK-096 历史任务逐条收敛审计
+  status: valid
+  command: null
+  result_ref: 20 项历史未验证任务完成逐条映射；16 项有充分当前或后续证据可关闭，4 项保留为 Windows 真机依赖
+  covers:
+    files:
+    - .project-log/docs/historical-task-closure-audit-20260913.md
+    requirements: []
+    tasks:
+    - TASK-096
+  version_binding:
+    git_commit: 610e6cbd1f3def02cad4b6f550e182887544aef5
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      .project-log/docs/historical-task-closure-audit-20260913.md: 6ac78da5bba38345209b8004205d94c30d37c20a4c6b4fd1c365b38f0eb3bcd0
+  recorded_at: '2026-09-13T09:25:15Z'
+  invalidated_at: null
+  invalidation_reason: null

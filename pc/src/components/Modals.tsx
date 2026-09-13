@@ -399,6 +399,7 @@ function StepEvidence({ step }: { step: any }) {
         <div className="step-evidence-item" key={`conf-${conf.id}`}>
           <span>类型确认 · {conf.method === 'qr' ? '扫码' : '拍照'} · {statusText[conf.status] || conf.status}</span>
           {conf.scanned_material_id && <small>扫码：{conf.scanned_material_id}</small>}
+          {conf.scanned_label_id && <small>标签：{conf.scanned_label_id}</small>}
           {conf.reason && <small>理由：{conf.reason}</small>}
           {conf.evidence_file_id && <EvidenceThumb fileId={conf.evidence_file_id} />}
         </div>
@@ -463,17 +464,84 @@ export function EvidenceThumb({ fileId, className = '' }: { fileId: string; clas
 
 export function RecipeDetailModal({ product, onClose }: { product: any; onClose: () => void }) {
   const enabled = product.recipe_enabled !== false
+  const [versions, setVersions] = useState<any[] | null>(null)
+  const [selectedVersionNumber, setSelectedVersionNumber] = useState<number | null>(null)
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyError, setHistoryError] = useState<string | null>(null)
+  const selectedVersion = versions?.find((item) => item.version === selectedVersionNumber)
+  const displayItems = selectedVersion?.items || product.items || []
+  const displayVersion = selectedVersion?.version || product.recipe_version || 1
+
+  useEffect(() => {
+    setVersions(null)
+    setSelectedVersionNumber(null)
+    setHistoryError(null)
+  }, [product.id])
+
+  const loadHistory = async () => {
+    if (historyLoading) return
+    setHistoryLoading(true)
+    setHistoryError(null)
+    try {
+      const history = await api.getRecipeVersions(product.id)
+      setVersions(history)
+      const current = history.find((item: any) => item.is_current)
+      setSelectedVersionNumber(current?.version ?? history[0]?.version ?? null)
+    } catch (error: any) {
+      setHistoryError(error.message || '配方版本加载失败')
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
+  const formatVersionTime = (value: string) => {
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return '时间未知'
+    return date.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+  }
+
   return (
     <Modal title={`产品配方 · ${product.name}`} onClose={onClose}>
       <div className="order-detail">
         <div className="detail-summary">
           <div><span>产品名称</span><strong>{product.name}</strong></div>
-          <div><span>配方版本</span><strong>{product.recipe_version || 1}</strong></div>
-          <div><span>辅料种类</span><strong>{(product.items || []).length} 种</strong></div>
+          <div><span>配方版本</span><strong>V{displayVersion}{selectedVersion?.is_current ? ' · 当前版本' : ''}</strong></div>
+          <div><span>辅料种类</span><strong>{displayItems.length} 种</strong></div>
           <div><span>配方状态</span><strong><span className={enabled ? 'status status-running' : 'status status-cancelled'}><i />{enabled ? '启用' : '停用'}</span></strong></div>
         </div>
+        {selectedVersion && (
+          <div className="recipe-version-meta">
+            <span>版本时间：{formatVersionTime(selectedVersion.created_at)}</span>
+            <span>修改人：{selectedVersion.created_by?.display_name || '系统迁移'}</span>
+          </div>
+        )}
+        {historyLoading && <div className="info-note">正在加载配方历史版本...</div>}
+        {historyError && <div className="modal-error">{historyError}</div>}
+        {versions && (
+          <div className="recipe-version-panel">
+            <div className="recipe-version-heading">
+              <strong>版本记录</strong>
+              <span>配方配料或每吨用量变化时自动生成</span>
+            </div>
+            <div className="recipe-version-list">
+              {versions.map((version) => (
+                <button
+                  type="button"
+                  key={version.version}
+                  className={`recipe-version-item${version.version === selectedVersionNumber ? ' active' : ''}`}
+                  onClick={() => setSelectedVersionNumber(version.version)}
+                >
+                  <strong>V{version.version}</strong>
+                  <span>{formatVersionTime(version.created_at)}</span>
+                  <small>{version.created_by?.display_name || '系统迁移'} · {version.items.length} 种辅料</small>
+                  {version.is_current && <em>当前</em>}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="step-list">
-          {(product.items || []).map((item: any) => (
+          {displayItems.map((item: any) => (
             <div className="step-row" key={`${item.material_id}-${item.sort_order}`}>
               <div className="step-state done"><PackageCheck size={18} /></div>
               <div className="step-copy">
@@ -485,6 +553,9 @@ export function RecipeDetailModal({ product, onClose }: { product: any; onClose:
           ))}
         </div>
         <div className="modal-footer">
+          <button type="button" className="outline-button" onClick={loadHistory} disabled={historyLoading}>
+            <Clock3 size={15} />{historyLoading ? '加载中...' : versions ? '刷新历史版本' : '查看历史版本'}
+          </button>
           <button type="button" className="outline-button" onClick={onClose}>关闭</button>
         </div>
       </div>
@@ -866,7 +937,7 @@ export function CreateUserModal({ onClose, onSuccess, existing }: { onClose: () 
   const [displayName, setDisplayName] = useState(existing?.display_name || '')
   const [password, setPassword] = useState('')
   const [phone, setPhone] = useState(existing?.phone || '')
-  const [idCard, setIdCard] = useState(existing?.id_card || '')
+  const [employeeNo, setEmployeeNo] = useState(existing?.employee_no || '')
   const [avatarFileId, setAvatarFileId] = useState(existing?.avatar_file_id || '')
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarUrl, setAvatarUrl] = useState('')
@@ -897,7 +968,7 @@ export function CreateUserModal({ onClose, onSuccess, existing }: { onClose: () 
       const payload = {
         display_name: displayName.trim(),
         phone: phone.trim(),
-        id_card: idCard.trim(),
+        employee_no: employeeNo.trim(),
         avatar_file_id: avatarId || null,
       }
       if (existing) {
@@ -946,7 +1017,7 @@ export function CreateUserModal({ onClose, onSuccess, existing }: { onClose: () 
           </div>
         </label>
         <label>
-          登录工号 / 用户名
+          登录账号
           <input
             type="text"
             placeholder="例如: operator05"
@@ -983,8 +1054,14 @@ export function CreateUserModal({ onClose, onSuccess, existing }: { onClose: () 
           <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="选填" />
         </label>
         <label>
-          身份证
-          <input type="text" value={idCard} onChange={(e) => setIdCard(e.target.value)} placeholder="管理员维护，列表脱敏显示" />
+          工号
+          <input
+            type="text"
+            value={employeeNo}
+            onChange={(e) => setEmployeeNo(e.target.value)}
+            placeholder="普通操作员必填，例如: MH0001"
+            required
+          />
         </label>
         <div className="modal-footer">
           <button type="button" className="outline-button" onClick={onClose}>取消</button>
@@ -1100,8 +1177,8 @@ export function UserProfileModal({ user, onClose, onSuccess }: { user: any; onCl
           <input type="text" value={user?.role === 'admin' ? '管理员' : '普通操作员'} disabled />
         </label>
         <label>
-          身份证
-          <input type="text" value={user?.id_card || '未设置'} disabled />
+          工号
+          <input type="text" value={user?.employee_no || '未设置'} disabled />
         </label>
         <div className="modal-footer">
           <button type="button" className="outline-button" onClick={onClose}>取消</button>

@@ -168,7 +168,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (page: string) => void 
       <section className="quick-section">
         <div className="section-label"><span>快捷入口</span><i /></div>
         <div className="quick-grid">
-          <Quick onClick={() => onNavigate?.('labels')} icon={<ScanLine />} title="标签打印" text="生成与打印公司自制二维码" />
+          <Quick onClick={() => onNavigate?.('labels')} icon={<ScanLine />} title="标签生成" text="生成二维码标签预览与记录" />
           <Quick onClick={() => setShowCreateModal(true)} icon={<Scale />} title="新建工单" text="开始一次新的生产称量" />
           <Quick onClick={() => onNavigate?.('materials')} icon={<Database />} title="辅料资料" text="维护辅料和内部代号" />
           <Quick onClick={() => onNavigate?.('recipes')} icon={<FileIcon />} title="产品配方" text="编辑每吨辅料用量" />

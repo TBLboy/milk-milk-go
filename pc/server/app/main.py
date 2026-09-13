@@ -2,7 +2,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
+from sqlalchemy.exc import OperationalError
 
 from app.api.health import router as health_router
 from app.api.auth import router as auth_router
@@ -14,15 +15,26 @@ from app.api.labels import router as labels_router
 from app.api.operations import router as operations_router
 from app.api.approvals import router as approvals_router
 from app.api.settings import router as settings_router
-from app.api.bug_reports import router as bug_reports_router
+from app.api.bug_reports import (
+    recover_interrupted_bug_report_retries,
+    router as bug_reports_router,
+)
 from app.core.config import get_settings
 from app.db.models import initialize_database
+from app.services.backup import backup_scheduler
+from app.services.restore import recover_interrupted_restore
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    recover_interrupted_restore(settings.data_dir)
     initialize_database()
-    yield
+    recover_interrupted_bug_report_retries()
+    backup_scheduler.start()
+    try:
+        yield
+    finally:
+        backup_scheduler.stop()
 
 
 settings = get_settings()
@@ -46,6 +58,21 @@ app.include_router(operations_router, prefix=settings.api_prefix)
 app.include_router(approvals_router, prefix=settings.api_prefix)
 app.include_router(settings_router, prefix=settings.api_prefix)
 app.include_router(bug_reports_router, prefix=settings.api_prefix)
+
+
+@app.exception_handler(OperationalError)
+async def database_operational_error(_request: Request, exc: OperationalError) -> JSONResponse:
+    message = str(exc).lower()
+    if "locked" in message or "busy" in message:
+        return JSONResponse(
+            status_code=503,
+            content={"detail": {"code": "DATABASE_BUSY", "message": "数据库繁忙，请稍后重试"}},
+        )
+    return JSONResponse(
+        status_code=503,
+        content={"detail": {"code": "DATABASE_UNAVAILABLE", "message": "数据库暂时不可用"}},
+    )
+
 
 @app.get("/", include_in_schema=False, response_model=None)
 def root() -> FileResponse | dict[str, str]:

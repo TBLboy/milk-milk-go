@@ -43,3 +43,39 @@ export type NetworkAddressSnapshot = {
   recommended: NetworkAddress | null
   addresses: NetworkAddress[]
 }
+
+export type EvidenceIntegrityStatus = 'ok' | 'missing' | 'size_mismatch' | 'hash_mismatch' | 'unhashed'
+
+export type EvidenceIntegrityItem = {
+  file_id: string
+  status: EvidenceIntegrityStatus
+  expected_sha256: string | null
+  actual_sha256: string | null
+  expected_size_bytes: number
+  actual_size_bytes: number | null
+}
+
+export type EvidenceIntegrityResult = {
+  checked_at: string
+  total: number
+  ok: number
+  issue_count: number
+  issues: EvidenceIntegrityItem[]
+  items: EvidenceIntegrityItem[]
+}
+
+export type BugReportStatus = 'pending' | 'sending' | 'sent' | 'failed'
+
+export type BugReportRecord = {
+  id: number
+  source: 'pc' | 'app'
+  reporter_id: number
+  reporter_username: string | null
+  reporter_name: string | null
+  description: string
+  image_count: number
+  status: BugReportStatus
+  error_message: string | null
+  created_at: string
+  sent_at: string | null
+}

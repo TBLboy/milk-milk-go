@@ -1,7 +1,20 @@
-import type { DashboardData, NetworkAddressSnapshot, WorkOrder } from '../types/domain'
+import type {
+  BugReportRecord,
+  DashboardData,
+  EvidenceIntegrityResult,
+  NetworkAddressSnapshot,
+  WorkOrder,
+} from '../types/domain'
 import { emitDataSync } from './dataSync'
 
 const API_BASE = '/api/v1'
+
+function createRequestId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID()
+  }
+  return `req-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
 
 function getAuthHeader(): Record<string, string> {
   const token = localStorage.getItem('milk_token')
@@ -25,12 +38,16 @@ function parseError(body: any): string {
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const method = (options.method || 'GET').toUpperCase()
   const headers: Record<string, string> = {
     ...getAuthHeader(),
     ...(options.headers as Record<string, string> | undefined || {}),
   }
   if (!(options.body instanceof FormData) && options.body !== undefined) {
     headers['Content-Type'] = 'application/json'
+  }
+  if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
+    headers['X-Request-ID'] = headers['X-Request-ID'] || createRequestId()
   }
 
   const response = await fetch(`${API_BASE}${path}`, { ...options, headers })
@@ -44,9 +61,28 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     throw new Error(parseError(errBody))
   }
   const result = await response.json()
-  const method = (options.method || 'GET').toUpperCase()
   if (method !== 'GET') emitDataSync()
   return result
+}
+
+async function downloadAuthenticatedFile(path: string, filename: string): Promise<void> {
+  const response = await fetch(`${API_BASE}${path}`, { headers: getAuthHeader() })
+  if (!response.ok) {
+    let body: any
+    try {
+      body = await response.json()
+    } catch {
+      body = null
+    }
+    throw new Error(parseError(body) || '文件下载失败')
+  }
+  const blob = await response.blob()
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
 function orderToDomain(order: any): WorkOrder {
@@ -287,6 +323,10 @@ export const api = {
     })
   },
 
+  async getRecipeVersions(productId: number): Promise<any[]> {
+    return request(`/master-data/products/${productId}/recipe-versions`)
+  },
+
   async deleteProduct(productId: number): Promise<any> {
     return request(`/master-data/products/${productId}`, {
       method: 'DELETE',
@@ -298,6 +338,32 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ is_active: isActive }),
     })
+  },
+
+  async downloadProductRecipeTemplate(): Promise<void> {
+    return downloadAuthenticatedFile(
+      '/master-data/products/import-template',
+      'products-recipes-template.xlsx',
+    )
+  },
+
+  async validateProductRecipeExcel(file: File): Promise<any> {
+    const form = new FormData()
+    form.append('file', file)
+    return request('/master-data/products/import-validate', { method: 'POST', body: form })
+  },
+
+  async importProductRecipeExcel(file: File): Promise<any> {
+    const form = new FormData()
+    form.append('file', file)
+    return request('/master-data/products/import', { method: 'POST', body: form })
+  },
+
+  async exportProductRecipes(): Promise<void> {
+    return downloadAuthenticatedFile(
+      '/master-data/products/export',
+      'products-recipes-export.xlsx',
+    )
   },
 
   // 文件与 Excel
@@ -314,6 +380,19 @@ export const api = {
     })
   },
 
+  async getBugReports(): Promise<BugReportRecord[]> {
+    const response = await request<{ items: BugReportRecord[] }>('/bug-reports')
+    return response.items
+  },
+
+  async testBugReportSmtp(): Promise<{ status: string; message: string }> {
+    return request('/bug-reports/smtp-test', { method: 'POST' })
+  },
+
+  async retryBugReport(reportId: number): Promise<{ id: number; status: string; message: string }> {
+    return request(`/bug-reports/${reportId}/retry`, { method: 'POST' })
+  },
+
   async getFileUrl(fileId: string): Promise<string> {
     const response = await fetch(`${API_BASE}/evidence/files/${fileId}`, { headers: getAuthHeader() })
     if (!response.ok) throw new Error('图片加载失败')
@@ -321,24 +400,22 @@ export const api = {
     return URL.createObjectURL(blob)
   },
 
+  async checkEvidenceIntegrity(): Promise<EvidenceIntegrityResult> {
+    return request('/evidence/files/integrity-check')
+  },
+
   async downloadExcelTemplate(): Promise<void> {
-    const response = await fetch(`${API_BASE}/labels/excel-template`, { headers: getAuthHeader() })
-    if (!response.ok) {
-      throw new Error('导出模板失败')
-    }
-    const blob = await response.blob()
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'materials-template.xlsx'
-    link.click()
-    URL.revokeObjectURL(url)
+    return downloadAuthenticatedFile('/labels/excel-template', 'materials-template.xlsx')
   },
 
   async importExcel(file: File): Promise<any> {
     const form = new FormData()
     form.append('file', file)
     return request('/labels/excel-import', { method: 'POST', body: form })
+  },
+
+  async exportMaterials(): Promise<void> {
+    return downloadAuthenticatedFile('/labels/excel-export', 'materials-export.xlsx')
   },
 
   // 标签
@@ -366,7 +443,7 @@ export const api = {
     return request('/settings', { method: 'PUT', body: JSON.stringify({ values }) })
   },
 
-  async registerUser(payload: { username: string; display_name: string; password: string; avatar_file_id?: string | null; phone?: string; id_card?: string }): Promise<any> {
+  async registerUser(payload: { username: string; display_name: string; password: string; avatar_file_id?: string | null; phone?: string; employee_no: string }): Promise<any> {
     return request('/auth/users', {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -378,7 +455,7 @@ export const api = {
     return res.user
   },
 
-  async updateUserProfile(userId: number, payload: { display_name?: string; avatar_file_id?: string | null; phone?: string; id_card?: string }): Promise<any> {
+  async updateUserProfile(userId: number, payload: { display_name?: string; avatar_file_id?: string | null; phone?: string; employee_no?: string }): Promise<any> {
     const res = await request<any>(`/auth/users/${userId}/profile`, {
       method: 'PATCH',
       body: JSON.stringify(payload),
@@ -387,8 +464,13 @@ export const api = {
   },
 
   // 运维
-  async getAuditLogs(): Promise<any[]> {
-    return request('/operations/audit-logs')
+  async getAuditLogs(params: Record<string, string | number | undefined> = {}): Promise<any> {
+    const query = new URLSearchParams()
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== '') query.set(key, String(value))
+    })
+    const suffix = query.toString()
+    return request(`/operations/audit-logs${suffix ? `?${suffix}` : ''}`)
   },
 
   async createBackup(): Promise<any> {

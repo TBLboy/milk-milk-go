@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronRight, CircleAlert, Copy, Download, Edit, FileSpreadsheet, Image, Network, Plus, Printer, Search, Settings2, Trash2, X } from 'lucide-react'
+import { Check, ChevronRight, CircleAlert, Copy, Download, Edit, Eye, FileSpreadsheet, Image, Mail, Network, Plus, Printer, RotateCcw, Search, Settings2, ShieldCheck, Trash2, X } from 'lucide-react'
 import QRCode from 'qrcode'
 import { StatusBadge } from '../components/StatusBadge'
 import { api } from '../services/api'
@@ -7,6 +7,12 @@ import { CreateMaterialModal, CreateOrderModal, CreateProductModal, CreateUserMo
 import { StatusFilter } from '../components/StatusFilter'
 import { Pagination } from '../components/Pagination'
 import { useAutoRefresh } from '../hooks/useAutoRefresh'
+import type {
+  BugReportRecord,
+  BugReportStatus,
+  EvidenceIntegrityItem,
+  EvidenceIntegrityResult,
+} from '../types/domain'
 
 export function WorkOrdersPage({ approvals = false }: { approvals?: boolean }) {
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -251,6 +257,12 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [importMessage, setImportMessage] = useState<string | null>(null)
+  const [importErrors, setImportErrors] = useState<Array<{
+    row: number
+    product_name?: string
+    material_code?: string
+    message: string
+  }>>([])
   const [page, setPage] = useState(1)
   const excelInputRef = useRef<HTMLInputElement>(null)
   const pageSize = recipesPage ? 12 : 10
@@ -311,15 +323,63 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
 
   const handleExcelImport = async (file: File | undefined) => {
     if (!file) return
-    setImportMessage('正在导入 Excel ...')
+    setImportMessage(recipesPage ? '正在校验 Excel ...' : '正在导入 Excel ...')
+    setImportErrors([])
     try {
+      if (recipesPage) {
+        const validation = await api.validateProductRecipeExcel(file)
+        if (!validation.valid_product_count) {
+          setImportErrors(validation.errors || [])
+          setImportMessage(`校验完成：没有可导入的产品，发现 ${validation.error_count} 个错误。`)
+          return
+        }
+        setImportMessage(`校验通过，正在导入 ${validation.valid_product_count} 个产品 ...`)
+        const result = await api.importProductRecipeExcel(file)
+        setImportErrors(result.errors || [])
+        setImportMessage(
+          `导入完成：成功新增 ${result.imported_product_count} 个产品、${result.imported_row_count} 行配方，未导入错误 ${result.error_count} 个。`,
+        )
+        await loadData(false)
+        return
+      }
       const result = await api.importExcel(file)
       setImportMessage(`导入完成：成功 ${result.imported_count} 条，失败 ${result.error_count} 条。`)
-      loadData()
+      await loadData(false)
     } catch (e: any) {
       setImportMessage(`导入失败：${e.message}`)
     } finally {
       if (excelInputRef.current) excelInputRef.current.value = ''
+    }
+  }
+
+  const handleDownloadTemplate = async () => {
+    setImportMessage('正在下载模板 ...')
+    setImportErrors([])
+    try {
+      if (recipesPage) {
+        await api.downloadProductRecipeTemplate()
+      } else {
+        await api.downloadExcelTemplate()
+      }
+      setImportMessage('模板下载完成。')
+    } catch (e: any) {
+      setImportMessage(`模板下载失败：${e.message}`)
+    }
+  }
+
+  const handleExport = async () => {
+    setImportMessage(recipesPage ? '正在导出产品配方 ...' : '正在导出辅料 ...')
+    setImportErrors([])
+    try {
+      if (recipesPage) {
+        await api.exportProductRecipes()
+        setImportMessage('产品配方导出完成。')
+      } else {
+        await api.exportMaterials()
+        setImportMessage('辅料导出完成。')
+      }
+    } catch (e: any) {
+      setImportMessage(`导出失败：${e.message}`)
     }
   }
 
@@ -347,10 +407,29 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
           <Search size={16} /><input placeholder={`搜索${recipesPage ? '产品名称' : '辅料代号、名称'}`} value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
         <button className="outline-button" onClick={() => excelInputRef.current?.click()}><FileSpreadsheet size={15} />Excel 导入</button>
-        <button className="outline-button" onClick={() => api.downloadExcelTemplate().catch(() => setImportMessage('导出模板失败，请先确认已登录账号'))}><Download size={15} />导出模板</button>
+        <button className="outline-button" onClick={handleDownloadTemplate}><Download size={15} />下载模板</button>
+        <button className="outline-button" onClick={handleExport}><Download size={15} />{recipesPage ? '导出配方' : '导出辅料'}</button>
         <input ref={excelInputRef} type="file" accept=".xlsx" hidden onChange={(e) => handleExcelImport(e.target.files?.[0])} />
       </div>
-      {importMessage && !recipesPage && <div className="info-note" style={{ margin: '0 0 18px' }}>{importMessage}</div>}
+      {(importMessage || importErrors.length > 0) && (
+        <div className="excel-import-result">
+          {importMessage && <div className="info-note">{importMessage}</div>}
+          {importErrors.length > 0 && (
+            <div className="excel-error-list">
+              <strong>未导入明细</strong>
+              <div className="excel-error-table">
+                {importErrors.map((error, index) => (
+                  <div className="excel-error-row" key={`${error.row}-${index}`}>
+                    <span>第 {error.row} 行</span>
+                    <code>{error.product_name || '—'} / {error.material_code || '—'}</code>
+                    <em>{error.message}</em>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {recipesPage ? (
         <>
@@ -536,13 +615,13 @@ export function LabelsPage() {
     setQuantityText(String(next))
   }
 
-  const handlePrint = async () => {
+  const handleGenerate = async () => {
     if (!selectedMat) return
-    const printQuantity = commitQuantity()
+    const generateQuantity = commitQuantity()
     setIsSubmitting(true)
     try {
-      const batch = await api.createPrintBatch(selectedMat.material_id, printQuantity)
-      setSuccessNotice(`成功生成批次 ${batch.batch_id}，共 ${batch.quantity} 张独立二维码标签！`)
+      const batch = await api.createPrintBatch(selectedMat.material_id, generateQuantity)
+      setSuccessNotice(`成功生成批次 ${batch.batch_id}，共 ${batch.quantity} 张独立二维码标签记录！`)
       loadBatches()
     } catch (e: any) {
       alert(`生成失败: ${e.message}`)
@@ -554,16 +633,16 @@ export function LabelsPage() {
   return (
     <div className="page-wrap">
       <PageTitle
-        eyebrow="LABEL OPERATIONS"
-        title="标签打印"
-        sub="生成并打印公司自制二维码标签，打印完成后请粘贴到对应辅料包装。"
+        eyebrow="LABEL GENERATION"
+        title="标签生成"
+        sub="选择辅料和生成数量，创建带独立编号的二维码标签记录和预览；当前 Demo 不发送真实打印任务。"
       />
       <div className="label-layout">
         <section className="panel form-panel">
           <div className="panel-head">
             <div>
-              <h2>生成标签</h2>
-              <p>每张标签拥有独立编号，打印时间自动记录</p>
+              <h2>生成标签记录</h2>
+              <p>每张标签拥有独立编号，生成时间自动记录</p>
             </div>
             <Printer size={20} className="panel-head-icon" />
           </div>
@@ -585,15 +664,15 @@ export function LabelsPage() {
             </select>
           </label>
           <div className="quantity-field">
-            <span className="field-label">打印张数</span>
+            <span className="field-label">生成张数</span>
             <div className="stepper">
-              <button type="button" aria-label="减少打印张数" onClick={() => adjustQuantity(-1)}>−</button>
+              <button type="button" aria-label="减少生成张数" onClick={() => adjustQuantity(-1)}>−</button>
               <input
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
                 maxLength={5}
-                aria-label="打印张数"
+                aria-label="生成张数"
                 value={quantityText}
                 onChange={(e) => updateQuantityText(e.target.value)}
                 onBlur={commitQuantity}
@@ -601,16 +680,16 @@ export function LabelsPage() {
                   if (e.key === 'Enter') e.currentTarget.blur()
                 }}
               />
-              <button type="button" aria-label="增加打印张数" onClick={() => adjustQuantity(1)}>＋</button>
+              <button type="button" aria-label="增加生成张数" onClick={() => adjustQuantity(1)}>＋</button>
             </div>
           </div>
           <div className="info-note">
             <CircleAlert size={16} />
-            <span>打印日期将自动使用当前系统时间，第一版不录入实际生产日期。</span>
+            <span>生成时间自动使用当前系统时间；当前 Demo 仅生成标签记录和二维码预览，不发送真实打印任务。第一版不录入实际生产日期。</span>
           </div>
-          <button type="button" className="primary-button print-button" disabled={isSubmitting || !selectedMat} onClick={handlePrint}>
+          <button type="button" className="primary-button print-button" disabled={isSubmitting || !selectedMat} onClick={handleGenerate}>
             <Printer size={16} />
-            {isSubmitting ? '正在生成批次...' : '生成并打印标签'}
+            {isSubmitting ? '正在生成记录...' : '生成标签记录'}
           </button>
         </section>
 
@@ -618,7 +697,7 @@ export function LabelsPage() {
           <div className="panel-head">
             <div>
               <h2>标签预览</h2>
-              <p>打印前确认标签信息</p>
+              <p>生成前确认标签信息</p>
             </div>
             <button type="button" className="preview-tag" onClick={openPreview}>预览</button>
           </div>
@@ -631,7 +710,7 @@ export function LabelsPage() {
       </div>
 
       <div className="section-label">
-        <span>最近打印批次</span>
+        <span>最近生成批次</span>
         <i />
       </div>
       <div className="panel full-panel">
@@ -639,25 +718,25 @@ export function LabelsPage() {
           <table>
             <thead>
               <tr>
-                <th>打印批次</th>
+                <th>生成批次</th>
                 <th>辅料</th>
                 <th>张数</th>
-                <th>打印人</th>
-                <th>时间</th>
+                <th>生成人</th>
+                <th>生成时间</th>
                 <th>状态</th>
               </tr>
             </thead>
             <tbody>
               {batches.slice((batchPage - 1) * batchPageSize, batchPage * batchPageSize).length === 0 ? (
-                <tr><td colSpan={6} className="muted" style={{ textAlign: 'center' }}>暂无打印批次</td></tr>
+                <tr><td colSpan={6} className="muted" style={{ textAlign: 'center' }}>暂无生成批次</td></tr>
               ) : batches.slice((batchPage - 1) * batchPageSize, batchPage * batchPageSize).map((batch) => (
                 <tr key={batch.batch_id}>
                   <td className="order-id">{batch.batch_id}</td>
                   <td>{batch.material_name} · {batch.material_id}</td>
                   <td>{batch.quantity} 张</td>
-                  <td>系统管理员</td>
+                  <td>{batch.created_by_name || '未知用户'}</td>
                   <td>{new Date(batch.printed_at).toLocaleString('zh-CN', { hour12: false })}</td>
-                  <td><span className="status status-running"><i />{batch.status === 'pending' ? '待打印' : '已确认'}</span></td>
+                  <td><span className="status status-running"><i />{batch.status === 'pending' ? '已生成' : batch.status}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -671,6 +750,253 @@ export function LabelsPage() {
             {largeQrSrc ? <img className="qr-preview large-qr" src={largeQrSrc} alt="放大辅料二维码" /> : <div className="fake-qr">▦</div>}
             <strong className="preview-material">{selectedMat ? selectedMat.name_zh : '等待选择辅料'}</strong>
             <span className="preview-code">{printedAtText || '—'}</span>
+          </div>
+        </Modal>
+      )}
+    </div>
+  )
+}
+
+const AUDIT_ACTION_LABELS: Record<string, string> = {
+  'account.activation_changed': '账号启用状态变更',
+  'account.admin_profile_updated': '管理员修改账号资料',
+  'account.approved': '账号审批通过',
+  'account.created': '创建账号',
+  'account.password_changed': '用户修改密码',
+  'account.password_reset': '管理员重置密码',
+  'account.profile_updated': '用户修改资料',
+  'account.rejected': '账号审批驳回',
+  'account.registered': '提交注册申请',
+  'admin_password.recovered': '管理员紧急恢复',
+  'admin_password.recovery_failed': '管理员恢复失败',
+  'admin_password.recovery_locked': '管理员恢复锁定',
+  'auth.admin_login': '电脑管理员登录',
+  'auth.login': '用户登录',
+  'backup.created': '手动备份',
+  'backup.failed': '手动备份失败',
+  'backup.scheduled.created': '自动备份',
+  'backup.scheduled.failed': '自动备份失败',
+  'bug_report.email_failed': 'BUG反馈邮件失败',
+  'bug_report.email_not_configured': 'BUG反馈邮件未配置',
+  'bug_report.sent': '提交BUG反馈',
+  'label.batch_created': '生成标签批次',
+  'material.created': '新增辅料',
+  'material.deleted': '删除辅料',
+  'material.updated': '修改辅料',
+  'product.activation_changed': '产品启用状态变更',
+  'product.created': '新增产品配方',
+  'product.deleted': '删除产品配方',
+  'product.updated': '修改产品配方',
+  'settings.updated': '修改系统设置',
+  'system.restored': '恢复系统数据',
+  'system.restore_failed': '系统恢复失败',
+  'type_confirmation.approved': '拍照放行通过',
+  'type_confirmation.passed': '扫码类型确认',
+  'type_confirmation.photo_requested': '提交拍照放行',
+  'type_confirmation.rejected': '类型确认驳回',
+  'weighing.passed': '称重确认通过',
+  'weighing.rejected': '称重超差',
+  'work_order.approved': '审批工单',
+  'work_order.cancelled': '撤销工单',
+  'work_order.completed': '完成工单',
+  'work_order.created': '创建工单',
+  'work_order.request_approved': '批准工单申请',
+  'work_order.request_created': '提交工单申请',
+  'work_order.request_rejected': '驳回工单申请',
+  'work_order.started': '开始执行工单',
+}
+
+function auditActionLabel(action: string) {
+  return AUDIT_ACTION_LABELS[action] || action
+}
+
+function auditResultView(result: string) {
+  if (result === 'success') return { label: '成功', className: 'status-running' }
+  if (result === 'rejected') return { label: '已驳回', className: 'status-cancelled' }
+  return { label: '失败', className: 'status-cancelled' }
+}
+
+type AuditFilters = {
+  actorId: string
+  workOrderNo: string
+  action: string
+  result: string
+  startAt: string
+  endAt: string
+}
+
+const EMPTY_AUDIT_FILTERS: AuditFilters = {
+  actorId: '',
+  workOrderNo: '',
+  action: '',
+  result: '',
+  startAt: '',
+  endAt: '',
+}
+
+export function AuditLogsPage() {
+  const [users, setUsers] = useState<any[]>([])
+  const [draft, setDraft] = useState<AuditFilters>(EMPTY_AUDIT_FILTERS)
+  const [filters, setFilters] = useState<AuditFilters>(EMPTY_AUDIT_FILTERS)
+  const [page, setPage] = useState(1)
+  const [data, setData] = useState<any>({ items: [], total: 0, page: 1, page_size: 20, pages: 0 })
+  const [loading, setLoading] = useState(true)
+  const [selected, setSelected] = useState<any | null>(null)
+  const pageSize = 20
+
+  const load = async (showLoading = false) => {
+    if (showLoading) setLoading(true)
+    const startAt = filters.startAt ? new Date(filters.startAt).toISOString() : undefined
+    const endAt = filters.endAt ? new Date(filters.endAt).toISOString() : undefined
+    try {
+      setData(await api.getAuditLogs({
+        actor_id: filters.actorId ? Number(filters.actorId) : undefined,
+        work_order_no: filters.workOrderNo.trim() || undefined,
+        action: filters.action || undefined,
+        result: filters.result || undefined,
+        start_at: startAt,
+        end_at: endAt,
+        page,
+        page_size: pageSize,
+      }))
+    } finally {
+      if (showLoading) setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    api.listUsers().then((items) => setUsers(items || [])).catch(() => setUsers([]))
+  }, [])
+
+  useEffect(() => {
+    void load(true).catch(() => {})
+  }, [page, filters])
+  useAutoRefresh(() => load(false))
+
+  const applyFilters = (event: React.FormEvent) => {
+    event.preventDefault()
+    setPage(1)
+    setFilters({ ...draft })
+  }
+
+  const resetFilters = () => {
+    setDraft(EMPTY_AUDIT_FILTERS)
+    setFilters(EMPTY_AUDIT_FILTERS)
+    setPage(1)
+  }
+
+  return (
+    <div className="page-wrap">
+      <PageTitle
+        eyebrow="AUDIT TRAIL"
+        title="审计日志"
+        sub="追踪登录、账号、主数据、工单、审批、扫码、称重、标签和系统运维操作。"
+      />
+      <form className="audit-filter-panel" onSubmit={applyFilters}>
+        <label>
+          开始时间
+          <input type="datetime-local" value={draft.startAt} onChange={(event) => setDraft({ ...draft, startAt: event.target.value })} />
+        </label>
+        <label>
+          结束时间
+          <input type="datetime-local" value={draft.endAt} onChange={(event) => setDraft({ ...draft, endAt: event.target.value })} />
+        </label>
+        <label>
+          操作人员
+          <select value={draft.actorId} onChange={(event) => setDraft({ ...draft, actorId: event.target.value })}>
+            <option value="">全部人员</option>
+            {users.map((user) => <option key={user.id} value={user.id}>{user.display_name} · {user.username}</option>)}
+          </select>
+        </label>
+        <label>
+          工单号
+          <input value={draft.workOrderNo} onChange={(event) => setDraft({ ...draft, workOrderNo: event.target.value })} placeholder="例如 WO-20260913..." />
+        </label>
+        <label>
+          操作类型
+          <select value={draft.action} onChange={(event) => setDraft({ ...draft, action: event.target.value })}>
+            <option value="">全部动作</option>
+            {Object.entries(AUDIT_ACTION_LABELS).map(([action, label]) => <option key={action} value={action}>{label}</option>)}
+          </select>
+        </label>
+        <label>
+          结果
+          <select value={draft.result} onChange={(event) => setDraft({ ...draft, result: event.target.value })}>
+            <option value="">全部结果</option>
+            <option value="success">成功</option>
+            <option value="rejected">已驳回</option>
+            <option value="failure">失败</option>
+          </select>
+        </label>
+        <div className="audit-filter-actions">
+          <button type="button" className="outline-button" onClick={resetFilters}><RotateCcw size={15} />重置</button>
+          <button type="submit" className="primary-button"><Search size={15} />查询</button>
+        </div>
+      </form>
+
+      <div className="panel full-panel audit-log-panel">
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>时间</th>
+                <th>操作人员</th>
+                <th>操作</th>
+                <th>结果</th>
+                <th>工单号</th>
+                <th>对象</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={7} className="muted audit-empty">正在加载审计记录...</td></tr>
+              ) : data.items.length === 0 ? (
+                <tr><td colSpan={7} className="muted audit-empty">当前筛选条件下没有审计记录。</td></tr>
+              ) : data.items.map((item: any) => {
+                const result = auditResultView(item.result)
+                return (
+                  <tr key={item.id}>
+                    <td className="audit-time">{new Date(item.created_at).toLocaleString('zh-CN', { hour12: false })}</td>
+                    <td>
+                      <strong>{item.actor_name || (item.actor_id ? `用户 #${item.actor_id}` : '系统')}</strong>
+                      <small className="muted audit-subline">{item.actor_username || '系统任务'}</small>
+                    </td>
+                    <td>
+                      <strong>{auditActionLabel(item.action)}</strong>
+                      <small className="muted audit-subline">{item.action}</small>
+                    </td>
+                    <td><span className={`status ${result.className}`}><i />{result.label}</span></td>
+                    <td className="order-id">{item.work_order_no || '—'}</td>
+                    <td>
+                      <span>{item.resource_type}</span>
+                      <small className="muted audit-subline">{item.resource_id || '—'}</small>
+                    </td>
+                    <td><button type="button" className="icon-btn" title="查看详情" onClick={() => setSelected(item)}><Eye size={16} /></button></td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+        <Pagination page={page} pageSize={pageSize} total={data.total || 0} onPageChange={setPage} />
+      </div>
+
+      {selected && (
+        <Modal title="审计记录详情" onClose={() => setSelected(null)}>
+          <div className="audit-detail">
+            <div className="audit-detail-grid">
+              <span>操作时间<strong>{new Date(selected.created_at).toLocaleString('zh-CN', { hour12: false })}</strong></span>
+              <span>操作人员<strong>{selected.actor_name || selected.actor_username || '系统'}</strong></span>
+              <span>操作动作<strong>{auditActionLabel(selected.action)}</strong></span>
+              <span>执行结果<strong>{auditResultView(selected.result).label}</strong></span>
+              <span>工单号<strong>{selected.work_order_no || '—'}</strong></span>
+              <span>业务对象<strong>{selected.resource_type} / {selected.resource_id || '—'}</strong></span>
+            </div>
+            <div>
+              <span className="field-label">附加数据</span>
+              <pre className="audit-detail-json">{selected.detail ? JSON.stringify(selected.detail, null, 2) : '无附加数据'}</pre>
+            </div>
           </div>
         </Modal>
       )}
@@ -756,6 +1082,39 @@ function tabletAddressHint(ipv4: string) {
   return '该地址不在当前平板固定支持的 192.168 网段，请开启电脑热点并选择 192.168 地址。'
 }
 
+const evidenceIntegrityLabels: Record<EvidenceIntegrityItem['status'], string> = {
+  ok: '正常',
+  missing: '文件缺失',
+  size_mismatch: '大小不一致',
+  hash_mismatch: '哈希不一致',
+  unhashed: '缺少历史哈希',
+}
+
+const bugReportStatusLabels: Record<BugReportStatus, string> = {
+  pending: '待发送',
+  sending: '发送中',
+  sent: '已提交',
+  failed: '发送失败',
+}
+
+function bugReportStatusClass(status: BugReportStatus) {
+  if (status === 'sent') return 'status-running'
+  if (status === 'failed') return 'status-cancelled'
+  return 'status-pending'
+}
+
+function formatFileSize(value: number | null) {
+  if (value === null || value === undefined) return '—'
+  if (value < 1024) return `${value} B`
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`
+  return `${(value / 1024 / 1024).toFixed(1)} MB`
+}
+
+function csvCell(value: unknown) {
+  const text = value === null || value === undefined ? '' : String(value)
+  return `"${text.replace(/"/g, '""')}"`
+}
+
 export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
   const [showModal, setShowModal] = useState(false)
   const [editUser, setEditUser] = useState<any | null>(null)
@@ -769,6 +1128,14 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
   const [detectingIp, setDetectingIp] = useState(false)
   const [networkCopied, setNetworkCopied] = useState(false)
   const [backups, setBackups] = useState<any[]>([])
+  const [integrityResult, setIntegrityResult] = useState<EvidenceIntegrityResult | null>(null)
+  const [integrityError, setIntegrityError] = useState<string | null>(null)
+  const [integrityChecking, setIntegrityChecking] = useState(false)
+  const [bugReports, setBugReports] = useState<BugReportRecord[]>([])
+  const [bugReportMessage, setBugReportMessage] = useState<string | null>(null)
+  const [bugReportError, setBugReportError] = useState<string | null>(null)
+  const [smtpTesting, setSmtpTesting] = useState(false)
+  const [retryingBugReportId, setRetryingBugReportId] = useState<number | null>(null)
   const [accountPage, setAccountPage] = useState(1)
   const [backupPage, setBackupPage] = useState(1)
   const pageSize = 10
@@ -780,6 +1147,7 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
   const loadSettings = () => {
     api.getSettings().then(setSettings).catch(() => setSettings({}))
     api.getBackups().then(setBackups).catch(() => setBackups([]))
+    api.getBugReports().then(setBugReports).catch(() => setBugReports([]))
   }
 
   useEffect(() => {
@@ -791,10 +1159,10 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
   useAutoRefresh(() => accounts ? loadUsers() : loadSettings())
 
   const handleBackup = async () => {
-    setBackupMessage('正在备份...')
+    setBackupMessage('正在生成完整备份...')
     try {
       const result = await api.createBackup()
-      setBackupMessage(`备份成功：${result.file_name}`)
+      setBackupMessage(`完整备份成功：${result.file_name}`)
       api.getBackups().then(setBackups).catch(() => setBackups([]))
     } catch (e: any) {
       setBackupMessage(`备份失败：${e.message}`)
@@ -829,6 +1197,75 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
       document.body.removeChild(area)
     }
     setNetworkCopied(true)
+  }
+
+  const handleIntegrityCheck = async () => {
+    setIntegrityChecking(true)
+    setIntegrityError(null)
+    try {
+      setIntegrityResult(await api.checkEvidenceIntegrity())
+    } catch (e: any) {
+      setIntegrityResult(null)
+      setIntegrityError(`检查失败：${e.message}`)
+    } finally {
+      setIntegrityChecking(false)
+    }
+  }
+
+  const exportIntegrityIssues = () => {
+    if (!integrityResult?.issues.length) return
+    const rows = [
+      ['文件编号', '异常类型', '预期大小（字节）', '实际大小（字节）', '预期 SHA-256', '实际 SHA-256'],
+      ...integrityResult.issues.map((item) => [
+        item.file_id,
+        evidenceIntegrityLabels[item.status],
+        item.expected_size_bytes,
+        item.actual_size_bytes,
+        item.expected_sha256,
+        item.actual_sha256,
+      ]),
+    ]
+    const blob = new Blob(
+      [`\uFEFF${rows.map((row) => row.map(csvCell).join(',')).join('\r\n')}`],
+      { type: 'text/csv;charset=utf-8' },
+    )
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `证据完整性异常-${new Date().toISOString().slice(0, 10)}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleTestSmtp = async () => {
+    setSmtpTesting(true)
+    setBugReportMessage(null)
+    setBugReportError(null)
+    try {
+      const result = await api.testBugReportSmtp()
+      setBugReportMessage(result.message || 'SMTP 测试邮件已提交')
+    } catch (e: any) {
+      setBugReportError(`测试失败：${e.message}`)
+    } finally {
+      setSmtpTesting(false)
+    }
+  }
+
+  const handleRetryBugReport = async (report: BugReportRecord) => {
+    setRetryingBugReportId(report.id)
+    setBugReportMessage(null)
+    setBugReportError(null)
+    try {
+      const result = await api.retryBugReport(report.id)
+      setBugReportMessage(result.message || '反馈邮件重试成功')
+      const refreshed = await api.getBugReports()
+      setBugReports(refreshed)
+    } catch (e: any) {
+      setBugReportError(`重试失败：${e.message}`)
+      api.getBugReports().then(setBugReports).catch(() => undefined)
+    } finally {
+      setRetryingBugReportId(null)
+    }
   }
 
   const handleResetPassword = async (user: any) => {
@@ -899,6 +1336,9 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
 
   const pagedUsers = users.slice((accountPage - 1) * pageSize, accountPage * pageSize)
   const pagedBackups = backups.slice((backupPage - 1) * pageSize, backupPage * pageSize)
+  const integrityIssueCount = (status: EvidenceIntegrityItem['status']) => (
+    integrityResult?.issues.filter((item) => item.status === status).length ?? 0
+  )
 
   return (
     <div className="page-wrap">
@@ -921,7 +1361,7 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
                   <th>账号</th>
                   <th>姓名</th>
                   <th>电话</th>
-                  <th>身份证</th>
+                  <th>工号</th>
                   <th>状态</th>
                   <th>操作</th>
                 </tr>
@@ -946,7 +1386,7 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
                     </td>
                     <td>{user.display_name}</td>
                     <td>{user.phone || '—'}</td>
-                    <td>{user.id_card || '—'}</td>
+                    <td>{user.employee_no || '—'}</td>
                     <td>
                       {user.status === 'pending' && <span className="status status-pending"><i />待审批</span>}
                       {user.status === 'rejected' && <span className="status status-cancelled"><i />已驳回</span>}
@@ -985,12 +1425,13 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
           <div className="settings-grid">
             <Setting title="默认称重允差" description="目标重量的相对比例" value={`${settings.default_tolerance_percent ?? '1.0'} %`} onClick={() => handleEditSetting('default_tolerance_percent', settings.default_tolerance_percent ?? '1.0', '默认称重允差（%）')} />
             <Setting title="最小绝对允差" description="低于此重量时使用的下限" value={`${settings.min_absolute_tolerance_grams ?? '5'} g`} onClick={() => handleEditSetting('min_absolute_tolerance_grams', settings.min_absolute_tolerance_grams ?? '5', '最小绝对允差（克）')} />
-            <Setting title="自动备份" description="数据库和证据文件的本地备份" value={settings.backup_enabled === 'true' ? '已启用' : '已停用'} onClick={() => handleEditSetting('backup_enabled', settings.backup_enabled ?? 'true', '自动备份（true/false）')} />
+            <Setting title="自动备份" description="每天自动备份数据库、证据和配置" value={settings.backup_enabled === 'true' ? '已启用' : '已停用'} onClick={() => handleEditSetting('backup_enabled', settings.backup_enabled ?? 'true', '自动备份（true/false）')} />
+            <Setting title="自动备份时间" description="后端按本机时间执行每日备份" value={settings.backup_time ?? '02:00'} onClick={() => handleEditSetting('backup_time', settings.backup_time ?? '02:00', '自动备份时间（HH:MM）')} />
             <Setting title="服务端口" description="局域网访问端口" value={settings.server_port ?? '8011'} onClick={() => handleEditSetting('server_port', settings.server_port ?? '8011', '服务端口')} />
           </div>
           <div className="settings-actions">
             <button className="primary-button" onClick={handleBackup}>
-              <DatabaseIcon />立即备份数据库
+              <DatabaseIcon />立即完整备份
             </button>
             <button className="outline-button" disabled={detectingIp} onClick={handleDetectIp}>
               <Network size={16} />{detectingIp ? '正在检测...' : '检测本机 IP'}
@@ -1042,16 +1483,18 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
             <div className="table-wrap">
               <table>
                 <thead>
-                  <tr><th>备份文件</th><th>大小</th><th>状态</th><th>时间</th></tr>
+                  <tr><th>备份文件</th><th>类型</th><th>大小</th><th>状态</th><th>校验值</th><th>时间</th></tr>
                 </thead>
                 <tbody>
                   {pagedBackups.length === 0 ? (
-                    <tr><td colSpan={4} className="muted" style={{ textAlign: 'center' }}>暂无备份记录</td></tr>
+                    <tr><td colSpan={6} className="muted" style={{ textAlign: 'center' }}>暂无备份记录</td></tr>
                   ) : pagedBackups.map((backup) => (
                     <tr key={backup.file_path}>
                       <td className="order-id">{backup.file_path.split('/').pop()}</td>
+                      <td>{backup.trigger === 'scheduled' ? '自动' : backup.trigger === 'pre_restore' ? '恢复前' : '手动'}</td>
                       <td>{backup.size_bytes ? `${(backup.size_bytes / 1024).toFixed(1)} KB` : '—'}</td>
-                      <td><span className="status status-running"><i />{backup.status === 'success' ? '成功' : '失败'}</span></td>
+                      <td><span className={`status ${backup.status === 'success' ? 'status-running' : 'status-cancelled'}`}><i />{backup.status === 'success' ? '成功' : '失败'}</span></td>
+                      <td title={backup.checksum_sha256 || ''}>{backup.checksum_sha256 ? `${backup.checksum_sha256.slice(0, 12)}…` : '—'}</td>
                       <td>{new Date(backup.created_at).toLocaleString('zh-CN', { hour12: false })}</td>
                     </tr>
                   ))}
@@ -1060,6 +1503,187 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
             </div>
           </div>
           {backups.length > pageSize && <Pagination page={backupPage} pageSize={pageSize} total={backups.length} onPageChange={setBackupPage} />}
+          <div className="panel full-panel integrity-panel">
+            <div className="integrity-head">
+              <div className="integrity-title">
+                <span className="integrity-title-icon"><ShieldCheck size={19} /></span>
+                <div>
+                  <h2>证据完整性检查</h2>
+                  <p>核对生产照片的大小和 SHA-256，发现缺失、替换或历史未哈希文件。</p>
+                </div>
+              </div>
+              <div className="integrity-actions">
+                <button
+                  type="button"
+                  className="outline-button"
+                  disabled={integrityChecking}
+                  onClick={handleIntegrityCheck}
+                >
+                  <ShieldCheck size={15} />
+                  {integrityChecking ? '正在检查...' : '开始检查'}
+                </button>
+                <button
+                  type="button"
+                  className="outline-button"
+                  disabled={!integrityResult?.issues.length}
+                  onClick={exportIntegrityIssues}
+                >
+                  <Download size={15} />导出异常清单
+                </button>
+              </div>
+            </div>
+            {integrityError && <div className="network-message error integrity-message"><CircleAlert size={16} />{integrityError}</div>}
+            {integrityResult ? (
+              <>
+                <div className="integrity-summary">
+                  <div className="integrity-stat">
+                    <span>检查文件</span>
+                    <strong>{integrityResult.total}</strong>
+                  </div>
+                  <div className="integrity-stat ok">
+                    <span>正常</span>
+                    <strong>{integrityResult.ok}</strong>
+                  </div>
+                  <div className={`integrity-stat ${integrityIssueCount('missing') ? 'issue' : ''}`}>
+                    <span>文件缺失</span>
+                    <strong>{integrityIssueCount('missing')}</strong>
+                  </div>
+                  <div className={`integrity-stat ${integrityIssueCount('size_mismatch') ? 'issue' : ''}`}>
+                    <span>大小异常</span>
+                    <strong>{integrityIssueCount('size_mismatch')}</strong>
+                  </div>
+                  <div className={`integrity-stat ${integrityIssueCount('hash_mismatch') ? 'issue' : ''}`}>
+                    <span>哈希异常</span>
+                    <strong>{integrityIssueCount('hash_mismatch')}</strong>
+                  </div>
+                  <div className={`integrity-stat ${integrityIssueCount('unhashed') ? 'warning' : ''}`}>
+                    <span>历史未哈希</span>
+                    <strong>{integrityIssueCount('unhashed')}</strong>
+                  </div>
+                </div>
+                <div className="integrity-result-meta">
+                  检查时间：{new Date(integrityResult.checked_at).toLocaleString('zh-CN', { hour12: false })}
+                </div>
+                {integrityResult.issue_count === 0 ? (
+                  <div className="integrity-success"><Check size={17} />本次检查未发现证据完整性异常。</div>
+                ) : (
+                  <div className="table-wrap integrity-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>文件编号</th>
+                          <th>异常类型</th>
+                          <th>预期大小</th>
+                          <th>实际大小</th>
+                          <th>预期 SHA-256</th>
+                          <th>实际 SHA-256</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {integrityResult.issues.map((item) => (
+                          <tr key={item.file_id}>
+                            <td className="order-id">{item.file_id}</td>
+                            <td>
+                              <span className={`status ${item.status === 'unhashed' ? 'status-pending' : 'status-cancelled'}`}>
+                                <i />{evidenceIntegrityLabels[item.status]}
+                              </span>
+                            </td>
+                            <td>{formatFileSize(item.expected_size_bytes)}</td>
+                            <td>{formatFileSize(item.actual_size_bytes)}</td>
+                            <td><code className="integrity-hash">{item.expected_sha256 || '—'}</code></td>
+                            <td><code className="integrity-hash">{item.actual_sha256 || '—'}</code></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            ) : !integrityError ? (
+              <div className="integrity-empty">尚未执行检查。该操作只读取文件和哈希，不会修改或删除证据。</div>
+            ) : null}
+          </div>
+          <div className="panel full-panel bug-report-panel">
+            <div className="integrity-head">
+              <div className="integrity-title">
+                <span className="integrity-title-icon bug-report-title-icon"><CircleAlert size={19} /></span>
+                <div>
+                  <h2>BUG 反馈邮件</h2>
+                  <p>查看反馈发送状态，并在邮件服务恢复后重试失败记录。</p>
+                </div>
+              </div>
+              <div className="integrity-actions">
+                <button
+                  type="button"
+                  className="outline-button"
+                  disabled={smtpTesting}
+                  onClick={handleTestSmtp}
+                >
+                  <Mail size={15} />
+                  {smtpTesting ? '正在发送...' : '发送测试邮件'}
+                </button>
+              </div>
+            </div>
+            {bugReportMessage && <div className="network-message success bug-report-message"><Check size={16} />{bugReportMessage}</div>}
+            {bugReportError && <div className="network-message error bug-report-message"><CircleAlert size={16} />{bugReportError}</div>}
+            {bugReports.length === 0 ? (
+              <div className="integrity-empty">暂无 BUG 反馈记录。</div>
+            ) : (
+              <div className="table-wrap bug-report-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>状态</th>
+                      <th>来源</th>
+                      <th>提交人</th>
+                      <th>问题描述</th>
+                      <th>图片</th>
+                      <th>创建时间</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bugReports.map((report) => (
+                      <tr key={report.id}>
+                        <td>
+                          <span className={`status ${bugReportStatusClass(report.status)}`}>
+                            <i />{bugReportStatusLabels[report.status]}
+                          </span>
+                        </td>
+                        <td>{report.source === 'pc' ? '电脑端' : '平板端'}</td>
+                        <td>
+                          <span className="order-id">{report.reporter_username || '—'}</span>
+                          <small className="muted bug-report-reporter">{report.reporter_name || '—'}</small>
+                        </td>
+                        <td>
+                          <span className="bug-report-description" title={report.description}>{report.description}</span>
+                          {report.error_message && <small className="bug-report-error" title={report.error_message}>{report.error_message}</small>}
+                        </td>
+                        <td>{report.image_count}</td>
+                        <td>{new Date(report.created_at).toLocaleString('zh-CN', { hour12: false })}</td>
+                        <td>
+                          {(report.status === 'failed' || report.status === 'pending') ? (
+                            <button
+                              type="button"
+                              className="text-button"
+                              disabled={retryingBugReportId === report.id}
+                              onClick={() => handleRetryBugReport(report)}
+                            >
+                              {retryingBugReportId === report.id ? '正在重试...' : '重试发送'}
+                            </button>
+                          ) : report.status === 'sending' ? (
+                            <span className="muted">发送中</span>
+                          ) : (
+                            <span className="muted">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </>
       )}
 

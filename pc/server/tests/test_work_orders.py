@@ -37,7 +37,7 @@ def test_operator_order_requires_admin_approval(client):
     created = client.post(
         "/api/v1/auth/users",
         headers=headers,
-        json={"username": "operator01", "display_name": "李师傅", "password": "operator123"},
+        json={"username": "operator01", "display_name": "李师傅", "password": "operator123", "employee_no": "MH1008"},
     ).json()["user"]
     assert created["status"] == "active"
     token = client.post("/api/v1/auth/login", json={"username": "operator01", "password": "operator123"}).json()["access_token"]
@@ -53,7 +53,7 @@ def test_pending_work_order_appears_in_admin_approvals(client):
     operator = client.post(
         "/api/v1/auth/users",
         headers=headers,
-        json={"username": "operator_approval", "display_name": "李师傅", "password": "operator123"},
+        json={"username": "operator_approval", "display_name": "李师傅", "password": "operator123", "employee_no": "MH1009"},
     ).json()["user"]
     token = client.post("/api/v1/auth/login", json={"username": "operator_approval", "password": "operator123"}).json()["access_token"]
     order = client.post(

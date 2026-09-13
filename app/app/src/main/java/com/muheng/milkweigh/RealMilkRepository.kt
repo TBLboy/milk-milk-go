@@ -8,6 +8,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.UUID
 
 class RealMilkRepository(
     private val context: Context,
@@ -142,7 +143,39 @@ class RealMilkRepository(
     }
 
     override suspend fun listRecipes(): List<ProductRecipe> = listProducts().map {
-        ProductRecipe(it.id, it.name, it.enabled, it.items, it.imageFileId)
+        ProductRecipe(it.id, it.name, it.enabled, it.items, it.imageFileId, it.version)
+    }
+
+    override suspend fun listRecipeVersions(productId: Int): List<RecipeVersion> {
+        val body = jsonArrayRequest("master-data/products/$productId/recipe-versions", "GET", null)
+        return buildList {
+            for (index in 0 until body.length()) {
+                val item = body.getJSONObject(index)
+                val creator = if (item.isNull("created_by")) null else item.optJSONObject("created_by")
+                val versionItems = item.optJSONArray("items") ?: JSONArray()
+                add(
+                    RecipeVersion(
+                        version = item.optInt("version"),
+                        createdAt = item.optString("created_at"),
+                        createdByName = creator?.optString("display_name").orEmpty().ifBlank { "系统迁移" },
+                        isCurrent = item.optBoolean("is_current"),
+                        items = buildList {
+                            for (itemIndex in 0 until versionItems.length()) {
+                                val versionItem = versionItems.getJSONObject(itemIndex)
+                                add(
+                                    RecipeVersionItem(
+                                        materialId = versionItem.optString("material_id"),
+                                        materialCode = versionItem.optString("material_code"),
+                                        nameZh = versionItem.optString("name_zh"),
+                                        quantityPerTonKg = versionItem.optDouble("quantity_per_ton_kg"),
+                                    ),
+                                )
+                            }
+                        },
+                    ),
+                )
+            }
+        }
     }
 
     override suspend fun saveProductRecipe(recipe: ProductRecipe): ProductRecipe {
@@ -171,6 +204,7 @@ class RealMilkRepository(
             enabled = response.optBoolean("recipe_enabled", recipe.enabled),
             items = recipeItemsFromJson(response.optJSONArray("items")),
             imageFileId = response.optString("image_file_id").ifBlank { null },
+            version = response.optInt("recipe_version", recipe.version),
         )
     }
 
@@ -186,6 +220,7 @@ class RealMilkRepository(
             enabled = response.optBoolean("recipe_enabled", enabled),
             items = recipeItemsFromJson(response.optJSONArray("items")),
             imageFileId = response.optString("image_file_id").ifBlank { null },
+            version = response.optInt("recipe_version", 1),
         )
     }
 
@@ -202,12 +237,15 @@ class RealMilkRepository(
         return orderFromJson(jsonObjectRequest("work-orders/$orderNo/start", "POST", null))
     }
 
-    override suspend fun confirmStepQr(orderNo: String, stepNo: Int, materialId: String, evidenceUri: String): WorkOrder {
+    override suspend fun confirmStepQr(orderNo: String, stepNo: Int, labelId: String, materialId: String, evidenceUri: String): WorkOrder {
         val fileId = uploadImage(evidenceUri)
         jsonObjectRequest(
             path = "evidence/work-orders/$orderNo/steps/$stepNo/qr",
             method = "POST",
-            body = JSONObject().put("material_id", materialId).put("evidence_file_id", fileId),
+            body = JSONObject()
+                .put("label_id", labelId)
+                .put("material_id", materialId)
+                .put("evidence_file_id", fileId),
         )
         return getWorkOrder(orderNo)
     }
@@ -302,6 +340,9 @@ class RealMilkRepository(
             connection.readTimeout = 8000
             if (token.isNotBlank()) {
                 connection.setRequestProperty("Authorization", "Bearer $token")
+            }
+            if (method != "GET") {
+                connection.setRequestProperty("X-Request-ID", UUID.randomUUID().toString())
             }
             if (body != null) {
                 connection.doOutput = true
@@ -401,7 +442,7 @@ class RealMilkRepository(
             token = token,
             avatarFileId = user.optString("avatar_file_id").ifBlank { null },
             phone = user.optString("phone"),
-            idCard = user.optString("id_card"),
+            employeeNo = user.optString("employee_no"),
             accountStatus = user.optString("status", "active"),
             mustChangePassword = user.optBoolean("must_change_password"),
             id = user.optInt("id"),
@@ -475,6 +516,7 @@ class RealMilkRepository(
             items = recipeItemsFromJson(json.optJSONArray("items")),
             enabled = json.optBoolean("recipe_enabled", true),
             imageFileId = json.optString("image_file_id").ifBlank { null },
+            version = json.optInt("recipe_version", 1),
         )
     }
 

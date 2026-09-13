@@ -2315,3 +2315,54 @@ decisions:
       - DEC-016
     created_at: "2026-09-09T04:30:00Z"
     updated_at: "2026-09-09T04:30:00Z"
+  - id: DEC-042
+    title: 生产级整改发布候选版本升级为 1.0.1
+    category: process
+    status: active
+    authority: B
+    user_approval: not-required
+    related_tasks:
+      - TASK-081
+    related_business_logic:
+      - BL-DATA-001
+      - BL-DATA-004
+    context: 上一轮 1.0.0 发布包构建于生产级整改之前；本轮已经加入审计、完整备份恢复、配方版本、工号、Keystore、证据完整性、并发幂等和产品配方 Excel 等改动，需要形成可覆盖旧安装的发布候选。
+    hypothesis: 使用补丁版本 1.0.1 并将 Android versionCode 提升为 2，可以明确区分旧包并验证覆盖升级、数据保留和版本追踪。
+    options:
+      - name: 覆盖重建 1.0.0
+        benefits:
+          - 不增加版本号数量
+        costs:
+          - 同一版本对应不同哈希和代码，无法可靠区分已安装包
+        risks:
+          - Android 覆盖升级和问题追溯会产生歧义
+      - name: 升级为 1.0.1
+        benefits:
+          - Windows 和 Android 可明确识别本轮发布候选
+          - Android versionCode 具备递增关系
+        costs:
+          - 发布说明和校验文件需要同步更新
+        risks:
+          - 若后续继续修改，需要再次升级版本或重新冻结
+    decision: 本轮生产级整改发布候选使用 1.0.1；Android versionCode 从 1 提升为 2；Windows 安装包、Android APK、安装说明和校验文件统一使用 1.0.1。
+    reason_summary:
+      - 旧 1.0.0 已生成并安装，直接覆盖会造成版本内容不可区分
+      - 发布候选必须支持覆盖升级验证
+      - TASK-081 需要冻结明确版本和哈希
+    conditions:
+      - TASK-081 产物冻结后不再复用 1.0.1 文件名
+      - 如发现新代码修改，必须重新构建并更新哈希
+    action: 更新 Windows 和 Android 版本元数据，构建 TASK-081 发布候选
+    expected_result: 生成版本、来源和哈希可追溯的 1.0.1 Windows 安装包和 Android APK
+    reversal_plan: 若发布前需要回滚版本号，必须删除误发布的 1.0.1 产物并记录原因，不能保留同版本不同哈希
+    observation: 2026-09-13 已生成 Android versionCode=2、versionName=1.0.1 APK 和 Windows 1.0.1 NSIS 安装包，哈希及发布清单已归档。
+    actual_result: 发布候选版本元数据一致，Android 模拟器覆盖安装成功；真实 HONOR 平板的最终系统授权仍待现场完成。
+    outcome_status: successful
+    lesson: null
+    evidence:
+      - EV-TASK-081-APK
+      - EV-TASK-081-WINDOWS-BUILD
+      - EV-TASK-081-RELEASE-MANIFEST
+    supersedes: []
+    created_at: "2026-09-13T06:35:00Z"
+    updated_at: "2026-09-13T06:35:00Z"
