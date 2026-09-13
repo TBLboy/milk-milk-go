@@ -82,9 +82,7 @@ cp "$PAYLOAD_DIR/python/Lib/site-packages/win32/pythonservice.exe" "$PAYLOAD_DIR
 cp "$PC_DIR/server/.env" "$CONFIG_STAGE/.env"
 chmod 600 "$CONFIG_STAGE/.env"
 
-ffmpeg -hide_banner -loglevel error -y -i "$ROOT_DIR/资源文件/公司logo.png" \
-  -vf "scale=256:256:force_original_aspect_ratio=decrease,pad=256:256:(ow-iw)/2:(oh-ih)/2:color=white" \
-  -frames:v 1 "$BUILD_ROOT/app.ico"
+cp "$PC_DIR/packaging/windows/app.ico" "$BUILD_ROOT/app.ico"
 
 MAKENSIS_BIN="$(command -v makensis || true)"
 if [[ -z "$MAKENSIS_BIN" ]]; then

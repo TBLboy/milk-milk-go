@@ -594,11 +594,12 @@ evidence:
   invalidation_reason: null
 - id: EV-TASK-066-BUILD
   kind: build
-  subject: 侧边栏内部开关版 Android 构建
+  subject: 侧边栏网络状态平滑展开版 Android 构建
   status: valid
   command: JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk
     ./gradlew assembleDebug --no-daemon
-  result_ref: BUILD SUCCESSFUL; 37 actionable tasks; app-debug.apk generated
+  result_ref: BUILD SUCCESSFUL in 9s; 37 actionable tasks; network-status sidebar
+    debug APK generated
   covers:
     files:
     - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
@@ -606,59 +607,248 @@ evidence:
     tasks:
     - TASK-066
   version_binding:
-    git_commit: 3ee2115b03f0c61dbf22f6c95e4ad50bd0d61765
-    diff_hash: e5a5d305d1e3e9abf4b118fdcc08e34d195d398b44cb1c4841f17bc309d1d5ff
+    git_commit: 7a69e399ebc7a30431f024081b6798c4cd955c99
+    diff_hash: 69183bc05d69a127cf1e1ecfe314990b3ee14f43410484471b26295130034e87
     file_hashes:
-      app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt: ffc150606493b8c47a76e030bd4be75cf24eafcbd0a62914eb2e4f5edf52c3e5
-  recorded_at: '2026-09-13T02:58:45Z'
+      app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt: adecaace241892637f83822db219e57a64f9536c5f8e362e6a261b2f4d054fd7
+  recorded_at: '2026-09-13T03:50:00Z'
   invalidated_at: null
   invalidation_reason: null
 - id: EV-TASK-066-EMULATOR
   kind: test
-  subject: 侧边栏内部开关版展开与收缩模拟器验证
+  subject: 侧边栏网络状态展开布局模拟器验证
   status: valid
-  command: install debug APK on emulator-5554; launch app; inspect expanded and collapsed
-    screenshots
-  result_ref: Top bar has distinct bottom divider; toggle is inside sidebar; expanded
-    230dp and collapsed 76dp icon-only states verified; no visible overlap
+  command: install debug APK on emulator-5554; launch app; capture expanded sidebar
+  result_ref: 网络状态卡显示绿色状态点、局域网模式和实时接口；布局无重叠，展开状态正常
   covers:
     files:
-    - .build/task066-sidebar-toggle-expanded.png
-    - .build/task066-sidebar-toggle-collapsed-final.png
+    - .build/task066-network-status-emulator-expanded.png
     requirements: []
     tasks:
     - TASK-066
   version_binding:
-    git_commit: 3ee2115b03f0c61dbf22f6c95e4ad50bd0d61765
+    git_commit: 7a69e399ebc7a30431f024081b6798c4cd955c99
     diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
     file_hashes:
-      .build/task066-sidebar-toggle-expanded.png: 1a6b4802cfa108f8cf98cab2ef16162d7a454afc5ebed1c981becb9b24389916
-      .build/task066-sidebar-toggle-collapsed-final.png: 9eaf103d9d3c35832610202355a843d3e9831461335410960deb8375e35e6eb4
-  recorded_at: '2026-09-13T02:58:51Z'
+      .build/task066-network-status-emulator-expanded.png: 635c229a98368f895859097dbeaf456f05444f3b20525bf6840b66428bbfdb94
+  recorded_at: '2026-09-13T03:50:38Z'
   invalidated_at: null
   invalidation_reason: null
 - id: EV-TASK-066-PHYSICAL
   kind: test
-  subject: 侧边栏内部开关版物理平板安装与冷启动验证
-  status: valid
+  subject: 侧边栏视觉精修版物理平板验证
+  status: stale
   command: adb -s a67adf5d install -r app-debug.apk; clear logcat; force-stop; am
     start -W
-  result_ref: Install Success; versionName 1.0.0; cold start 1265ms then warm start
-    194ms; top divider and sidebar-internal toggle visible; no new AndroidRuntime
-    fatal exception
+  result_ref: Install Success; cold start 1241ms; 现场制作标题与圆角方形收缩按钮显示正常；侧边栏层级清晰；无新的
+    AndroidRuntime fatal exception
   covers:
     files:
-    - .build/task066-physical-tablet.png
+    - .build/task066-sidebar-refined-physical.png
     - app/app/build/outputs/apk/debug/app-debug.apk
     requirements: []
     tasks:
     - TASK-066
   version_binding:
-    git_commit: 3ee2115b03f0c61dbf22f6c95e4ad50bd0d61765
+    git_commit: 7a69e399ebc7a30431f024081b6798c4cd955c99
     diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
     file_hashes:
-      .build/task066-physical-tablet.png: 1c6954ebd56e436ae9f36c52ed3125931be991c3cc6cbfa78c5f4bf7546f975e
-      app/app/build/outputs/apk/debug/app-debug.apk: 966bc23a3110a7ceb37dac114fadcf3269c3cf037e7deec96aeb2e698708c79d
-  recorded_at: '2026-09-13T02:58:56Z'
+      .build/task066-sidebar-refined-physical.png: bfe55a7399b32e1de55d8e3f406add976cebfe7fe888462948592e754ad63d70
+      app/app/build/outputs/apk/debug/app-debug.apk: ead37266aa5e1ce67ea62ed0aa02a91182f05690a0e4ebb336e83be3519717e9
+  recorded_at: '2026-09-13T03:06:50Z'
+  invalidated_at: '2026-09-13T03:24:50Z'
+  invalidation_reason: 侧边栏动画与折叠按钮尺寸再次调整，旧物理平板证据对应的 APK 已被新 debug 构建替代
+- id: EV-TASK-066-FOOTER-HONOR
+  kind: test
+  subject: 新 HONOR ROL-W60 平板网络状态展开与收起验证
+  status: valid
+  command: adb -s AYRHUN6402H01019 install -r app-debug.apk; clear logcat; force-stop;
+    am start -W; toggle sidebar
+  result_ref: HONOR ROL-W60 已授权并安装 1.0.0 debug APK；展开时显示网络状态卡，收起后完整消失；无 AndroidRuntime
+    fatal exception
+  covers:
+    files:
+    - .build/task066-network-status-honor-expanded.png
+    - .build/task066-network-status-honor-collapsed.png
+    - app/app/build/outputs/apk/debug/app-debug.apk
+    requirements: []
+    tasks:
+    - TASK-066
+  version_binding:
+    git_commit: 7a69e399ebc7a30431f024081b6798c4cd955c99
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      .build/task066-network-status-honor-expanded.png: a3802f81f6e10b07d96d31a740ad9338041876a58475cc9a0b124b0b8c4d8e49
+      .build/task066-network-status-honor-collapsed.png: fe3952a3ce7767da2ae1d6cfd62237a5f8bb451f2a63a232a097d56127b9beac
+      app/app/build/outputs/apk/debug/app-debug.apk: 750d59039d5060602b81f9ff703a9dcacb42abb8f176f68ff9bcaff943e74252
+  recorded_at: '2026-09-13T03:50:59Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-069-BUILD
+  kind: build
+  subject: APP 用户协议 V1.0 Android 构建
+  status: valid
+  command: JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk
+    ./gradlew assembleDebug --no-daemon
+  result_ref: BUILD SUCCESSFUL in 8s; 37 actionable tasks; 4 executed
+  covers:
+    files:
+    - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+    requirements: []
+    tasks:
+    - TASK-069
+  version_binding:
+    git_commit: 7a69e399ebc7a30431f024081b6798c4cd955c99
+    diff_hash: 10b9e837b3de8469c23978aa5096c466681d64a0f8891e774e4d9185c90a3a2a
+    file_hashes:
+      app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt: fd51f5d696d40f82d390aa0052dd02f3deb5f6c76aec8b33415a3b55786f6785
+  recorded_at: '2026-09-13T04:10:21Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-069-UI
+  kind: test
+  subject: APP 用户协议滚动、关闭和同意约束设备验证
+  status: valid
+  command: adb emulator-5554 install/open agreement/scroll/close/login without consent
+  result_ref: 协议 V1.0 顶部与底部可见；正文滚动到第十三章；关闭后返回登录；未勾选时提示请先阅读并同意用户协议；无 FATAL EXCEPTION
+  covers:
+    files:
+    - .build/task069-agreement-bottom.png
+    requirements: []
+    tasks:
+    - TASK-069
+  version_binding:
+    git_commit: 7a69e399ebc7a30431f024081b6798c4cd955c99
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      .build/task069-agreement-bottom.png: 1f7668f0acb0cee675445d6e35709aa958c3a11b2312faf8e7a1d27c63229aa8
+  recorded_at: '2026-09-13T04:10:21Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-068-BRIEF
+  kind: document
+  subject: PC 与平板整体功能审查及软件图标设计任务说明
+  status: valid
+  command: rg sensitive-info scan; python3 validate_project.py; python3 loopctl.py
+    validate; git diff --check
+  result_ref: 852 行单文件 Markdown；覆盖 PC、App、后端、业务规则、部署、验证状态、缺口和待确认问题；包含可用图标生成提示词；未发现敏感凭据
+  covers:
+    files:
+    - .project-log/docs/milk-weigh-feature-review-and-icon-brief-20260913.md
+    requirements: []
+    tasks:
+    - TASK-068
+    - TASK-067
+  version_binding:
+    git_commit: 7a69e399ebc7a30431f024081b6798c4cd955c99
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      .project-log/docs/milk-weigh-feature-review-and-icon-brief-20260913.md: 591b565a59c9f460e97c5e6dfc8946e29d8cf7f95dce3eae5f429ac733b31d7c
+  recorded_at: '2026-09-13T04:24:44Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-067-ICON-BRIEF
+  kind: design
+  subject: 软件图标设计规格和图像生成提示词
+  status: valid
+  command: inspect company logo dimensions and dominant colors; define icon platform
+    requirements
+  result_ref: '公司 Logo 474x474 RGB 白底；主色约 #002E65 和 #CC0311；已完成 Windows、Android 和
+    Web 图标规格及可直接复制的生成提示词'
+  covers:
+    files:
+    - .project-log/docs/milk-weigh-feature-review-and-icon-brief-20260913.md
+    requirements: []
+    tasks:
+    - TASK-067
+  version_binding:
+    git_commit: 7a69e399ebc7a30431f024081b6798c4cd955c99
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      .project-log/docs/milk-weigh-feature-review-and-icon-brief-20260913.md: 591b565a59c9f460e97c5e6dfc8946e29d8cf7f95dce3eae5f429ac733b31d7c
+  recorded_at: '2026-09-13T04:24:44Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-070-REVIEW
+  kind: document
+  subject: GPT 功能审查意见核查记录
+  status: valid
+  command: code/config cross-check; sensitive-info scan; git diff --check; validate_project.py;
+    loopctl validate
+  result_ref: 512 行核查文档；逐项区分 confirmed/partial/conflict/decision-needed/proposal；补充
+    labelId 校验与审计覆盖缺口；项目日志校验通过
+  covers:
+    files:
+    - .project-log/docs/gpt-feature-review-verification-20260913.md
+    requirements: []
+    tasks:
+    - TASK-070
+  version_binding:
+    git_commit: 7a69e399ebc7a30431f024081b6798c4cd955c99
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      .project-log/docs/gpt-feature-review-verification-20260913.md: 9c0593992119e4e9e1cce0ad6e0125d34f4b099b2306ebe50ecfb41a3abfb83f
+  recorded_at: '2026-09-13T04:38:16Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-067-ICON-PC
+  kind: build
+  subject: PC Web 与 Windows 快捷方式图标接入
+  status: valid
+  command: npm run build; bash -n pc/scripts/build-windows-installer.sh; git diff
+    --check
+  result_ref: PC Vite/TypeScript 构建通过；dist 中生成 512x512 app-icon.png 和 256x256 favicon.png；Windows
+    ICO 含 9 个尺寸；NSIS 安装器与桌面/开始菜单快捷方式引用 app.ico
+  covers:
+    files:
+    - pc/public/app-icon.png
+    - pc/public/favicon.png
+    - pc/packaging/windows/app.ico
+    - pc/index.html
+    - pc/packaging/windows/installer.nsi
+    - pc/scripts/build-windows-installer.sh
+    requirements: []
+    tasks:
+    - TASK-067
+  version_binding:
+    git_commit: 7a69e399ebc7a30431f024081b6798c4cd955c99
+    diff_hash: 04052ff0c405dd4cfed5214e07dc6e885a73bbd124259fc51428465209a6663f
+    file_hashes:
+      pc/public/app-icon.png: b114c574a18723de8942457a837d5a7938ad5abb3cfabc2639f20133ff9dc641
+      pc/public/favicon.png: 873f1e769140bc2df30d80c119615a41d160b81527d751de6ad3ffbd806d4231
+      pc/packaging/windows/app.ico: 7600e8821ad3e0ed64953370a2c2fffcdd60e78d188d07d60d3e0f2d82019fc8
+      pc/index.html: 52660a6dff1cb90cd6914f4e5701a29be33ce628a32884fbfa35926c988f79ce
+      pc/packaging/windows/installer.nsi: 1b76e6abb54df40ca34602fadff29b632f4c27823d1ea5e45a0bf75ce8e2148b
+      pc/scripts/build-windows-installer.sh: 71f3862c7ae38ac28ae85a1bdbd605719c1b552a3581eec8a48589a81f2b0dc1
+  recorded_at: '2026-09-13T04:49:15Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-067-ICON-ANDROID
+  kind: build
+  subject: Android 启动器普通、圆形与自适应图标接入
+  status: valid
+  command: JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk
+    ./gradlew assembleDebug --no-daemon; unzip -l app/build/outputs/apk/debug/app-debug.apk
+    | rg res/mipmap
+  result_ref: Android debug APK 构建成功；产物包含 mdpi 至 xxxhdpi 的 ic_launcher、ic_launcher_round、ic_launcher_foreground，以及
+    v26 自适应图标 XML；仅有既有 Kotlin 弃用警告
+  covers:
+    files:
+    - app/app/src/main/AndroidManifest.xml
+    - app/app/src/main/res/values/colors.xml
+    - app/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+    - app/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+    requirements: []
+    tasks:
+    - TASK-067
+  version_binding:
+    git_commit: 7a69e399ebc7a30431f024081b6798c4cd955c99
+    diff_hash: 9b98eaed542bed6bf89a3f6eff79271905c8762e24d08a9921ad0b02740dd462
+    file_hashes:
+      app/app/src/main/AndroidManifest.xml: 1274c40036c4096ed0cbf7cc6bccf3918e86f253c003d521383fbfa99e4ec9e6
+      app/app/src/main/res/values/colors.xml: 7329e8882cce1b0c898bffb626264a7e90c943558508fcf00f912d7f53cdaf2a
+      app/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml: 5056b7226b3f58e65a61739e8ab6f5c52099fccee3ae9aad0e8856f31709e3fa
+      app/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml: 5056b7226b3f58e65a61739e8ab6f5c52099fccee3ae9aad0e8856f31709e3fa
+  recorded_at: '2026-09-13T04:49:23Z'
   invalidated_at: null
   invalidation_reason: null

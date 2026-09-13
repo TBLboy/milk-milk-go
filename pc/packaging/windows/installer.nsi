@@ -74,6 +74,7 @@ Section "Install"
 
   SetOutPath "$INSTDIR"
   File /r "${PAYLOAD_DIR}/*.*"
+  File "${APP_ICON}"
 
   SetOutPath "$COMMONPROGRAMDATA\MilkWeigh\config"
   File /nonfatal "${CONFIG_DIR}/.env"
