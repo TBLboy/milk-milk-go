@@ -43,9 +43,21 @@ def test_settings_defaults_can_be_updated(client):
     defaults = client.get("/api/v1/settings", headers=headers)
     assert defaults.status_code == 200
     assert defaults.json()["default_tolerance_percent"] == "1.0"
+    assert defaults.json()["label_size_mm"] == "60x40"
     updated = client.put("/api/v1/settings", headers=headers, json={"values": {"default_tolerance_percent": "1.5"}})
     assert updated.status_code == 200
     assert updated.json()["default_tolerance_percent"] == "1.5"
+
+
+def test_label_size_setting_is_normalized_and_validated(client):
+    headers = admin_headers(client)
+    updated = client.put("/api/v1/settings", headers=headers, json={"values": {"label_size_mm": "50 × 30"}})
+    assert updated.status_code == 200
+    assert updated.json()["label_size_mm"] == "50x30"
+
+    invalid = client.put("/api/v1/settings", headers=headers, json={"values": {"label_size_mm": "wide"}})
+    assert invalid.status_code == 422
+    assert invalid.json()["detail"]["code"] == "LABEL_SIZE_INVALID"
 
 
 def test_excel_import_creates_materials(client):

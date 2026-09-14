@@ -20,8 +20,24 @@ def test_print_batch_creates_unique_labels(client):
     body = response.json()
     assert len(body["labels"]) == 3
     assert len(set(body["labels"])) == 3
+    assert len(body["label_payloads"]) == 3
+    assert [payload["labelId"] for payload in body["label_payloads"]] == body["labels"]
+    assert all(payload["labelId"] != "PREVIEW" for payload in body["label_payloads"])
+    assert all(payload["materialId"] == item["material_id"] for payload in body["label_payloads"])
+    assert body["label_size"] == "60x40"
+    assert all(payload["labelSize"] == "60x40" for payload in body["label_payloads"])
     assert body["printed_at"]
     assert body["status"] == "pending"
+
+    from app.db.models import Label
+    from app.db.session import SessionLocal
+
+    with SessionLocal() as db:
+        persisted_ids = {
+            label.label_id
+            for label in db.query(Label).filter(Label.label_id.in_(body["labels"])).all()
+        }
+    assert {payload["labelId"] for payload in body["label_payloads"]} == persisted_ids
 
     batches = client.get("/api/v1/labels/print-batches", headers=headers).json()
     assert batches[0]["created_by_name"] == "系统管理员"
@@ -40,6 +56,19 @@ def test_print_batch_accepts_legacy_material_enabled_flag(client):
 
     response = client.post("/api/v1/labels/print-batches", headers=headers, json={"material_id": item["material_id"], "quantity": 1})
     assert response.status_code == 201
+
+
+def test_print_batch_uses_configured_label_size(client):
+    headers = admin_headers(client)
+    item = material(client, headers)
+    updated = client.put("/api/v1/settings", headers=headers, json={"values": {"label_size_mm": "70x50"}})
+    assert updated.status_code == 200
+
+    response = client.post("/api/v1/labels/print-batches", headers=headers, json={"material_id": item["material_id"], "quantity": 1})
+    assert response.status_code == 201
+    body = response.json()
+    assert body["label_size"] == "70x50"
+    assert body["label_payloads"][0]["labelSize"] == "70x50"
 
 
 def test_excel_validation_rejects_duplicate_code(client):

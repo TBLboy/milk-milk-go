@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronRight, CircleAlert, Copy, Download, Edit, Eye, FileSpreadsheet, Image, Mail, Network, Plus, Printer, RotateCcw, Search, Settings2, ShieldCheck, Trash2, X } from 'lucide-react'
+import { Check, ChevronRight, CircleAlert, Copy, Download, Edit, Eye, FileSpreadsheet, Image, Mail, Network, Plus, Printer, QrCode, RotateCcw, Search, Settings2, ShieldCheck, Trash2, X } from 'lucide-react'
 import QRCode from 'qrcode'
 import { StatusBadge } from '../components/StatusBadge'
 import { api } from '../services/api'
@@ -541,8 +541,9 @@ export function LabelsPage() {
   const [quantityText, setQuantityText] = useState('10')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [successNotice, setSuccessNotice] = useState<string | null>(null)
+  const [previewLabel, setPreviewLabel] = useState<any>(null)
+  const [labelSize, setLabelSize] = useState('60x40')
   const [qrSrc, setQrSrc] = useState<string | null>(null)
-  const [printedAtText, setPrintedAtText] = useState('')
   const [previewOpen, setPreviewOpen] = useState(false)
   const [largeQrSrc, setLargeQrSrc] = useState<string | null>(null)
   const [batchPage, setBatchPage] = useState(1)
@@ -561,9 +562,23 @@ export function LabelsPage() {
     })
   }
 
-  const loadData = async () => {
-    await Promise.all([loadMaterials(), loadBatches()])
+  const loadSettings = async () => {
+    const values = await api.getSettings()
+    setLabelSize(values.label_size_mm || '60x40')
   }
+
+  const loadData = async () => {
+    await Promise.all([loadMaterials(), loadBatches(), loadSettings()])
+  }
+
+  const buildPreviewLabel = (material: any, size: string) => ({
+    v: 1,
+    preview: true,
+    materialId: material.material_id,
+    materialCode: material.material_code,
+    name: material.name_zh,
+    labelSize: size,
+  })
 
   useEffect(() => {
     void loadData().catch(() => {})
@@ -571,19 +586,48 @@ export function LabelsPage() {
   useAutoRefresh(loadData)
 
   useEffect(() => {
-    if (!selectedMat) return
-    setPrintedAtText(new Date().toLocaleString('zh-CN', { hour12: false }))
-    buildQrDataUrl(selectedMat, 180)
-      .then(setQrSrc)
-      .catch(() => setQrSrc(null))
-  }, [selectedMat?.material_id])
+    setSuccessNotice(null)
+    setPreviewOpen(false)
+    setQrSrc(null)
+    setLargeQrSrc(null)
+    setPreviewLabel(selectedMat ? buildPreviewLabel(selectedMat, labelSize) : null)
+  }, [selectedMat?.material_id, selectedMat?.material_code, selectedMat?.name_zh, labelSize])
+
+  useEffect(() => {
+    if (!previewLabel) {
+      setQrSrc(null)
+      return
+    }
+    let active = true
+    buildQrDataUrl(previewLabel, 180)
+      .then((source) => {
+        if (active) setQrSrc(source)
+      })
+      .catch(() => {
+        if (active) setQrSrc(null)
+      })
+    return () => { active = false }
+  }, [previewLabel])
+
+  useEffect(() => {
+    if (!previewOpen || !previewLabel) {
+      setLargeQrSrc(null)
+      return
+    }
+    let active = true
+    buildQrDataUrl(previewLabel, 360)
+      .then((source) => {
+        if (active) setLargeQrSrc(source)
+      })
+      .catch(() => {
+        if (active) setLargeQrSrc(null)
+      })
+    return () => { active = false }
+  }, [previewOpen, previewLabel])
 
   const openPreview = () => {
-    if (!selectedMat) return
+    if (!previewLabel) return
     setPreviewOpen(true)
-    buildQrDataUrl(selectedMat, 360)
-      .then(setLargeQrSrc)
-      .catch(() => setLargeQrSrc(null))
   }
 
   const clampQuantity = (value: number) => Math.min(10000, Math.max(1, Math.trunc(value)))
@@ -615,13 +659,16 @@ export function LabelsPage() {
     setQuantityText(String(next))
   }
 
-  const handleGenerate = async () => {
+  const handlePrint = async () => {
     if (!selectedMat) return
     const generateQuantity = commitQuantity()
     setIsSubmitting(true)
     try {
       const batch = await api.createPrintBatch(selectedMat.material_id, generateQuantity)
-      setSuccessNotice(`成功生成批次 ${batch.batch_id}，共 ${batch.quantity} 张独立二维码标签记录！`)
+      const firstLabel = batch.label_payloads?.[0]
+      if (!firstLabel?.labelId) throw new Error('后端未返回可扫描的真实标签编号')
+      setPreviewLabel(firstLabel)
+      setSuccessNotice(`已按打印张数生成批次 ${batch.batch_id}，共 ${batch.quantity} 张正式标签记录。当前版本尚未连接打印机，未发送真实打印任务。`)
       loadBatches()
     } catch (e: any) {
       alert(`生成失败: ${e.message}`)
@@ -630,19 +677,22 @@ export function LabelsPage() {
     }
   }
 
+  const labelPreviewMetrics = getLabelPreviewMetrics(labelSize)
+  const largeLabelPreviewMetrics = getLabelPreviewMetrics(labelSize, true)
+
   return (
     <div className="page-wrap">
       <PageTitle
-        eyebrow="LABEL GENERATION"
-        title="标签生成"
-        sub="选择辅料和生成数量，创建带独立编号的二维码标签记录和预览；当前 Demo 不发送真实打印任务。"
+        eyebrow="LABEL PRINTING"
+        title="标签打印"
+        sub="选择辅料即可预览标签；点击打印后按张数生成正式标签记录。当前 Demo 不发送真实打印任务。"
       />
       <div className="label-layout">
         <section className="panel form-panel">
           <div className="panel-head">
             <div>
-              <h2>生成标签记录</h2>
-              <p>每张标签拥有独立编号，生成时间自动记录</p>
+              <h2>标签打印</h2>
+              <p>点击打印后生成正式标签记录，每张标签拥有独立编号</p>
             </div>
             <Printer size={20} className="panel-head-icon" />
           </div>
@@ -664,15 +714,15 @@ export function LabelsPage() {
             </select>
           </label>
           <div className="quantity-field">
-            <span className="field-label">生成张数</span>
+            <span className="field-label">打印张数</span>
             <div className="stepper">
-              <button type="button" aria-label="减少生成张数" onClick={() => adjustQuantity(-1)}>−</button>
+              <button type="button" aria-label="减少打印张数" onClick={() => adjustQuantity(-1)}>−</button>
               <input
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
                 maxLength={5}
-                aria-label="生成张数"
+                aria-label="打印张数"
                 value={quantityText}
                 onChange={(e) => updateQuantityText(e.target.value)}
                 onBlur={commitQuantity}
@@ -680,16 +730,16 @@ export function LabelsPage() {
                   if (e.key === 'Enter') e.currentTarget.blur()
                 }}
               />
-              <button type="button" aria-label="增加生成张数" onClick={() => adjustQuantity(1)}>＋</button>
+              <button type="button" aria-label="增加打印张数" onClick={() => adjustQuantity(1)}>＋</button>
             </div>
           </div>
           <div className="info-note">
             <CircleAlert size={16} />
-            <span>生成时间自动使用当前系统时间；当前 Demo 仅生成标签记录和二维码预览，不发送真实打印任务。第一版不录入实际生产日期。</span>
+            <span>选择辅料后右侧立即显示预览，不会写入标签记录；点击“打印”才会生成正式记录。当前 Demo 尚未连接打印机，不发送真实打印任务。</span>
           </div>
-          <button type="button" className="primary-button print-button" disabled={isSubmitting || !selectedMat} onClick={handleGenerate}>
+          <button type="button" className="primary-button print-button" disabled={isSubmitting || !selectedMat} onClick={handlePrint}>
             <Printer size={16} />
-            {isSubmitting ? '正在生成记录...' : '生成标签记录'}
+            {isSubmitting ? '正在生成记录...' : '打印'}
           </button>
         </section>
 
@@ -697,14 +747,21 @@ export function LabelsPage() {
           <div className="panel-head">
             <div>
               <h2>标签预览</h2>
-              <p>生成前确认标签信息</p>
+              <p>{previewLabel?.preview ? '选择辅料后的即时预览' : '正式标签已生成'} · {formatLabelSize(previewLabel?.labelSize || labelSize)}</p>
             </div>
-            <button type="button" className="preview-tag" onClick={openPreview}>预览</button>
+            <button type="button" className="preview-tag" disabled={!previewLabel} onClick={openPreview}>放大预览</button>
           </div>
-          <div className="label-preview">
-            {qrSrc ? <img className="qr-preview" src={qrSrc} alt="辅料二维码预览" /> : <div className="fake-qr">▦</div>}
-            <strong className="preview-material">{selectedMat ? selectedMat.name_zh : '等待选择辅料'}</strong>
-            <span className="preview-code">{printedAtText || '—'}</span>
+          <div className="label-preview" style={{ width: labelPreviewMetrics.width, height: labelPreviewMetrics.height }}>
+            {qrSrc ? (
+              <img className="qr-preview" style={{ width: labelPreviewMetrics.qrSize, height: labelPreviewMetrics.qrSize }} src={qrSrc} alt="辅料二维码预览" />
+            ) : (
+              <div className="fake-qr label-placeholder" style={{ width: labelPreviewMetrics.qrSize, height: labelPreviewMetrics.qrSize }}>
+                <QrCode size={34} />
+                <span>{selectedMat ? '生成后显示可扫描二维码' : '等待选择辅料'}</span>
+              </div>
+            )}
+            <strong className="preview-material">{previewLabel?.name || selectedMat?.name_zh || '等待选择辅料'}</strong>
+            <span className="preview-code">{previewLabel?.printedAt ? new Date(previewLabel.printedAt).toLocaleString('zh-CN', { hour12: false }) : '预览标签 · 点击打印后生成正式记录'}</span>
           </div>
         </section>
       </div>
@@ -746,10 +803,10 @@ export function LabelsPage() {
       {batches.length > batchPageSize && <Pagination page={batchPage} pageSize={batchPageSize} total={batches.length} onPageChange={setBatchPage} />}
       {previewOpen && (
         <Modal title="标签放大预览" onClose={() => setPreviewOpen(false)}>
-          <div className="label-preview large-label-preview">
-            {largeQrSrc ? <img className="qr-preview large-qr" src={largeQrSrc} alt="放大辅料二维码" /> : <div className="fake-qr">▦</div>}
-            <strong className="preview-material">{selectedMat ? selectedMat.name_zh : '等待选择辅料'}</strong>
-            <span className="preview-code">{printedAtText || '—'}</span>
+          <div className="label-preview large-label-preview" style={{ width: largeLabelPreviewMetrics.width, height: largeLabelPreviewMetrics.height }}>
+            {largeQrSrc ? <img className="qr-preview large-qr" style={{ width: largeLabelPreviewMetrics.qrSize, height: largeLabelPreviewMetrics.qrSize }} src={largeQrSrc} alt="放大辅料二维码" /> : <div className="fake-qr label-placeholder" style={{ width: largeLabelPreviewMetrics.qrSize, height: largeLabelPreviewMetrics.qrSize }}><QrCode size={42} /><span>二维码生成中</span></div>}
+            <strong className="preview-material">{previewLabel?.name || '等待选择辅料'}</strong>
+            <span className="preview-code">{previewLabel?.printedAt ? new Date(previewLabel.printedAt).toLocaleString('zh-CN', { hour12: false }) : '预览标签 · 点击打印后生成正式记录'}</span>
           </div>
         </Modal>
       )}
@@ -1004,20 +1061,9 @@ export function AuditLogsPage() {
   )
 }
 
-function buildQrPayload(material: any) {
-  return {
-    v: 1,
-    labelId: 'PREVIEW',
-    materialId: material.material_id,
-    materialCode: material.material_code,
-    name: material.name_zh,
-    printedAt: new Date().toISOString(),
-  }
-}
-
-function buildQrDataUrl(material: any, size: number): Promise<string> {
+function buildQrDataUrl(payload: any, size: number): Promise<string> {
   const canvas = document.createElement('canvas')
-  return QRCode.toCanvas(canvas, JSON.stringify(buildQrPayload(material)), {
+  return QRCode.toCanvas(canvas, JSON.stringify(payload), {
     width: size,
     margin: 1,
     errorCorrectionLevel: 'H',
@@ -1050,6 +1096,36 @@ function buildQrDataUrl(material: any, size: number): Promise<string> {
         }
       })
     })
+}
+
+function parseLabelSize(value: string | undefined): { width: number; height: number } {
+  const match = /^(\d{1,3})\s*[xX×]\s*(\d{1,3})$/.exec(value?.trim() || '')
+  if (!match) return { width: 60, height: 40 }
+  const width = Number(match[1])
+  const height = Number(match[2])
+  if (width < 10 || width > 300 || height < 10 || height > 300) {
+    return { width: 60, height: 40 }
+  }
+  return { width, height }
+}
+
+function formatLabelSize(value: string | undefined) {
+  const size = parseLabelSize(value)
+  return `${size.width} × ${size.height} mm`
+}
+
+function getLabelPreviewMetrics(value: string | undefined, large = false) {
+  const size = parseLabelSize(value)
+  const width = large
+    ? Math.min(420, Math.max(300, size.width * 5))
+    : Math.min(280, Math.max(210, size.width * 4))
+  const height = large
+    ? Math.min(360, Math.max(235, Math.round(width * size.height / size.width)))
+    : Math.min(260, Math.max(180, Math.round(width * size.height / size.width)))
+  const qrSize = large
+    ? Math.min(200, Math.max(120, Math.round(height * 0.5)))
+    : Math.min(104, Math.max(76, Math.round(height * 0.44)))
+  return { width, height, qrSize }
 }
 
 function UserAvatar({ user }: { user: any }) {
@@ -1345,7 +1421,7 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
       <PageTitle
         eyebrow="SYSTEM CONFIGURATION"
         title={accounts ? '账号管理' : '系统设置'}
-        sub={accounts ? '创建和管理普通操作员账号，管理员权限由系统预置。' : '维护称重允差、系统备份和现场设备连接参数。'}
+        sub={accounts ? '创建和管理普通操作员账号，管理员权限由系统预置。' : '维护称重允差、标签尺寸、系统备份和现场设备连接参数。'}
         action={accounts ? (
           <button className="primary-button" onClick={() => setShowModal(true)}>
             <Plus size={16} />新建账号
@@ -1427,6 +1503,7 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
             <Setting title="最小绝对允差" description="低于此重量时使用的下限" value={`${settings.min_absolute_tolerance_grams ?? '5'} g`} onClick={() => handleEditSetting('min_absolute_tolerance_grams', settings.min_absolute_tolerance_grams ?? '5', '最小绝对允差（克）')} />
             <Setting title="自动备份" description="每天自动备份数据库、证据和配置" value={settings.backup_enabled === 'true' ? '已启用' : '已停用'} onClick={() => handleEditSetting('backup_enabled', settings.backup_enabled ?? 'true', '自动备份（true/false）')} />
             <Setting title="自动备份时间" description="后端按本机时间执行每日备份" value={settings.backup_time ?? '02:00'} onClick={() => handleEditSetting('backup_time', settings.backup_time ?? '02:00', '自动备份时间（HH:MM）')} />
+            <Setting title="标签尺寸" description="标签预览和后续打印使用的宽 × 高（毫米）" value={formatLabelSize(settings.label_size_mm)} onClick={() => handleEditSetting('label_size_mm', settings.label_size_mm ?? '60x40', '标签尺寸（宽x高，毫米）')} />
             <Setting title="服务端口" description="局域网访问端口" value={settings.server_port ?? '8011'} onClick={() => handleEditSetting('server_port', settings.server_port ?? '8011', '服务端口')} />
           </div>
           <div className="settings-actions">

@@ -2844,3 +2844,566 @@ evidence:
   recorded_at: '2026-09-13T09:25:15Z'
   invalidated_at: null
   invalidation_reason: null
+- id: EV-TASK-097-PC-BUILD
+  kind: build
+  subject: TASK-097 PC 生产构建
+  status: valid
+  command: cd pc && npm run build
+  result_ref: TypeScript 与 Vite 1.0.2 生产构建成功
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-097
+  version_binding:
+    git_commit: fc8999d0113bfb0b2f5c6fa04a51a65e26cc1389
+    diff_hash: 3a04d91de90b24026282fe131dd94755e2e433f34188a800a502fc8886a9c82d
+    file_hashes: {}
+  recorded_at: '2026-09-13T10:45:27Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-097-BACKEND
+  kind: test
+  subject: TASK-097 后端完整回归
+  status: valid
+  command: cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q
+  result_ref: 退出码 0；当前后端测试集全部通过
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-097
+  version_binding:
+    git_commit: fc8999d0113bfb0b2f5c6fa04a51a65e26cc1389
+    diff_hash: 3201ff0f95218a7ba2f15b1bb4be9571fa7de6faa0c95695d11bfcd617e39f8b
+    file_hashes: {}
+  recorded_at: '2026-09-13T10:45:27Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-097-SEED
+  kind: test
+  subject: TASK-097 演示主数据初始化
+  status: valid
+  command: MILK_DATA_DIR=<temporary> PYTHONPATH=. python seed.py; query Material/Product/WorkOrder
+    counts
+  result_ref: materials=4, products=2, work_orders=1；已核对安装 payload 使用同一份 seed.py
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-097
+  version_binding:
+    git_commit: fc8999d0113bfb0b2f5c6fa04a51a65e26cc1389
+    diff_hash: fbed965580f03c80823b68dacc746fdde716ff354a12fcbc9b9e1abfc225d65b
+    file_hashes: {}
+  recorded_at: '2026-09-13T10:45:28Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-097-ANDROID
+  kind: build
+  subject: TASK-097 Android 1.0.2 发布 APK
+  status: valid
+  command: ./app/packaging/build-apk.sh; aapt dump badging APK; apksigner verify --print-certs
+    APK; sha256sum -c APK.sha256
+  result_ref: APK 构建成功；versionCode=3、versionName=1.0.2；v2/v3 签名及 SHA-256 校验通过
+  covers:
+    files:
+    - 发布版本/牧衡辅料称重防错系统-Android-1.0.2.apk
+    - 发布版本/牧衡辅料称重防错系统-Android-1.0.2.apk.sha256
+    requirements: []
+    tasks:
+    - TASK-097
+  version_binding:
+    git_commit: fc8999d0113bfb0b2f5c6fa04a51a65e26cc1389
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      发布版本/牧衡辅料称重防错系统-Android-1.0.2.apk: 89d8f0408c2159c489aa9dcd1999d0d17cf17d38bc7bce4f2d83bf30c8926ada
+      发布版本/牧衡辅料称重防错系统-Android-1.0.2.apk.sha256: dec38e8323eb5dbfcdc8f0c13dc08a97c709a22c200afdb0883bc5d2792ecf50
+  recorded_at: '2026-09-13T10:45:28Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-097-DIFF
+  kind: static-analysis
+  subject: TASK-097 差异检查
+  status: valid
+  command: git diff --check
+  result_ref: 退出码 0；无空白错误
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-097
+  version_binding:
+    git_commit: fc8999d0113bfb0b2f5c6fa04a51a65e26cc1389
+    diff_hash: 75b9878e264f5f06ca58fa24444c468e21c6d361a16ecbf07e234f46b426088a
+    file_hashes: {}
+  recorded_at: '2026-09-13T10:45:28Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-097-WINDOWS
+  kind: build
+  subject: TASK-097 Windows 1.0.2 安装包
+  status: valid
+  command: ./pc/scripts/build-windows-installer.sh; file EXE; strings -el EXE; sha256sum
+    -c EXE.sha256
+  result_ref: NSIS 安装包构建成功，PE32 GUI，版本资源 1.0.2，SHA-256 校验成功
+  covers:
+    files:
+    - 发布版本/牧衡辅料称重防错系统-Windows-1.0.2-Setup.exe
+    - 发布版本/牧衡辅料称重防错系统-Windows-1.0.2-Setup.exe.sha256
+    - .project-log/docs/release-candidate-1.0.2.md
+    requirements: []
+    tasks:
+    - TASK-097
+  version_binding:
+    git_commit: fc8999d0113bfb0b2f5c6fa04a51a65e26cc1389
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      发布版本/牧衡辅料称重防错系统-Windows-1.0.2-Setup.exe: 1d2920e30f17957520b1de2450e7fcb11e0ce7e40fb71cac7feeeefb53bf02c7
+      发布版本/牧衡辅料称重防错系统-Windows-1.0.2-Setup.exe.sha256: 0438d89ac4250f9cb26f45a755b085890552bf72b586a03b4be86b8f03405b09
+      .project-log/docs/release-candidate-1.0.2.md: 8270822f2d6560fa05a3bbf573c389b78c42fbf34c0d4bb75aabd0e4b01a41fd
+  recorded_at: '2026-09-13T10:45:28Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-098-ANDROID-BUILD-LINT
+  kind: build
+  subject: TASK-098 Android Debug 构建与 Lint
+  status: valid
+  command: cd app && JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk
+    ./gradlew assembleDebug lintDebug --no-daemon
+  result_ref: Android Debug 构建和 Lint 均成功
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-098
+  version_binding:
+    git_commit: fc8999d0113bfb0b2f5c6fa04a51a65e26cc1389
+    diff_hash: ff249429900338874955c25f816095079444afca35810e7f3761c4409e532232
+    file_hashes: {}
+  recorded_at: '2026-09-13T11:33:38Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-098-APK
+  kind: build
+  subject: TASK-098 Android 1.0.3 发布 APK
+  status: valid
+  command: ./app/packaging/build-apk.sh; aapt dump badging APK; apksigner verify --print-certs
+    APK; sha256sum -c APK.sha256
+  result_ref: APK versionCode=4、versionName=1.0.3；v2/v3 签名和 SHA-256 校验通过
+  covers:
+    files:
+    - 发布版本/牧衡辅料称重防错系统-Android-1.0.3.apk
+    - 发布版本/牧衡辅料称重防错系统-Android-1.0.3.apk.sha256
+    - .project-log/docs/release-candidate-1.0.3-android.md
+    requirements: []
+    tasks:
+    - TASK-098
+  version_binding:
+    git_commit: fc8999d0113bfb0b2f5c6fa04a51a65e26cc1389
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      发布版本/牧衡辅料称重防错系统-Android-1.0.3.apk: 326b35937e09b45aef0551caeedd074a67b5615f468195d166c19c980f15797d
+      发布版本/牧衡辅料称重防错系统-Android-1.0.3.apk.sha256: 80cf4b039d54d90ea0a6c939ba0d48f660f55e2915ddf2646b140c850aee4ced
+      .project-log/docs/release-candidate-1.0.3-android.md: b45f29b28d3d9d2f0e6fa0003a1a111ffaecb5ae650d98895cc332fae8ed68c9
+  recorded_at: '2026-09-13T11:33:38Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-098-UI
+  kind: manual
+  subject: TASK-098 模拟器四段 IP 输入界面
+  status: valid
+  command: adb install -r debug APK; am start; uiautomator dump; tap 服务器设置; uiautomator
+    dump
+  result_ref: Android 15 模拟器显示主机 IPv4 地址四个字段，默认值为 192、168、1、100
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-098
+  version_binding:
+    git_commit: fc8999d0113bfb0b2f5c6fa04a51a65e26cc1389
+    diff_hash: c68b88008e0552c9475083e79a29e9a883e79849eabb954b2d228d73158ecb40
+    file_hashes: {}
+  recorded_at: '2026-09-13T11:33:38Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-098-DIFF
+  kind: static-analysis
+  subject: TASK-098 差异检查
+  status: valid
+  command: git diff --check
+  result_ref: 退出码 0；无空白错误
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-098
+  version_binding:
+    git_commit: fc8999d0113bfb0b2f5c6fa04a51a65e26cc1389
+    diff_hash: 334433463c2690245258627602fe3d5326fe32ab11a6136fc5f43d954a5d1b60
+    file_hashes: {}
+  recorded_at: '2026-09-13T11:33:38Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-099-FOCUSED
+  kind: test
+  subject: 标签真实 payload 与扫码证据专项测试
+  status: valid
+  command: cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q tests/test_labels.py tests/test_evidence.py
+  result_ref: 12 passed；label_payloads 与 labels/数据库一致且不含 PREVIEW
+  covers:
+    files:
+    - pc/server/app/api/labels.py
+    - pc/server/tests/test_labels.py
+    - pc/src/pages/ManagementPages.tsx
+    requirements: []
+    tasks:
+    - TASK-099
+  version_binding:
+    git_commit: fc8999d0113bfb0b2f5c6fa04a51a65e26cc1389
+    diff_hash: 5646ab226805d7f3d2f000aedbc1a0fba7db5bd4c6b9f122ac914b16f1acc5cc
+    file_hashes:
+      pc/server/app/api/labels.py: 06d6b6fe8042f1a03044cb24082694ca39851307e534db58ec41a0af3927e0d5
+      pc/server/tests/test_labels.py: 958812cc15fdf45ae5c696e5f4e38bec340ae2fa587ccc520633fb21dae1e61f
+      pc/src/pages/ManagementPages.tsx: 6bfd4316c6bf98511cf744da615ffd73e6420d45d5693d6b6679cc82825d8329
+  recorded_at: '2026-09-13T15:03:51Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-099-BACKEND
+  kind: test
+  subject: TASK-099 完整后端回归
+  status: valid
+  command: cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q
+  result_ref: 完整测试集退出码 0；版本健康检查与备份 manifest 断言已更新到 1.0.3
+  covers:
+    files:
+    - pc/server/app/api/labels.py
+    - pc/server/app/core/config.py
+    - pc/server/tests/test_health.py
+    - pc/server/tests/test_operations.py
+    requirements: []
+    tasks:
+    - TASK-099
+  version_binding:
+    git_commit: fc8999d0113bfb0b2f5c6fa04a51a65e26cc1389
+    diff_hash: 0e2777adfdb5501cbb157edf869589dd71cdd55cfc8ba74243071fccfbe6509e
+    file_hashes:
+      pc/server/app/api/labels.py: 06d6b6fe8042f1a03044cb24082694ca39851307e534db58ec41a0af3927e0d5
+      pc/server/app/core/config.py: f22b623d1c6eb8d0e78a35aaddfd96e6e49a157fd3103ab721d497ef7fb418fa
+      pc/server/tests/test_health.py: c142b0de0fe04b700a77f0237ab89e9af0376462044a73f62b107d530ef805c4
+      pc/server/tests/test_operations.py: 05d66e3a96e9601ba0bfcb490c36ac61ecefd9b7fb57dc70f5787d6f7f4d3872
+  recorded_at: '2026-09-13T15:03:57Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-099-PC-BUILD
+  kind: build
+  subject: TASK-099 PC 1.0.3 生产构建
+  status: valid
+  command: cd pc && npm run build
+  result_ref: TypeScript 和 Vite 生产构建通过，milk-weigh-pc@1.0.3
+  covers:
+    files:
+    - pc/src/pages/ManagementPages.tsx
+    - pc/src/styles/global.css
+    - pc/package.json
+    - pc/package-lock.json
+    requirements: []
+    tasks:
+    - TASK-099
+  version_binding:
+    git_commit: fc8999d0113bfb0b2f5c6fa04a51a65e26cc1389
+    diff_hash: aefd6e29cebcf7896aeae95581e9098fb08f12b1ada88fc4ae18b8bf7fb2f8eb
+    file_hashes:
+      pc/src/pages/ManagementPages.tsx: 6bfd4316c6bf98511cf744da615ffd73e6420d45d5693d6b6679cc82825d8329
+      pc/src/styles/global.css: 92134a8d36ae197a8f647e4871679de5f238a347139f5440c90fe57cc816b3bc
+      pc/package.json: 536256c8ea16eef1329cea6820619449343a4625d78f2868be22bdcbd9db194e
+      pc/package-lock.json: a978b397fa5490408a2f44dc720b0340729548978a18a3e68d97d8e17c1bac59
+  recorded_at: '2026-09-13T15:04:02Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-099-WINDOWS
+  kind: package
+  subject: Windows 1.0.3 测试安装包
+  status: valid
+  command: ./pc/scripts/build-windows-installer.sh && sha256sum -c 发布版本/牧衡辅料称重防错系统-Windows-1.0.3-Setup.exe.sha256
+  result_ref: NSIS 构建成功；PE32 安装包 21MB；SHA-256 da313ba107519231e770e7dc0bbba6b41d4b6f816695bebb7c0300f0548555f4
+    校验通过
+  covers:
+    files:
+    - pc/scripts/build-windows-installer.sh
+    - pc/packaging/windows/installer.nsi
+    - 发布版本/牧衡辅料称重防错系统-Windows-1.0.3-Setup.exe
+    - 发布版本/牧衡辅料称重防错系统-Windows-1.0.3-Setup.exe.sha256
+    requirements: []
+    tasks:
+    - TASK-099
+  version_binding:
+    git_commit: fc8999d0113bfb0b2f5c6fa04a51a65e26cc1389
+    diff_hash: bc55682660ee1637278d8d3e01c4e43cbce3f826f844fca8c592ec74086a41c1
+    file_hashes:
+      pc/scripts/build-windows-installer.sh: b0d12deb353f51049e6c8237be97fd8dbf1a25fcb4431d163763cf98c993e26c
+      pc/packaging/windows/installer.nsi: dd491a4ecdaf91f0d09d09032ce8bc7cf433ac9115684133921a7677d4932acd
+      发布版本/牧衡辅料称重防错系统-Windows-1.0.3-Setup.exe: da313ba107519231e770e7dc0bbba6b41d4b6f816695bebb7c0300f0548555f4
+      发布版本/牧衡辅料称重防错系统-Windows-1.0.3-Setup.exe.sha256: 0601c60ef5edcaedc8408d875411cf26516639e546aa9d5d0c54271b40caaedb
+  recorded_at: '2026-09-13T15:04:08Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-099-DIFF
+  kind: static-check
+  subject: TASK-099 差异与残留 PREVIEW 检查
+  status: valid
+  command: rg -n 'PREVIEW|buildQrPayload|label_payloads' pc/src pc/server -g '*.tsx'
+    -g '*.ts' -g '*.py' && git diff --check
+  result_ref: 业务代码不再包含 PREVIEW 或 buildQrPayload；仅测试断言保留 PREVIEW；git diff --check 通过
+  covers:
+    files:
+    - pc/src/pages/ManagementPages.tsx
+    - pc/server/app/api/labels.py
+    - .project-log/specs/TASK-099.md
+    requirements: []
+    tasks:
+    - TASK-099
+  version_binding:
+    git_commit: fc8999d0113bfb0b2f5c6fa04a51a65e26cc1389
+    diff_hash: ae41cfd20ea7fdce437a0e889dd56c2d7af37f2dc0f218678c4ccca7a00514ee
+    file_hashes:
+      pc/src/pages/ManagementPages.tsx: 6bfd4316c6bf98511cf744da615ffd73e6420d45d5693d6b6679cc82825d8329
+      pc/server/app/api/labels.py: 06d6b6fe8042f1a03044cb24082694ca39851307e534db58ec41a0af3927e0d5
+      .project-log/specs/TASK-099.md: 1951a90e6733a941918d057d00eb1962708d827a1077862764ddecf95a8c7977
+  recorded_at: '2026-09-13T15:04:13Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-100-FOCUSED
+  kind: test
+  subject: 标签尺寸设置与生成标签专项测试
+  status: valid
+  command: cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q tests/test_pc_admin.py tests/test_labels.py
+  result_ref: 12 passed；尺寸校验、默认值、格式归一化和生成标签尺寸快照通过
+  covers:
+    files:
+    - pc/server/app/api/settings.py
+    - pc/server/app/api/labels.py
+    - pc/server/tests/test_pc_admin.py
+    - pc/server/tests/test_labels.py
+    - pc/src/pages/ManagementPages.tsx
+    requirements: []
+    tasks:
+    - TASK-100
+  version_binding:
+    git_commit: fc8999d0113bfb0b2f5c6fa04a51a65e26cc1389
+    diff_hash: b28f591a93d87c78f1c6100612213eac6d24e592f41ca3fb43a78c77ae6e302f
+    file_hashes:
+      pc/server/app/api/settings.py: 0096f8d5d0f784fd3e98768d923dc5ca85aff45f49a019dd0890d51a48fe57b6
+      pc/server/app/api/labels.py: 331e757734097a0b7561b958a1618fc0cd6af8ee7bca068e389e47e426570a2f
+      pc/server/tests/test_pc_admin.py: 0fc2f794122c0d5be48c3b40372fec212a0e4fa50e971061296e2fa50af4b747
+      pc/server/tests/test_labels.py: 38d3f511ec645f310d18cbf2211a46553a89fdf94d4a1f8183ba38ceb86e20df
+      pc/src/pages/ManagementPages.tsx: b93dfaa4ef9435db4b6f71ca8d34c437a4958c90d6b0903a17c880e06e7c251d
+  recorded_at: '2026-09-13T15:10:24Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-100-BACKEND
+  kind: test
+  subject: TASK-100 完整后端回归
+  status: valid
+  command: cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q
+  result_ref: 完整测试集退出码 0；1.0.4 版本、设置默认值和标签尺寸快照断言通过
+  covers:
+    files:
+    - pc/server/app/api/settings.py
+    - pc/server/app/api/labels.py
+    - pc/server/app/db/models.py
+    - pc/server/app/core/config.py
+    requirements: []
+    tasks:
+    - TASK-100
+  version_binding:
+    git_commit: fc8999d0113bfb0b2f5c6fa04a51a65e26cc1389
+    diff_hash: 270b44f719a7b400ebd48b5d9e4bf428c7febb1d356e41d5630b7230350297ee
+    file_hashes:
+      pc/server/app/api/settings.py: 0096f8d5d0f784fd3e98768d923dc5ca85aff45f49a019dd0890d51a48fe57b6
+      pc/server/app/api/labels.py: 331e757734097a0b7561b958a1618fc0cd6af8ee7bca068e389e47e426570a2f
+      pc/server/app/db/models.py: dab2411e9b2f4b590b26294cd99113150e5a01886b085dc682787d37a4722509
+      pc/server/app/core/config.py: dc60341bae799e7c1015e873f8d2eac1d51218f2f97a43c81d95d1e6183b34bf
+  recorded_at: '2026-09-13T15:10:32Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-100-PC-BUILD
+  kind: build
+  subject: TASK-100 PC 1.0.4 生产构建
+  status: valid
+  command: cd pc && npm run build
+  result_ref: TypeScript 和 Vite 生产构建通过，milk-weigh-pc@1.0.4
+  covers:
+    files:
+    - pc/src/pages/ManagementPages.tsx
+    - pc/package.json
+    - pc/package-lock.json
+    requirements: []
+    tasks:
+    - TASK-100
+  version_binding:
+    git_commit: fc8999d0113bfb0b2f5c6fa04a51a65e26cc1389
+    diff_hash: 7f30bf9505961a0f6190cf7e3267f905541f35c3ef905d384c04c3b573cd208a
+    file_hashes:
+      pc/src/pages/ManagementPages.tsx: b93dfaa4ef9435db4b6f71ca8d34c437a4958c90d6b0903a17c880e06e7c251d
+      pc/package.json: b2e855d4d1cd6dd0592ae8b2265fefc6c055ce42fd2fb7d9495ac6c288384edc
+      pc/package-lock.json: ef83ade40f55c3044be566ac4768d77cd60861b4a40a55ee334c2161cc94874e
+  recorded_at: '2026-09-13T15:10:39Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-100-WINDOWS
+  kind: package
+  subject: Windows 1.0.4 标签尺寸测试安装包
+  status: valid
+  command: ./pc/scripts/build-windows-installer.sh && sha256sum -c 发布版本/牧衡辅料称重防错系统-Windows-1.0.4-Setup.exe.sha256
+  result_ref: NSIS 构建成功；PE32 安装包 21MB；SHA-256 7b6f93d231928493aa757f34a5d3fb863f37098406fc124423f85aec3f9b2ebf
+    校验通过
+  covers:
+    files:
+    - pc/scripts/build-windows-installer.sh
+    - pc/packaging/windows/installer.nsi
+    - 发布版本/牧衡辅料称重防错系统-Windows-1.0.4-Setup.exe
+    - 发布版本/牧衡辅料称重防错系统-Windows-1.0.4-Setup.exe.sha256
+    requirements: []
+    tasks:
+    - TASK-100
+  version_binding:
+    git_commit: fc8999d0113bfb0b2f5c6fa04a51a65e26cc1389
+    diff_hash: 0131e0a19675b010052486c6969b58a6758d439d068ef28773da57be3b585a83
+    file_hashes:
+      pc/scripts/build-windows-installer.sh: 8ba70f818db792e97fc9dddeca6052ebbbda1a908f9629378bfa5df248648928
+      pc/packaging/windows/installer.nsi: c33ce62dade7b89888ff2f5d87adf92f1b74db89f7554c50c29056e14b037098
+      发布版本/牧衡辅料称重防错系统-Windows-1.0.4-Setup.exe: 7b6f93d231928493aa757f34a5d3fb863f37098406fc124423f85aec3f9b2ebf
+      发布版本/牧衡辅料称重防错系统-Windows-1.0.4-Setup.exe.sha256: 870df5b6eefd2e1436a23f518c133bea3ff874170946607c4e511f7f603045ec
+  recorded_at: '2026-09-13T15:10:56Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-100-DIFF
+  kind: static-check
+  subject: TASK-100 标签尺寸实现差异检查
+  status: valid
+  command: git diff --check && rg -n 'label_size_mm|labelSize|formatLabelSize|getLabelPreviewMetrics'
+    pc/src pc/server -g '*.tsx' -g '*.ts' -g '*.py'
+  result_ref: 差异检查通过；设置、payload、预览工具函数和后端校验均存在引用
+  covers:
+    files:
+    - pc/server/app/api/settings.py
+    - pc/server/app/api/labels.py
+    - pc/src/pages/ManagementPages.tsx
+    - .project-log/specs/TASK-100.md
+    requirements: []
+    tasks:
+    - TASK-100
+  version_binding:
+    git_commit: fc8999d0113bfb0b2f5c6fa04a51a65e26cc1389
+    diff_hash: c94781f8928c545e5bc855d53dcc0bf28df753fa3c740602f1c4868aa1d663f5
+    file_hashes:
+      pc/server/app/api/settings.py: 0096f8d5d0f784fd3e98768d923dc5ca85aff45f49a019dd0890d51a48fe57b6
+      pc/server/app/api/labels.py: 331e757734097a0b7561b958a1618fc0cd6af8ee7bca068e389e47e426570a2f
+      pc/src/pages/ManagementPages.tsx: b93dfaa4ef9435db4b6f71ca8d34c437a4958c90d6b0903a17c880e06e7c251d
+      .project-log/specs/TASK-100.md: 21dab869717a5fc7f18549962e356ca1f59961dc4d904a315e2bc22c6e077678
+  recorded_at: '2026-09-13T15:11:05Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-101-ANDROID-BUILD-LINT
+  kind: build
+  subject: TASK-101 工单详情下拉刷新 Android 构建与 Lint
+  status: valid
+  command: JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk
+    ./gradlew assembleDebug lintDebug --no-daemon
+  result_ref: Debug 构建成功；lintDebug 成功；仅保留既有图标 deprecated 警告
+  covers:
+    files:
+    - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+    - .project-log/specs/TASK-101.md
+    requirements: []
+    tasks:
+    - TASK-101
+  version_binding:
+    git_commit: fc8999d0113bfb0b2f5c6fa04a51a65e26cc1389
+    diff_hash: 19085acae6b3fbfc4403fb9b1ad10a5db6ab1ec81fca6d0f333dd47dfc77cbb4
+    file_hashes:
+      app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt: c2676e3d314ca5b0490ddcffd25b0d0a430b64b1ea14b0326d7298420dfb387e
+      .project-log/specs/TASK-101.md: f1125cc35234401daee1a299faa8a6c5b29c20777c8b01a14ec1eb6c891f4fc1
+  recorded_at: '2026-09-14T03:31:57Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-101-DIFF
+  kind: static-check
+  subject: TASK-101 工单详情下拉刷新差异检查
+  status: valid
+  command: git diff --check
+  result_ref: 差异检查通过，无空白错误
+  covers:
+    files:
+    - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+    - .project-log/specs/TASK-101.md
+    - .project-log/tasks/task-list.yaml
+    - .project-log/tasks/task-list.md
+    requirements: []
+    tasks:
+    - TASK-101
+  version_binding:
+    git_commit: fc8999d0113bfb0b2f5c6fa04a51a65e26cc1389
+    diff_hash: d330a41e0ebbb1eaece5db0c989621b1723c8750f330d3a2f1647fbc84b6f413
+    file_hashes:
+      app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt: c2676e3d314ca5b0490ddcffd25b0d0a430b64b1ea14b0326d7298420dfb387e
+      .project-log/specs/TASK-101.md: f1125cc35234401daee1a299faa8a6c5b29c20777c8b01a14ec1eb6c891f4fc1
+      .project-log/tasks/task-list.yaml: c56b89e6ebdbbe046ad137ab9c3db7be9fc480892b99fde3e06daf2c03427832
+      .project-log/tasks/task-list.md: 7a76349637a00e1f4a6169b71709004b603f072371ffbe531598484625371db3
+  recorded_at: '2026-09-14T03:37:34Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-102-HEALTH
+  kind: health-check
+  subject: TASK-102 8011 后端运行时版本
+  status: valid
+  command: curl -sS http://127.0.0.1:8011/api/v1/health
+  result_ref: status=ok, database=ok, version=1.0.4；管理员登录成功
+  covers:
+    files:
+    - .project-log/specs/TASK-102.md
+    - .project-log/tasks/task-list.yaml
+    requirements: []
+    tasks:
+    - TASK-102
+  version_binding:
+    git_commit: fc8999d0113bfb0b2f5c6fa04a51a65e26cc1389
+    diff_hash: ebaff98a026ebd78c2b12a8a2f22e3ad8950187769ff444df55771f8e98afef2
+    file_hashes:
+      .project-log/specs/TASK-102.md: d63081355c348c7a8b1bab571680926e330d628a6d60d5ae488145eb47f9a6fc
+      .project-log/tasks/task-list.yaml: 9640f43e121a3389ebc32539210263eb6ac1ef4ffc1fcccb1f2967b313dc4553
+  recorded_at: '2026-09-14T03:41:38Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-102-LABEL-TESTS
+  kind: test
+  subject: TASK-102 标签 payload 与真实 labelId 专项测试
+  status: valid
+  command: PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q tests/test_labels.py
+  result_ref: 4 passed；label_payloads 与 labels/数据库记录一致，label_payloads 非 PREVIEW
+  covers:
+    files:
+    - pc/server/app/api/labels.py
+    - pc/server/tests/test_labels.py
+    - .project-log/specs/TASK-102.md
+    requirements: []
+    tasks:
+    - TASK-102
+  version_binding:
+    git_commit: fc8999d0113bfb0b2f5c6fa04a51a65e26cc1389
+    diff_hash: 2805b1fe50d242c03d6f9a8f878f6ddbe2a92ae390ff2ebd22690e89d53f5a9b
+    file_hashes:
+      pc/server/app/api/labels.py: 331e757734097a0b7561b958a1618fc0cd6af8ee7bca068e389e47e426570a2f
+      pc/server/tests/test_labels.py: 38d3f511ec645f310d18cbf2211a46553a89fdf94d4a1f8183ba38ceb86e20df
+      .project-log/specs/TASK-102.md: d63081355c348c7a8b1bab571680926e330d628a6d60d5ae488145eb47f9a6fc
+  recorded_at: '2026-09-14T03:41:44Z'
+  invalidated_at: null
+  invalidation_reason: null

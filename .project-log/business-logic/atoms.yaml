@@ -236,7 +236,7 @@ atoms:
     updated_at: "2026-09-13T05:00:00Z"
     last_verified_at: null
   - id: BL-LABEL-002
-    title: 后台选择辅料并批量生成自制二维码标签记录（Demo 阶段）
+    title: 后台选择辅料即时预览并在打印时生成自制二维码标签记录（Demo 阶段）
     kind: flow
     domain: labeling
     status: active
@@ -246,40 +246,42 @@ atoms:
     source:
       type: user-statement
       reference: "2026-09-09 Q-021 标签打印流程 + 2026-09-13 DEC-037 Demo 阶段调整"
-    description: 管理员在当前 Demo 的标签生成界面选择辅料和生成数量，点击生成后系统自动读取当前时间，生成对应数量的 labelId、标签记录和二维码预览。当前阶段不发送真实打印指令。
+    description: 管理员在当前 Demo 的标签打印界面选择辅料后，右侧立即显示该辅料的预览标签；切换辅料只更新预览，不写入数据库。点击“打印”后系统自动读取当前时间，按打印张数生成对应数量的 labelId 和正式标签记录。当前阶段不发送真实打印指令。
     actors:
       - 电脑后台管理员/标签打印人员
-    trigger: 管理员选择辅料并点击生成标签记录
+    trigger: 管理员选择辅料查看预览，并点击打印
     preconditions:
       - 辅料主数据已存在
       - 用户具备管理员标签生成权限
     inputs:
       - materialId
-      - 生成张数
+      - 打印张数
       - 生成人员
       - 生成时间（系统自动读取）
     rule:
-      statement: 当前 Demo 按生成张数创建对应数量的 labelId、标签记录和二维码预览，自动记录服务端当前时间作为 printedAt（即标签日期），不录入实际生产日期，也不发送真实打印指令。
+      statement: 选择辅料时只生成带 preview 标记的界面预览；点击“打印”时按打印张数创建对应数量的 labelId 和正式标签记录，自动记录服务端当前时间作为 printedAt（即标签日期），不录入实际生产日期。当前 Demo 不发送真实打印指令。
     outputs:
       - 对应张数的标签记录
-      - 二维码预览
+      - 选择辅料后的即时预览
+      - 点击打印后生成的正式标签编号和记录
     side_effects:
       - 生成批次留痕，包含生成人、生成时间、辅料和数量
     exceptions:
       - 辅料不存在
-      - 生成张数非法
+      - 打印张数非法
     failure_handling:
-      - 阻止生成并提示检查辅料或修正张数
+      - 阻止生成并提示检查辅料或修正打印张数
     invariants:
       - 每张标签都有独立 labelId
+      - 选择辅料产生的预览不写入数据库且不得作为正式标签使用
       - printedAt 为系统当前时间，不由手工录入
       - 标签记录长期保存
       - 当前 Demo 不把标签记录展示为已经完成物理打印
     acceptance:
       - id: AC-LABEL-002
         given: 管理员选择 MAT-00023 并输入 10 张
-        when: 管理员点击生成标签记录
-        then: 系统生成 10 个 labelId、二维码预览和批次记录，但不发送打印指令
+        when: 管理员点击打印
+        then: 选择辅料时只出现预览，点击打印后系统生成 10 个 labelId 和批次记录，但不发送打印指令
         method: null
         evidence: null
         status: not-verified
@@ -290,6 +292,7 @@ atoms:
       - DEC-021
       - DEC-022
       - DEC-037
+      - DEC-043
     implementation_refs:
       - pc/src/pages/ManagementPages.tsx
       - pc/server/app/api/labels.py
@@ -297,9 +300,9 @@ atoms:
       - pc/server/tests/test_labels.py
       - .build/verify_task094.py
     supersedes: []
-    notes: DEC-037 已确认当前 Demo 只生成标签记录和二维码预览；真实打印机连接、打印状态、重打和作废由 TASK-086 在 Demo 验收后实施。
+    notes: DEC-037 已确认当前 Demo 不发送真实打印任务；DEC-043 进一步确认选择辅料只即时预览，点击“打印”才生成正式标签记录。真实打印机连接、打印状态、重打和作废由 TASK-086 在 Demo 验收后实施。
     created_at: "2026-09-09T04:20:00Z"
-    updated_at: "2026-09-13T09:00:00Z"
+    updated_at: "2026-09-14T03:50:00Z"
     last_verified_at: "2026-09-13T09:01:04Z"
   - id: BL-WEIGH-003
     title: 按配置允差校验称重结果

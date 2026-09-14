@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.auth import require_admin
-from app.db.models import Label, Material, PrintBatch, User
+from app.db.models import Label, Material, PrintBatch, SystemSetting, User
 from app.db.session import get_db
 from app.services.audit import write_audit
 from app.services.idempotency import execute_idempotent
@@ -40,13 +40,26 @@ def create_print_batch(
         material = db.scalar(select(Material).where(Material.material_id == body.material_id))
         if material is None:
             raise HTTPException(status_code=422, detail={"code": "MATERIAL_NOT_FOUND", "message": "辅料不存在"})
+        label_size = db.scalar(
+            select(SystemSetting.value).where(SystemSetting.key == "label_size_mm")
+        ) or "60x40"
         printed_at = _now()
         batch_id = f"PB-{printed_at.strftime('%Y%m%d%H%M%S')}-{secrets.token_hex(3)}"
         batch = PrintBatch(batch_id=batch_id, material_id=material.material_id, quantity=body.quantity, status="pending", printed_at=printed_at, created_by=user.id)
         labels = []
+        label_payloads = []
         for _ in range(body.quantity):
             label_id = f"LBL-{printed_at.strftime('%Y%m%d')}-{secrets.token_hex(5)}"
-            payload = {"v": 1, "labelId": label_id, "materialId": material.material_id, "materialCode": material.material_code, "name": material.name_zh, "printedAt": printed_at.isoformat()}
+            payload = {
+                "v": 1,
+                "labelId": label_id,
+                "materialId": material.material_id,
+                "materialCode": material.material_code,
+                "name": material.name_zh,
+                "printedAt": printed_at.isoformat(),
+                "labelSize": label_size,
+            }
+            label_payloads.append(payload)
             labels.append(Label(label_id=label_id, material_id=material.material_id, payload_json=json.dumps(payload, ensure_ascii=False), print_batch_id=batch_id, printed_at=printed_at, created_by=user.id))
         db.add(batch)
         db.add_all(labels)
@@ -61,9 +74,18 @@ def create_print_batch(
                 "material_id": material.material_id,
                 "material_code": material.material_code,
                 "quantity": body.quantity,
+                "label_size": label_size,
             },
         )
-        return {"batch_id": batch_id, "status": batch.status, "quantity": body.quantity, "printed_at": printed_at.isoformat(), "labels": [label.label_id for label in labels]}
+        return {
+            "batch_id": batch_id,
+            "status": batch.status,
+            "quantity": body.quantity,
+            "printed_at": printed_at.isoformat(),
+            "labels": [label.label_id for label in labels],
+            "label_payloads": label_payloads,
+            "label_size": label_size,
+        }
 
     return execute_idempotent(
         db,

@@ -89,6 +89,13 @@ Active goal: -
 | TASK-094 | done | repair | high | 修正 Demo 标签生成界面与真实打印语义漂移 |
 | TASK-095 | done | repair | high | Android 证据照片 EXIF 解析安全加固 |
 | TASK-096 | done | task | high | 收敛历史任务状态与跨端验证证据 |
+| TASK-097 | done | task | high | 构建 1.0.2 演示测试安装包 |
+| TASK-098 | done | repair | high | 平板服务器 IP 四段均可编辑并重建 APK |
+| TASK-099 | done | repair | critical | 修复 PC 标签预览使用 PREVIEW 导致扫码标签不存在 |
+| TASK-100 | done | task | high | 增加标签尺寸设置并控制预览与后续打印 |
+| TASK-101 | done | task | medium | APP 工单详情下拉刷新 |
+| TASK-102 | done | repair | critical | 恢复标签生成后端运行时版本 |
+| TASK-103 | in-progress | task | high | 标签选择即预览并调整打印入口 |
 | TASK-086 | pending | task | high | 接入真实标签打印机并实现打印状态闭环 |
 
 ## verification

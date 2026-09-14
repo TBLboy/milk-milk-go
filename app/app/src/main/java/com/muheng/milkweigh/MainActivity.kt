@@ -296,13 +296,23 @@ private val UserAgreementText = """
     3. 用户在系统中点击同意、登录或实际使用系统，即确认已获得必要的岗位授权，并愿意按照本协议及运营方制度使用本系统。
 """.trimIndent()
 
-private fun parseIpParts(url: String): Pair<String, String> {
-    val match = Regex("""^http://192\.168\.(\d{1,3})\.(\d{1,3}):\d+/api/v1/?$""", RegexOption.IGNORE_CASE)
+private data class IpAddressParts(
+    val first: String,
+    val second: String,
+    val third: String,
+    val fourth: String,
+)
+
+private fun parseIpParts(url: String): IpAddressParts? {
+    val match = Regex("""^http://(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3}):\d+/api/v1/?$""", RegexOption.IGNORE_CASE)
         .find(url.trim())
-    return if (match == null) {
-        "" to ""
-    } else {
-        match.groupValues[1] to match.groupValues[2]
+    return match?.let {
+        IpAddressParts(
+            first = it.groupValues[1],
+            second = it.groupValues[2],
+            third = it.groupValues[3],
+            fourth = it.groupValues[4],
+        )
     }
 }
 
@@ -494,6 +504,8 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
     var password by remember { mutableStateOf(initialRemembered?.password.orEmpty()) }
     var displayName by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
+    var ipFirst by remember { mutableStateOf("192") }
+    var ipSecond by remember { mutableStateOf("168") }
     var ipThird by remember { mutableStateOf("") }
     var ipFourth by remember { mutableStateOf("") }
     var serverError by remember { mutableStateOf<String?>(null) }
@@ -532,8 +544,11 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
                         }
                         IconButton(onClick = {
                             val parts = parseIpParts(sessionStore.serverUrl())
-                            ipThird = parts.first
-                            ipFourth = parts.second
+                                ?: IpAddressParts("192", "168", "", "")
+                            ipFirst = parts.first
+                            ipSecond = parts.second
+                            ipThird = parts.third
+                            ipFourth = parts.fourth
                             serverError = null
                             showServerDialog = true
                         }) {
@@ -707,28 +722,46 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
             title = { Text("系统设置") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("主机 IPv4 地址", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Medium)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
                     ) {
-                        Text("192.168.", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                        OutlinedTextField(
+                            ipFirst,
+                            { ipFirst = it.filter { char -> char.isDigit() }.take(3) },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            placeholder = { Text("192") },
+                        )
+                        Text(".", color = Ink, fontSize = 20.sp, fontWeight = FontWeight.Medium)
+                        OutlinedTextField(
+                            ipSecond,
+                            { ipSecond = it.filter { char -> char.isDigit() }.take(3) },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            placeholder = { Text("168") },
+                        )
+                        Text(".", color = Ink, fontSize = 20.sp, fontWeight = FontWeight.Medium)
                         OutlinedTextField(
                             ipThird,
                             { ipThird = it.filter { char -> char.isDigit() }.take(3) },
-                            modifier = Modifier.width(82.dp),
+                            modifier = Modifier.weight(1f),
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            placeholder = { Text("000") },
+                            placeholder = { Text("0") },
                         )
                         Text(".", color = Ink, fontSize = 20.sp, fontWeight = FontWeight.Medium)
                         OutlinedTextField(
                             ipFourth,
                             { ipFourth = it.filter { char -> char.isDigit() }.take(3) },
-                            modifier = Modifier.width(82.dp),
+                            modifier = Modifier.weight(1f),
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            placeholder = { Text("000") },
+                            placeholder = { Text("0") },
                         )
                     }
                     serverError?.let { Text(it, color = Color(0xFFC7473C), fontSize = 14.sp) }
@@ -736,18 +769,16 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
             },
             confirmButton = {
                 Button(onClick = {
-                    val third = ipThird.trim()
-                    val fourth = ipFourth.trim()
-                    val thirdValue = third.toIntOrNull()
-                    val fourthValue = fourth.toIntOrNull()
+                    val parts = listOf(ipFirst.trim(), ipSecond.trim(), ipThird.trim(), ipFourth.trim())
+                    val values = parts.map(String::toIntOrNull)
                     serverError = when {
-                        third.isEmpty() || fourth.isEmpty() -> "请输入 IP 地址的第三段和第四段"
-                        thirdValue == null || thirdValue !in 0..255 -> "IP 第三段应为 0-255 的数字"
-                        fourthValue == null || fourthValue !in 0..255 -> "IP 第四段应为 0-255 的数字"
+                        parts.any(String::isEmpty) -> "请输入完整的 IP 地址"
+                        values.any { it == null || it !in 0..255 } -> "IP 地址每一段都应为 0-255 的数字"
                         else -> null
                     }
                     if (serverError == null) {
-                        sessionStore.saveServerUrl("http://192.168.$third.$fourth:8011/api/v1/")
+                        val normalizedIp = values.map { it!!.toString() }.joinToString(".")
+                        sessionStore.saveServerUrl("http://$normalizedIp:8011/api/v1/")
                         showServerDialog = false
                     }
                 }) { Text("保存") }
@@ -1408,6 +1439,8 @@ private fun MainShell(
                     currentUserId = currentUser.id,
                     operatorName = currentUser.displayName,
                     canApprove = currentUser.role == UserRole.ADMIN,
+                    isRefreshing = isRefreshing,
+                    onRefresh = refreshDataWithFeedback,
                     onBack = { selected = "工单" },
                     onUpdated = { updated -> orders = orders.map { if (it.orderNo == updated.orderNo) updated else it } },
                 )
@@ -1938,6 +1971,7 @@ private fun OrderRow(order: WorkOrder, onClick: () -> Unit = {}) { Card(modifier
 
 @Composable private fun StatusPill(status: WorkOrderStatus) { val color = when (status) { WorkOrderStatus.IN_PROGRESS -> Color(0xFFC9854C); WorkOrderStatus.COMPLETED -> Green; WorkOrderStatus.CANCELLED, WorkOrderStatus.DELETED -> Color(0xFFC7473C); else -> Color(0xFF68808E) }; Text(status.label, color = color, fontWeight = FontWeight.Bold, modifier = Modifier.background(color.copy(alpha = .1f), RoundedCornerShape(50)).padding(horizontal = 12.dp, vertical = 7.dp)) }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun OrderDetailScreen(
     order: WorkOrder?,
@@ -1945,6 +1979,8 @@ private fun OrderDetailScreen(
     currentUserId: Int,
     operatorName: String,
     canApprove: Boolean,
+    isRefreshing: Boolean,
+    onRefresh: () -> Unit,
     onBack: () -> Unit,
     onUpdated: (WorkOrder) -> Unit,
 ) {
@@ -1953,81 +1989,87 @@ private fun OrderDetailScreen(
     var working by remember { mutableStateOf(false) }
     var actionStepNo by remember { mutableStateOf<Int?>(null) }
     var requestAction by remember { mutableStateOf<String?>(null) }
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(30.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        modifier = Modifier.fillMaxSize(),
     ) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("工单详情", color = Ink, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-            OutlinedButton(onClick = onBack) { Text("返回工单") }
-        }
-        if (order == null) {
-            Text("暂无工单", color = Muted)
-        } else {
-            val currentStepNo = order.steps.firstOrNull { it.status != StepStatus.COMPLETED }?.stepNo ?: order.totalSteps + 1
-            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-                Column(modifier = Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text(order.productName, color = Ink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                        StatusPill(order.status)
-                    }
-                    Text("目标重量 ${order.targetWeightKg.toInt()} kg · 执行人 ${order.operatorName}", color = Muted)
-                    Text("进度 ${order.completedSteps}/${order.totalSteps}", color = Green, fontWeight = FontWeight.Bold)
-                    order.pendingRequest?.let { Text(it, color = Color(0xFFC9854C), fontSize = 14.sp, fontWeight = FontWeight.Bold) }
-                }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(30.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("工单详情", color = Ink, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                OutlinedButton(onClick = onBack) { Text("返回工单") }
             }
-            Text("辅料称量步骤", color = Ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            order.steps.forEach { step ->
-                StepCard(step, order.status, currentStepNo, canApprove, onAction = { actionStepNo = step.stepNo })
-            }
-            error?.let { Text(it, color = Color(0xFFC7473C), fontSize = 14.sp) }
-            val canRequest = order.pendingRequest == null &&
-                order.status != WorkOrderStatus.COMPLETED &&
-                order.status != WorkOrderStatus.CANCELLED &&
-                order.status != WorkOrderStatus.DELETED
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                when {
-                    order.status == WorkOrderStatus.PENDING_APPROVAL -> Text("等待后台审批通过后开始执行", color = Muted)
-                    order.status == WorkOrderStatus.APPROVED -> Button(onClick = {
-                        if (!working) {
-                            working = true
-                            error = null
-                            scope.launch {
-                                runCatching { repository.startWorkOrder(order.orderNo) }
-                                    .onSuccess(onUpdated)
-                                    .onFailure { error = it.message }
-                                    .also { working = false }
-                            }
+            if (order == null) {
+                Text("暂无工单", color = Muted)
+            } else {
+                val currentStepNo = order.steps.firstOrNull { it.status != StepStatus.COMPLETED }?.stepNo ?: order.totalSteps + 1
+                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Text(order.productName, color = Ink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                            StatusPill(order.status)
                         }
-                    }, enabled = !working) { Text("开始执行") }
-                    order.status == WorkOrderStatus.IN_PROGRESS && order.completedSteps == order.totalSteps -> Button(onClick = {
-                        if (!working) {
-                            working = true
-                            error = null
-                            scope.launch {
-                                runCatching { repository.completeWorkOrder(order.orderNo) }
-                                    .onSuccess(onUpdated)
-                                    .onFailure { error = it.message }
-                                    .also { working = false }
-                            }
-                        }
-                    }, enabled = !working) { Text("提交完成") }
-                    order.status == WorkOrderStatus.IN_PROGRESS -> Text("请按顺序完成所有辅料步骤后再提交完成", color = Muted)
-                }
-                if (canRequest) {
-                    if (order.operatorId != currentUserId && order.createdBy != currentUserId) {
-                        OutlinedButton(onClick = { requestAction = "接管" }) { Text("申请接管") }
+                        Text("目标重量 ${order.targetWeightKg.toInt()} kg · 执行人 ${order.operatorName}", color = Muted)
+                        Text("进度 ${order.completedSteps}/${order.totalSteps}", color = Green, fontWeight = FontWeight.Bold)
+                        order.pendingRequest?.let { Text(it, color = Color(0xFFC9854C), fontSize = 14.sp, fontWeight = FontWeight.Bold) }
                     }
-                    OutlinedButton(onClick = { requestAction = "撤销" }) { Text("申请撤销") }
-                } else if (order.pendingRequest != null) {
-                    Text("已提交申请，等待后台审批", color = Muted)
+                }
+                Text("辅料称量步骤", color = Ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                order.steps.forEach { step ->
+                    StepCard(step, order.status, currentStepNo, canApprove, onAction = { actionStepNo = step.stepNo })
+                }
+                error?.let { Text(it, color = Color(0xFFC7473C), fontSize = 14.sp) }
+                val canRequest = order.pendingRequest == null &&
+                    order.status != WorkOrderStatus.COMPLETED &&
+                    order.status != WorkOrderStatus.CANCELLED &&
+                    order.status != WorkOrderStatus.DELETED
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    when {
+                        order.status == WorkOrderStatus.PENDING_APPROVAL -> Text("等待后台审批通过后开始执行", color = Muted)
+                        order.status == WorkOrderStatus.APPROVED -> Button(onClick = {
+                            if (!working) {
+                                working = true
+                                error = null
+                                scope.launch {
+                                    runCatching { repository.startWorkOrder(order.orderNo) }
+                                        .onSuccess(onUpdated)
+                                        .onFailure { error = it.message }
+                                        .also { working = false }
+                                }
+                            }
+                        }, enabled = !working) { Text("开始执行") }
+                        order.status == WorkOrderStatus.IN_PROGRESS && order.completedSteps == order.totalSteps -> Button(onClick = {
+                            if (!working) {
+                                working = true
+                                error = null
+                                scope.launch {
+                                    runCatching { repository.completeWorkOrder(order.orderNo) }
+                                        .onSuccess(onUpdated)
+                                        .onFailure { error = it.message }
+                                        .also { working = false }
+                                }
+                            }
+                        }, enabled = !working) { Text("提交完成") }
+                        order.status == WorkOrderStatus.IN_PROGRESS -> Text("请按顺序完成所有辅料步骤后再提交完成", color = Muted)
+                    }
+                    if (canRequest) {
+                        if (order.operatorId != currentUserId && order.createdBy != currentUserId) {
+                            OutlinedButton(onClick = { requestAction = "接管" }) { Text("申请接管") }
+                        }
+                        OutlinedButton(onClick = { requestAction = "撤销" }) { Text("申请撤销") }
+                    } else if (order.pendingRequest != null) {
+                        Text("已提交申请，等待后台审批", color = Muted)
+                    }
                 }
             }
         }

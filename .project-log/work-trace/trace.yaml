@@ -1,5 +1,100 @@
 version: "0.2"
 entries:
+  - id: WT-20260914-002
+    task_id: TASK-102
+    context: PC 标签页已包含真实标签编号校验，但生成标签记录时提示后端未返回 label_payloads；运行中的 8011 后端启动时间早于相关代码修改。
+    hypothesis: 如果后端使用未启用 reload 的旧 uvicorn 进程，则即使源码已修复，运行时仍会返回旧响应结构，重启进程即可恢复 API 与前端契约一致。
+    action: 对比进程启动时间和 labels.py 修改时间；终止旧 8011 进程；在 milk-backend tmux 会话启动当前源码；验证 health、管理员登录和标签专项测试。
+    expected_result: health 显示当前版本 1.0.4，标签 API 响应包含真实 label_payloads，PC 端无需重新构建即可重试。
+    observation: health 返回 status=ok、database=ok、version=1.0.4；管理员登录成功；tests/test_labels.py 4 项通过。
+    actual_result: 旧运行时已替换，页面可直接重新执行标签生成；未在用户业务库生成测试标签。
+    delta: 从源码已修复但运行时仍返回旧响应，推进到 8011 已加载当前标签接口。
+    lesson: 未启用 reload 的后端在源码修改后必须显式重启；仅看到前端错误时先核对运行进程启动时间和当前版本。
+    next_adjustment: 后续修改后端接口后执行 health 版本检查和最窄专项测试，再让用户进行页面操作验收。
+    evidence:
+      - EV-TASK-102-HEALTH
+      - EV-TASK-102-LABEL-TESTS
+      - .project-log/specs/TASK-102.md
+    knowledge_candidate: true
+  - id: WT-20260914-001
+    task_id: TASK-101
+    context: Android App 的工单详情页此前只有纵向滚动，无法像工作台和工单列表一样下拉刷新；工单状态在现场发生审批或步骤变化后需要重新进入页面才能获取。
+    hypothesis: 复用 MainShell 已存在的全局刷新状态和回调，并用 Material 3 PullToRefreshBox 包裹详情页滚动内容，可以以最小改动获得一致的下拉刷新体验。
+    action: 在 OrderDetailScreen 增加 isRefreshing 和 onRefresh 参数；调用处传入既有 refreshDataWithFeedback；将详情页 Column 包裹进 PullToRefreshBox；执行 Android Debug 构建和 Lint。
+    expected_result: 工单详情页顶部下拉可触发真实工单与产品数据刷新，刷新期间显示系统指示器，失败时沿用现有网络提示。
+    observation: assembleDebug 与 lintDebug 均成功，只有既有 Icon deprecation 警告；git diff --check 通过。
+    actual_result: TASK-101 代码与日志已落地，未生成新 APK，真实平板手势仍未验证。
+    delta: 从详情页只能滚动查看推进到可复用全局刷新链路进行原地刷新。
+    lesson: 页面级刷新应优先复用上层单一状态和回调，避免每个页面维护独立刷新状态导致反馈与请求行为不一致。
+    next_adjustment: 在真实平板执行工单详情下拉手势，并验证审批状态或步骤更新后页面数据同步。
+    evidence:
+      - .project-log/specs/TASK-101.md
+      - EV-TASK-101-ANDROID-BUILD-LINT
+      - EV-TASK-101-DIFF
+    knowledge_candidate: false
+  - id: WT-20260913-022
+    task_id: TASK-100
+    context: 当前 PC 标签预览没有尺寸控制，用户需要在系统设置中配置标签大小，并为后续真实打印机提供统一参数。
+    hypothesis: 使用单一 label_size_mm 参数保存宽高，并在生成标签时写入尺寸快照，可以同时满足预览比例控制和后续打印追溯，且不改变二维码身份字段。
+    action: 初始化并校验 label_size_mm；系统设置页增加尺寸入口；标签预览按宽高比例显示；标签 payload 增加 labelSize；版本提升到 1.0.4 并重建 Windows 安装包。
+    expected_result: 管理员可设置 60x40、70x50 等尺寸，标签预览随之变化，新生成标签携带对应尺寸快照。
+    observation: 设置与标签专项测试 12 项通过；完整后端回归、PC 构建、NSIS 构建和 EXE SHA-256 校验通过。
+    actual_result: Windows 1.0.4 测试包已生成；真实打印机纸张验证仍需打印机确定后执行。
+    delta: 从固定标签预览尺寸推进到可配置并随标签持久化尺寸快照。
+    lesson: 影响后续物理输出的全局设置应在生成业务记录时固化快照，避免后续设置变更破坏历史标签的可重现性。
+    next_adjustment: 打印机型号确定后，使用同一 labelSize 参数完成纸张尺寸和布局校验。
+    evidence:
+      - 发布版本/牧衡辅料称重防错系统-Windows-1.0.4-Setup.exe
+      - .project-log/specs/TASK-100.md
+      - .project-log/docs/release-candidate-1.0.4-windows.md
+    knowledge_candidate: false
+  - id: WT-20260913-021
+    task_id: TASK-099
+    context: PC 标签页生成前将 labelId 固定为 PREVIEW，用户扫描该二维码时后台找不到 labels 记录并返回 LABEL_NOT_FOUND。
+    hypothesis: 由后端返回与数据库真实标签一致的一组 payload，并让 PC 只在生成成功后渲染二维码，可以消除伪标签并保持现有 labels 接口兼容。
+    action: 在标签批次接口新增 label_payloads；移除前端 PREVIEW 二维码构建；生成前显示不可扫描占位；增加 API 与数据库一致性测试；提升 PC/后端版本并重建 Windows 安装包。
+    expected_result: label_payloads 与 labels 和数据库记录一致，生成后二维码可直接参与平板类型确认，生成前没有可扫描伪标签。
+    observation: 标签与证据专项测试 12 项通过；完整后端回归通过；PC 构建和 NSIS 构建通过；Windows 1.0.3 EXE SHA-256 校验通过；代码中 PREVIEW 仅保留为防回归测试断言。
+    actual_result: 修复进入 Windows 1.0.3 测试安装包，真实平板扫码仍需现场验收。
+    delta: 从“预览二维码必然 LABEL_NOT_FOUND”推进到“预览二维码使用真实数据库 labelId”。
+    lesson: 可扫描预览必须由服务端正式记录驱动；任何仅用于布局的占位状态都不得被编码成正式业务二维码。
+    next_adjustment: 在 Windows 11 覆盖安装 1.0.3，生成标签后用真实平板扫码并回填现场证据。
+    evidence:
+      - 发布版本/牧衡辅料称重防错系统-Windows-1.0.3-Setup.exe
+      - .project-log/specs/TASK-099.md
+      - .project-log/docs/release-candidate-1.0.3-windows.md
+    knowledge_candidate: false
+  - id: WT-20260913-020
+    task_id: TASK-098
+    context: 用户现场需要连接非 192.168 网段的服务器，当前 Android 登录页只允许编辑 IPv4 后两段，前两段被固定为 192.168。
+    hypothesis: 将服务器地址解析和设置弹窗改为四个可编辑网段，同时保留 192.168 默认值，可以在不改变端口和 API 协议的前提下支持任意 IPv4。
+    action: 扩展 IP 解析为四段，增加前两段状态和输入框，统一校验四段 0-255；将 Android 版本提升到 1.0.3/versionCode 4，执行 Debug/Lint、模拟器界面检查和发布 APK 签名构建。
+    expected_result: 服务器设置显示四个字段，默认 192.168.1.100，前两段可编辑；发布 APK 可覆盖安装并保留原有协议。
+    observation: Android Debug 构建和 Lint 通过；模拟器 UI dump 确认四个输入字段及默认值；发布 APK versionCode=4、versionName=1.0.3，v2/v3 签名和 SHA-256 校验通过。
+    actual_result: Android 1.0.3 APK 已生成；真实平板覆盖安装和局域网连接仍待用户验证。
+    delta: 从固定 192.168 前缀推进到完整 IPv4 可配置。
+    lesson: IP 输入控件应使用四段独立校验和保存，不把环境假设编码成不可编辑前缀。
+    next_adjustment: 在真实平板上覆盖安装并验证服务器地址和登录会话保留。
+    evidence:
+      - 发布版本/牧衡辅料称重防错系统-Android-1.0.3.apk
+      - .project-log/docs/release-candidate-1.0.3-android.md
+    knowledge_candidate: false
+  - id: WT-20260913-019
+    task_id: TASK-097
+    context: 用户要求在现有功能基线之外生成一组可直接安装测试的 Windows EXE 和 Android APK，并允许提前写入演示辅料和配方。
+    hypothesis: 将版本统一提升到 1.0.2，并沿用现有安装初始化脚本，可以生成可明确区分、可覆盖安装且新装自带演示数据的测试包。
+    action: 更新 PC、Windows 安装器、Android 发布脚本和版本信息；执行后端回归、PC 构建、Windows NSIS 构建和 Android 发布签名构建；验证临时数据库初始化数量、APK 签名与版本、EXE 类型及两个产物的 SHA-256。
+    expected_result: 发布目录出现 Windows 1.0.2 EXE 和 Android 1.0.2 APK，产物版本一致且新装自动包含演示主数据。
+    observation: 后端测试和 PC 构建通过；Windows 安装包与 APK 构建成功；APK versionCode=3、versionName=1.0.2，v2/v3 签名通过；临时数据库初始化得到 4 种辅料、2 个产品、1 张工单；两个 SHA-256 校验通过。
+    actual_result: Windows EXE 和 Android APK 已放入发布目录，附带 SHA-256 文件；真实 Windows 11 和真实平板安装验收仍待用户执行。
+    delta: 从无对应版本的测试安装包推进到可现场安装的 1.0.2 EXE/APK 交付候选。
+    lesson: 演示版本应使用新的版本号和独立任务归档，避免与旧发布候选同名不同内容，同时不能把本机构建证据冒充真实安装验收。
+    next_adjustment: 用户在 Windows 11 和 Android 平板安装后，将结果回填 TASK-083/084；出现安装或数据问题则建立修复任务。
+    evidence:
+      - 发布版本/牧衡辅料称重防错系统-Windows-1.0.2-Setup.exe
+      - 发布版本/牧衡辅料称重防错系统-Android-1.0.2.apk
+      - .project-log/docs/release-candidate-1.0.2.md
+    knowledge_candidate: false
   - id: WT-20260909-018
     task_id: ARCH-001-design-review
     context: ARCH-001 初稿已覆盖组件和主流程，但尚未明确核心实体、接口分组、状态并发、幂等、证据文件生命周期和打印未知结果处理。

@@ -5819,3 +5819,485 @@ tasks:
       follow_ups: []
     created_at: "2026-09-13T09:30:00Z"
     updated_at: "2026-09-13T09:30:00Z"
+  - id: TASK-097
+    title: 构建 1.0.2 演示测试安装包
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 在现有功能基线上提升演示测试版本号，重新构建 Windows EXE 安装包和 Android 发布 APK，并确认全新安装会自动初始化演示辅料、配方和工单。
+    status: done
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [release, windows, android, demo, seed]
+    related_business_logic: [BL-SCOPE-001, BL-DATA-002]
+    acceptance_refs: []
+    related_decisions: [DEC-037, DEC-040]
+    depends_on: [TASK-096]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing]
+    spec_ref: .project-log/specs/TASK-097.md
+    inputs:
+      - 当前 PC、后端和 Android 冻结源码
+      - 现有 Windows 和 Android 打包脚本
+      - 安装初始化演示主数据脚本
+    outputs:
+      - Windows 1.0.2 安装包
+      - Android 1.0.2 发布 APK
+      - 两个产物的 SHA-256 文件
+      - 1.0.2 测试包说明
+    plan:
+      - 统一 PC、Windows 安装器和 Android 版本号为 1.0.2
+      - 执行后端完整回归和 PC 构建
+      - 验证全新数据库演示初始化内容
+      - 构建并校验 Windows 安装包和 Android APK
+      - 归档测试包说明和验证证据
+    done_when:
+      - Windows 与 Android 产物均构建成功
+      - APK 版本和签名校验通过
+      - 全新安装会初始化演示辅料、配方和工单
+      - 发布目录包含可校验的 EXE、APK 和 SHA-256 文件
+      - 真实安装和设备验收限制被明确保留
+    verification:
+      status: passed
+      commands:
+        - cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - cd pc && npm run build
+        - ./pc/scripts/build-windows-installer.sh
+        - ./app/packaging/build-apk.sh
+        - aapt dump badging 发布版本/牧衡辅料称重防错系统-Android-1.0.2.apk
+        - apksigner verify --verbose --print-certs 发布版本/牧衡辅料称重防错系统-Android-1.0.2.apk
+        - sha256sum -c 发布版本/牧衡辅料称重防错系统-Windows-1.0.2-Setup.exe.sha256
+        - sha256sum -c 发布版本/牧衡辅料称重防错系统-Android-1.0.2.apk.sha256
+        - git diff --check
+      evidence:
+        - EV-TASK-097-BACKEND
+        - EV-TASK-097-PC-BUILD
+        - EV-TASK-097-WINDOWS
+        - EV-TASK-097-ANDROID
+        - EV-TASK-097-SEED
+        - EV-TASK-097-DIFF
+      limitations:
+        - 未在真实 Windows 11 和真实 Android 平板执行本轮安装升级。
+    result:
+      summary: 已生成 1.0.2 Windows 演示安装包和 Android 发布 APK。Windows 安装包内包含全新数据库演示主数据初始化逻辑；APK 版本为 1.0.2/versionCode=3，v2/v3 签名有效。临时数据库初始化得到 4 种辅料、2 个产品和 1 张演示工单。
+      changed_files:
+        - pc/server/app/core/config.py
+        - pc/server/tests/test_health.py
+        - pc/server/tests/test_operations.py
+        - pc/scripts/build-windows-installer.sh
+        - pc/packaging/windows/installer.nsi
+        - pc/package.json
+        - pc/package-lock.json
+        - app/packaging/build-apk.sh
+        - app/app/build.gradle.kts
+        - .project-log/specs/TASK-097.md
+        - .project-log/docs/release-candidate-1.0.2.md
+        - .project-log/tasks/task-list.yaml
+        - .project-log/tasks/task-list.md
+      deviations: []
+      follow_ups:
+        - 在真实 Windows 11 安装并核对演示数据、服务、防火墙和 SMTP。
+        - 在真实 Android 平板覆盖安装并检查原有设置和凭据保留。
+    created_at: "2026-09-13T10:45:00Z"
+    updated_at: "2026-09-13T10:45:00Z"
+  - id: TASK-098
+    title: 平板服务器 IP 四段均可编辑并重建 APK
+    kind: repair
+    parent_id: null
+    phase: implementation
+    goal: 保留服务器 IPv4 默认前缀 192.168 的同时，允许操作员修改前两段，并重新构建可覆盖安装的 Android 测试 APK。
+    status: done
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [android, server-settings, ipv4, release]
+    related_business_logic: [BL-DEVICE-002]
+    acceptance_refs: []
+    related_decisions: [DEC-037]
+    depends_on: [TASK-097]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing]
+    spec_ref: .project-log/specs/TASK-098.md
+    inputs:
+      - Android 登录页服务器设置弹窗
+      - 原固定 192.168 地址解析逻辑
+    outputs:
+      - 四段 IPv4 编辑控件
+      - 通用 IPv4 URL 解析和校验
+      - Android 1.0.3 发布 APK
+    plan:
+      - 将 IP 解析扩展为四段
+      - 增加前两段默认值和可编辑输入框
+      - 校验四段范围并保存完整 URL
+      - 执行 Android 构建、Lint 和模拟器界面检查
+      - 构建签名 APK 并校验版本、签名和哈希
+    done_when:
+      - 前两段默认为 192 和 168 且可编辑
+      - 四段均经过 0-255 校验
+      - 原有端口和 API 路径不变
+      - Android 1.0.3/versionCode=4 APK 构建和签名成功
+      - 真实平板覆盖安装验证限制明确保留
+    verification:
+      status: passed
+      commands:
+        - cd app && JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk ./gradlew assembleDebug lintDebug --no-daemon
+        - ./app/packaging/build-apk.sh
+        - aapt dump badging 发布版本/牧衡辅料称重防错系统-Android-1.0.3.apk
+        - apksigner verify --verbose --print-certs 发布版本/牧衡辅料称重防错系统-Android-1.0.3.apk
+        - sha256sum -c 发布版本/牧衡辅料称重防错系统-Android-1.0.3.apk.sha256
+        - git diff --check
+      evidence:
+        - EV-TASK-098-ANDROID-BUILD-LINT
+        - EV-TASK-098-UI
+        - EV-TASK-098-APK
+        - EV-TASK-098-DIFF
+      limitations:
+        - 本轮只在 Android 15 模拟器检查界面，未在真实平板执行覆盖安装。
+    result:
+      summary: 服务器设置已改为四个独立 IPv4 输入框，前两段默认 192、168 但允许编辑；保存时校验四段均为 0-255，端口和 API 路径保持固定。Android Debug/Lint 通过，模拟器确认四个字段可见，Android 1.0.3/versionCode=4 发布 APK 已构建并通过 v2/v3 签名及哈希校验。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - app/app/build.gradle.kts
+        - app/packaging/build-apk.sh
+        - .project-log/specs/TASK-098.md
+        - .project-log/docs/release-candidate-1.0.3-android.md
+        - .project-log/tasks/task-list.yaml
+        - .project-log/tasks/task-list.md
+      deviations: []
+      follow_ups:
+        - 在真实平板上覆盖安装 1.0.3，确认服务器设置和会话保留。
+    created_at: "2026-09-13T11:35:00Z"
+    updated_at: "2026-09-13T11:35:00Z"
+  - id: TASK-099
+    title: 修复 PC 标签预览使用 PREVIEW 导致扫码标签不存在
+    kind: repair
+    parent_id: null
+    phase: implementation
+    goal: 让 PC 标签预览二维码始终使用后台真实创建并可校验的 labelId，避免生成前 PREVIEW 二维码进入现场扫码流程。
+    status: done
+    priority: critical
+    risk: high
+    authority: B
+    owner: agent
+    tags: [pc, labels, qr, scan, release]
+    related_business_logic: [BL-LABEL-001, BL-LABEL-002, BL-WEIGH-002, BL-RECOG-001]
+    acceptance_refs: []
+    related_decisions: [DEC-037]
+    depends_on: [TASK-097]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing]
+    spec_ref: .project-log/specs/TASK-099.md
+    inputs:
+      - PC 标签生成页的 PREVIEW 二维码构建逻辑
+      - 后端标签批次接口和 labels 表记录
+    outputs:
+      - 后端 label_payloads 响应
+      - PC 生成后真实二维码预览
+      - 标签 payload 与数据库一致性测试
+      - Windows 1.0.3 测试安装包
+    plan:
+      - 后端返回与 labels 顺序一致的真实二维码 payload
+      - 前端移除 PREVIEW 正式二维码并按生成结果更新预览
+      - 生成前显示不可扫描占位状态
+      - 执行专项测试、完整回归、PC 构建和 Windows 安装包构建
+    done_when:
+      - label_payloads 与数据库 label_id 一致且不含 PREVIEW
+      - 生成前没有可扫描的伪标签
+      - 生成后预览二维码包含真实 labelId
+      - PC 和后端版本为 1.0.3
+      - Windows 1.0.3 EXE 与 SHA-256 文件生成成功
+    verification:
+      status: passed
+      commands:
+        - cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q tests/test_labels.py tests/test_evidence.py
+        - cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - cd pc && npm run build
+        - ./pc/scripts/build-windows-installer.sh
+        - sha256sum -c 发布版本/牧衡辅料称重防错系统-Windows-1.0.3-Setup.exe.sha256
+        - git diff --check
+      evidence:
+        - EV-TASK-099-FOCUSED
+        - EV-TASK-099-BACKEND
+        - EV-TASK-099-PC-BUILD
+        - EV-TASK-099-WINDOWS
+        - EV-TASK-099-DIFF
+      limitations:
+        - 未在真实 Windows 11 执行新装或覆盖安装。
+        - 未使用真实平板扫描本轮生成的二维码；API 与数据库一致性由自动化测试覆盖。
+    result:
+      summary: 后端新增真实 label_payloads，PC 仅在标签生成成功后渲染二维码，生成前显示不可扫描占位；PREVIEW 不再进入现场二维码。专项测试、完整后端回归、PC 构建和 Windows 1.0.3 EXE 构建通过。
+      changed_files:
+        - pc/server/app/api/labels.py
+        - pc/server/tests/test_labels.py
+        - pc/src/pages/ManagementPages.tsx
+        - pc/src/styles/global.css
+        - pc/server/app/core/config.py
+        - pc/server/tests/test_health.py
+        - pc/server/tests/test_operations.py
+        - pc/package.json
+        - pc/package-lock.json
+        - pc/scripts/build-windows-installer.sh
+        - pc/packaging/windows/installer.nsi
+        - .project-log/specs/TASK-099.md
+        - .project-log/docs/release-candidate-1.0.3-windows.md
+        - .project-log/tasks/task-list.yaml
+        - .project-log/tasks/task-list.md
+      deviations: []
+      follow_ups:
+        - 在 Windows 11 覆盖安装 1.0.3，生成标签后使用平板实际扫码并完成类型确认。
+    created_at: "2026-09-13T15:05:00Z"
+    updated_at: "2026-09-13T15:05:00Z"
+  - id: TASK-100
+    title: 增加标签尺寸设置并控制预览与后续打印
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 在 PC 系统设置中增加全局标签尺寸参数，使标签预览按宽高比例显示，并将尺寸快照写入新生成标签，为后续打印机接入提供统一尺寸来源。
+    status: done
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [pc, labels, settings, printer, release]
+    related_business_logic: [BL-LABEL-001, BL-LABEL-002]
+    acceptance_refs: []
+    related_decisions: [DEC-037]
+    depends_on: [TASK-099]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing]
+    spec_ref: .project-log/specs/TASK-100.md
+    inputs:
+      - 现有 system_settings 接口
+      - PC 系统设置页
+      - 标签生成预览和 label_payloads
+    outputs:
+      - label_size_mm 全局设置
+      - 按标签尺寸调整的 PC 预览
+      - 新标签的 labelSize 快照
+      - Windows 1.0.4 测试安装包
+    plan:
+      - 初始化并校验 label_size_mm
+      - 在系统设置页增加尺寸入口
+      - 让标签预览使用宽高比例
+      - 把生成时的尺寸写入标签 payload
+      - 执行专项测试、完整回归、PC 构建和 Windows 安装包构建
+    done_when:
+      - 默认标签尺寸为 60x40 且旧数据库启动后自动补齐
+      - 非法格式或超出 10-300 毫米返回明确错误
+      - 修改设置后新标签 payload 使用对应 labelSize
+      - PC 标签预览随尺寸设置变化
+      - Windows 1.0.4 EXE 与 SHA-256 文件生成成功
+    verification:
+      status: passed
+      commands:
+        - cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q tests/test_pc_admin.py tests/test_labels.py
+        - cd pc/server && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - cd pc && npm run build
+        - ./pc/scripts/build-windows-installer.sh
+        - sha256sum -c 发布版本/牧衡辅料称重防错系统-Windows-1.0.4-Setup.exe.sha256
+        - git diff --check
+      evidence:
+        - EV-TASK-100-FOCUSED
+        - EV-TASK-100-BACKEND
+        - EV-TASK-100-PC-BUILD
+        - EV-TASK-100-WINDOWS
+        - EV-TASK-100-DIFF
+      limitations:
+        - 未在真实 Windows 11 执行覆盖安装。
+        - 未连接真实标签打印机验证最终纸张尺寸。
+    result:
+      summary: 系统设置新增 label_size_mm，默认 60x40，支持 10-300 毫米宽高校验；标签预览动态反映尺寸比例，新生成标签包含 labelSize 快照。专项测试、完整后端回归、PC 构建和 Windows 1.0.4 EXE 构建通过。
+      changed_files:
+        - pc/server/app/db/models.py
+        - pc/server/app/api/settings.py
+        - pc/server/app/api/labels.py
+        - pc/server/tests/test_pc_admin.py
+        - pc/server/tests/test_labels.py
+        - pc/src/pages/ManagementPages.tsx
+        - pc/server/app/core/config.py
+        - pc/server/tests/test_health.py
+        - pc/server/tests/test_operations.py
+        - pc/package.json
+        - pc/package-lock.json
+        - pc/scripts/build-windows-installer.sh
+        - pc/packaging/windows/installer.nsi
+        - .project-log/specs/TASK-100.md
+        - .project-log/docs/release-candidate-1.0.4-windows.md
+        - .project-log/tasks/task-list.yaml
+        - .project-log/tasks/task-list.md
+      deviations: []
+      follow_ups:
+        - 确定打印机型号后，在真实纸张上验证标签尺寸设置与打印布局。
+    created_at: "2026-09-13T15:10:00Z"
+    updated_at: "2026-09-13T15:10:00Z"
+  - id: TASK-101
+    title: APP 工单详情下拉刷新
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 在 Android App 工单详情页复用主界面下拉刷新能力，让操作员无需返回列表即可重新获取当前工单及步骤状态。
+    status: done
+    priority: medium
+    risk: low
+    authority: B
+    owner: agent
+    tags: [app, order-detail, pull-to-refresh, ux]
+    related_business_logic: [BL-WO-001]
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: [TASK-050]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing]
+    spec_ref: .project-log/specs/TASK-101.md
+    inputs:
+      - MainShell 已有 orders、isRefreshing 和 refreshDataWithFeedback
+      - OrderDetailScreen 当前使用纵向滚动 Column
+    outputs:
+      - 工单详情页 PullToRefreshBox
+      - 刷新状态与回调透传
+    plan:
+      - 在详情页调用处传入刷新状态和回调
+      - 使用 PullToRefreshBox 包裹详情页滚动内容
+      - 执行 Android Debug 构建与 Lint
+    done_when:
+      - 工单详情页顶部下拉可触发既有全局刷新
+      - 刷新过程中显示加载指示器并沿用失败提示
+      - Android Debug 构建与 Lint 通过
+    verification:
+      status: passed
+      commands:
+        - JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk ./gradlew assembleDebug lintDebug --no-daemon
+        - git diff --check
+      evidence:
+        - EV-TASK-101-ANDROID-BUILD-LINT
+        - EV-TASK-101-DIFF
+      limitations:
+        - 未在真实 Android 平板执行下拉手势和弱网现场验证。
+    result:
+      summary: 工单详情页已复用 MainShell 的全局刷新状态与回调，通过 PullToRefreshBox 支持顶部下拉刷新；Android Debug 构建和 Lint 通过。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - .project-log/specs/TASK-101.md
+        - .project-log/tasks/task-list.yaml
+        - .project-log/tasks/task-list.md
+      deviations: []
+      follow_ups:
+        - 在真实平板上验证工单详情页下拉手势和刷新反馈。
+    created_at: "2026-09-14T00:00:00Z"
+    updated_at: "2026-09-14T00:00:00Z"
+  - id: TASK-102
+    title: 恢复标签生成后端运行时版本
+    kind: repair
+    parent_id: null
+    phase: implementation
+    goal: 修复 PC 端生成标签记录时因 8011 后端仍运行旧代码而缺少 label_payloads 的问题。
+    status: done
+    priority: critical
+    risk: medium
+    authority: A
+    owner: agent
+    tags: [pc, labels, runtime, uvicorn, repair]
+    related_business_logic: [BL-LABEL-001, BL-LABEL-002]
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: [TASK-099, TASK-100]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing]
+    spec_ref: .project-log/specs/TASK-102.md
+    inputs:
+      - PC 前端已校验 batch.label_payloads[0].labelId
+      - 8011 uvicorn 进程未启用自动重载
+      - labels.py 修复时间晚于旧进程启动时间
+    outputs:
+      - 使用当前源码重新启动的 8011 后端
+      - 健康版本和标签接口专项验证
+    plan:
+      - 停止加载旧代码的 8011 进程
+      - 在 milk-backend tmux 会话启动当前源码
+      - 验证 health、管理员登录和标签专项测试
+    done_when:
+      - 8011 health 返回 version=1.0.4
+      - 标签专项测试全部通过
+      - PC 标签生成响应重新包含 label_payloads
+    verification:
+      status: passed
+      commands:
+        - curl -sS http://127.0.0.1:8011/api/v1/health
+        - PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q tests/test_labels.py
+      evidence:
+        - EV-TASK-102-HEALTH
+        - EV-TASK-102-LABEL-TESTS
+      limitations:
+        - 未通过页面生成真实标签，避免在用户业务库中增加测试记录；页面重试由用户确认。
+    result:
+      summary: 8011 旧 uvicorn 进程已替换为当前源码，health 从 0.1.0 更新为 1.0.4，标签专项测试 4 项通过；前端无需重新构建即可重试。
+      changed_files:
+        - .project-log/specs/TASK-102.md
+        - .project-log/tasks/task-list.yaml
+        - .project-log/tasks/task-list.md
+      deviations: []
+      follow_ups:
+        - 无 reload 的开发后端在源码更新后必须显式重启。
+    created_at: "2026-09-14T03:42:00Z"
+    updated_at: "2026-09-14T03:42:00Z"
+  - id: TASK-103
+    title: 标签选择即预览并调整打印入口
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 让 PC 标签页选择辅料后立即显示预览，并在点击“打印”时才生成正式标签记录。
+    status: in-progress
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [pc, labels, preview, print, ux]
+    related_business_logic: [BL-LABEL-002]
+    acceptance_refs: [AC-LABEL-002]
+    related_decisions: [DEC-037, DEC-043]
+    depends_on: [TASK-100, TASK-102]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing]
+    spec_ref: .project-log/specs/TASK-103.md
+    inputs:
+      - 当前 LabelsPage 先点击生成记录才显示预览
+      - 现有 createPrintBatch 返回 label_payloads 和真实 labelId
+      - DEC-043 已确认选择即预览、点击打印才落库
+    outputs:
+      - 选择辅料后的即时预览
+      - 名为“打印”的正式记录生成入口
+      - 预览与正式标签的清晰文案区分
+    plan:
+      - 同步 BL-LABEL-002 和 DEC-043
+      - 选择辅料时构造不落库的 preview payload
+      - 将按钮改为打印并保留正式标签记录生成
+      - 更新页面文案和提示
+      - 执行 PC 生产构建和交互验证
+    done_when:
+      - 切换辅料立即刷新右侧预览且不调用创建接口
+      - 点击打印后按数量生成正式标签记录
+      - 正式标签二维码继续包含真实 labelId
+      - 页面明确提示当前未发送真实打印任务
+      - PC 生产构建通过
+    verification:
+      status: pending
+      commands: []
+      evidence: []
+      limitations: []
+    result:
+      summary: null
+      changed_files: []
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-14T03:50:00Z"
+    updated_at: "2026-09-14T03:50:00Z"

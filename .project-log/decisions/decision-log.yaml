@@ -2366,3 +2366,64 @@ decisions:
     supersedes: []
     created_at: "2026-09-13T06:35:00Z"
     updated_at: "2026-09-13T06:35:00Z"
+  - id: DEC-043
+    title: 标签页改为选择即预览、点击打印时生成正式记录
+    category: product
+    status: active
+    authority: C
+    user_approval: required
+    related_tasks:
+      - TASK-103
+    related_business_logic:
+      - BL-LABEL-002
+    context: 当前 Demo 需要先点击“生成标签记录”才能在右侧看到标签，用户认为这一步冗余。用户确认希望选择辅料后立即显示标签预览，并将按钮改为“打印”，真实打印机逻辑后续补齐。
+    hypothesis: 将预览与实际标签记录解耦，选择辅料时只生成不落库的预览，点击“打印”时再生成正式 labelId 和标签记录，可以减少无用数据，同时保留后续真实打印接入点。
+    options:
+      - name: 选择即预览，点击打印才落库
+        benefits:
+          - 操作步骤更少
+          - 切换辅料不会产生无用标签记录
+          - 保留正式标签编号和数据追溯
+        costs:
+          - 预览二维码不能用于正式扫码确认
+          - 页面必须明确区分预览与正式标签
+        risks:
+          - 操作员可能误把预览二维码当作正式标签打印
+      - name: 选择辅料立即写入正式标签记录
+        benefits:
+          - 右侧预览二维码始终可直接扫码
+        costs:
+          - 浏览或切换辅料会产生大量无用记录
+          - 未执行打印却已生成正式标签
+        risks:
+          - 批次列表和审计数据被预览行为污染
+      - name: 维持先生成记录再显示
+        benefits:
+          - 当前实现不需要变化
+        costs:
+          - 操作步骤冗余
+          - 与用户希望的选择即预览不一致
+        risks:
+          - 现场操作效率较低
+    decision: 选择辅料后立即在右侧显示带 preview 标记的界面预览，不写入数据库；按钮名称改为“打印”，点击后按打印张数生成正式 labelId 和标签记录，但当前 Demo 不发送真实打印任务。
+    reason_summary:
+      - 用户明确要求选择辅料后直接展示标签
+      - 用户明确要求将“生成标签记录”按钮改为“打印”
+      - 预览不落库可以避免切换辅料造成无用记录
+    conditions:
+      - 预览二维码不得被当作正式业务标签使用
+      - 点击打印时才生成正式标签记录
+      - 当前演示版不得声称已完成物理打印
+      - 真实打印逻辑接入后继续复用同一按钮入口
+    action: 更新 BL-LABEL-002，创建 TASK-103，修改 PC 标签页选择、预览和按钮交互
+    expected_result: 选择辅料即可看到即时预览，只有点击打印才产生正式标签记录，页面明确提示未连接打印机
+    reversal_plan: 若客户要求预览即可扫码，则改为选择辅料时创建带状态的临时正式记录，并在切换时作废，需重新评审数据增长和审计规则
+    observation: 用户答复“可以没问题”
+    actual_result: 新的标签页交互规则已确认并进入实现
+    outcome_status: successful
+    lesson: 预览对象与正式业务记录应保持明确边界，UI 即时反馈不应自动产生长期审计数据
+    evidence:
+      - user-statement/2026-09-14 标签页选择即预览和打印入口
+    supersedes: []
+    created_at: "2026-09-14T03:50:00Z"
+    updated_at: "2026-09-14T03:50:00Z"
