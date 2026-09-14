@@ -10,7 +10,7 @@ const nav = [
   { label: '审批中心', icon: ShieldCheck, key: 'approvals' },
   { label: '辅料管理', icon: Database, key: 'materials' },
   { label: '产品与配方', icon: FileText, key: 'recipes' },
-  { label: '标签生成', icon: Printer, key: 'labels' },
+  { label: '标签打印', icon: Printer, key: 'labels' },
 ]
 
 function UserAvatar({ name, avatarUrl, small = false }: { name: string; avatarUrl: string; small?: boolean }) {

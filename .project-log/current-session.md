@@ -9,11 +9,13 @@
 
 ## 当前状态
 
-  - 当前阶段：implementation / TASK-090 至 TASK-096 已完成并转入外部验收
+  - 当前阶段：implementation / TASK-102 标签生成后端运行时已恢复
   - 当前目标：完成剩余生产级可本地实现缺口，并在真实 Android 平板、Windows 11 和公司内部 WiFi 完成独立验收
-  - 当前任务：TASK-090 至 TASK-096 已完成；TASK-083/084 等待真实环境验收
-  - 当前状态：Windows 安装器保留客户已有配置并执行有限超时 SMTP 自检；管理员可管理 BUG 邮件、导出辅料主数据并生成标签记录与二维码预览；Demo 标签语义已与真实打印范围对齐；平板证据照片 EXIF 解析已切换到 AndroidX 安全实现。专项测试、后端 105 项回归、PC 构建、Android 构建、Lint、浏览器交互和项目校验通过
-  - 下一步：TASK-083/084 分别等待 Windows 11 安装升级和公司内部 WiFi 完整工单验收；TASK-010/063/065/072 的 Windows 真机部分并入 TASK-083。真实打印机、正式无码放行规则和电子秤直连分别等待客户设备、质量规则或技术决策
+  - 当前任务：TASK-102 已完成；TASK-083/084 等待真实 Windows 11、Android 平板和内部 WiFi 验收
+  - 当前状态：`8011` 后端已从旧代码进程切换到当前源码，health 返回 `version=1.0.4`；标签专项测试 4 项通过，PC 页面可直接重试生成标签记录
+  - 下一步：在 PC 标签页重新点击生成标签记录，确认响应包含 `label_payloads`；随后继续安装 Windows `1.0.4` EXE 和 Android `1.0.3` APK，核对标签尺寸、真实扫码、覆盖升级、平板连接和完整工单
+  - 当前状态补记：`TASK-097` 已生成 Windows `1.0.2` EXE 和 Android `1.0.2`（versionCode 3）APK；全新数据库安装会初始化 4 种辅料、2 个配方和 1 张演示工单
+  - 当前状态补记：`TASK-098` 已允许 Android 服务器地址前两段在默认 `192.168` 基础上编辑，并生成 Android `1.0.3`（versionCode 4）APK；Windows 安装包保持 `1.0.2`
   - 当前状态补记：已核查 GPT 意见；用户确认真实标签打印机接入推迟到第一版 Demo 验收后，当前 Demo 只保留标签生成、二维码预览和记录；网络确定使用公司内部 WiFi，当前版本采用 HTTP，不引入证书和固定 IP 要求
   - 上一轮状态：TASK-068 功能审查稿和图标生成提示词已完成并通过敏感信息扫描；TASK-069 用户协议 V1.0 已完成
   - 当前状态补记：2026-09-13 确认平板连接失败根因是校园网客户端隔离，切换手机热点后可正常连接；针对完整 IPv4 输入的 1.0.1 修改已按用户要求撤销，恢复 Android 1.0.0 原有服务器设置方案
@@ -84,6 +86,42 @@
 2. 覆盖安装一次，确认 `%ProgramData%\MilkWeigh\data` 中数据库和证据文件保留
 3. 在真实 Android 平板安装发布签名 APK，回归登录、扫码、称重证据和 BUG 反馈
 4. 补充安装后 SMTP 非阻塞测试、自动备份调度和 Windows 实机升级验证
+
+## 2026-09-14 TASK-102 标签生成后端运行时恢复
+
+- PC 前端已校验后端真实 `label_payloads`，但 `8011` 后端进程仍加载 TASK-099 修改前的代码，因此生成成功后响应缺少真实标签编号
+- 终止旧进程并在 `milk-backend` tmux 会话中启动当前源码
+- 验证：health 返回 `version=1.0.4`、管理员登录成功、标签专项测试 4 项通过
+- 证据：EV-TASK-102-HEALTH、EV-TASK-102-LABEL-TESTS
+- 限制：未在用户业务库中生成测试标签，页面重试结果由用户确认
+
+## 2026-09-14 TASK-101 工单详情下拉刷新
+
+- 工单详情页复用 `MainShell` 已有的 `isRefreshing` 和 `refreshDataWithFeedback()`，未新增后端接口或重复刷新状态
+- 使用 Material 3 `PullToRefreshBox` 包裹详情页纵向滚动内容；刷新后由既有 `orders` 状态自动更新当前工单
+- 验证：Android Debug 构建和 Lint 通过；差异检查通过
+- 证据：EV-TASK-101-ANDROID-BUILD-LINT、EV-TASK-101-DIFF
+- 限制：尚未在真实 Android 平板执行下拉手势和弱网反馈验证
+
+## 2026-09-13 TASK-100 标签尺寸设置
+
+- PC 系统设置新增“标签尺寸”，参数键为 `label_size_mm`，格式 `宽x高`，单位毫米，默认 `60x40`
+- 服务端限制宽高均为 `10-300` 毫米，接受 `x`、`X` 或 `×`，统一保存为小写 `x`
+- 标签预览按配置宽高比例显示；生成标签时把尺寸快照写入 `label_payloads[].labelSize`
+- Windows 与后端版本提升到 `1.0.4`，生成 `牧衡辅料称重防错系统-Windows-1.0.4-Setup.exe`
+- 验证：设置与标签专项测试 12 项、完整后端回归、PC 生产构建、Windows NSIS 构建、差异检查和安装包 SHA-256 校验通过
+- 证据：EV-TASK-100-FOCUSED、EV-TASK-100-BACKEND、EV-TASK-100-PC-BUILD、EV-TASK-100-WINDOWS、EV-TASK-100-DIFF
+- 限制：真实 Windows 11 覆盖安装和真实打印机纸张适配仍待现场验证
+
+## 2026-09-13 TASK-099 PC 标签真实二维码修复
+
+- PC 标签页原先将 `labelId` 硬编码为 `PREVIEW`，生成的是无法在后台校验的伪标签二维码
+- `POST /labels/print-batches` 新增 `label_payloads`，返回与 `labels` 及数据库记录一致的真实二维码数据
+- PC 端只在生成成功后构建二维码；生成前显示不可扫描占位提示，无真实标签时禁用放大预览
+- Windows 与后端版本提升到 `1.0.3`，生成 `牧衡辅料称重防错系统-Windows-1.0.3-Setup.exe`
+- 验证：标签与证据专项测试 12 项、完整后端回归、PC 生产构建、Windows NSIS 构建、差异检查和安装包 SHA-256 校验通过
+- 证据：EV-TASK-099-FOCUSED、EV-TASK-099-BACKEND、EV-TASK-099-PC-BUILD、EV-TASK-099-WINDOWS、EV-TASK-099-DIFF
+- 限制：尚未在 Windows 11 执行覆盖安装，也未使用真实平板扫描本轮生成标签
 
 ## 2026-09-13 TASK-094 Demo 标签生成语义与业务原子对齐
 

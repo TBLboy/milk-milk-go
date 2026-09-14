@@ -14,7 +14,7 @@ PYTHON_EMBED_URLS=(
   "https://mirrors.huaweicloud.com/python/3.11.9/python-3.11.9-embed-amd64.zip"
   "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip"
 )
-APP_VERSION="1.0.1"
+APP_VERSION="1.0.4"
 OUTPUT_STAGE="$BUILD_ROOT/MilkWeigh-Windows-Setup.exe"
 OUTPUT_RELEASE="$RELEASE_DIR/牧衡辅料称重防错系统-Windows-${APP_VERSION}-Setup.exe"
 

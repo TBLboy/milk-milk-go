@@ -339,6 +339,7 @@ def initialize_database() -> None:
             "backup_enabled": "true",
             "backup_time": "02:00",
             "server_port": "8011",
+            "label_size_mm": "60x40",
         }
         for key, value in defaults.items():
             if db.query(SystemSetting).filter(SystemSetting.key == key).count() == 0:
