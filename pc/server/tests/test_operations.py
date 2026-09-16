@@ -55,7 +55,7 @@ def test_complete_backup_contains_database_evidence_config_and_checksums(client)
         manifest = json.loads(archive.read("manifest.json"))
         assert manifest["format_version"] == 1
         assert manifest["trigger"] == "manual"
-        assert manifest["app_version"] == "1.0.4"
+        assert manifest["app_version"] == "1.0.5"
         for component in manifest["components"]:
             payload = archive.read(component["path"])
             assert len(payload) == component["size_bytes"]

@@ -12,14 +12,30 @@ import android.graphics.Canvas
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.provider.MediaStore
+import android.util.Size
+import android.view.Surface
+import android.view.View
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.OptIn as AndroidxOptIn
+import androidx.camera.core.Camera
+import androidx.camera.core.ExperimentalGetImage
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
+import androidx.camera.view.PreviewView
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
@@ -83,6 +99,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -102,6 +119,8 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -118,6 +137,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -125,22 +145,37 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
 import androidx.core.content.ContextCompat
 import androidx.exifinterface.media.ExifInterface
-import com.google.zxing.BinaryBitmap
-import com.google.zxing.DecodeHintType
-import com.google.zxing.MultiFormatReader
-import com.google.zxing.RGBLuminanceSource
-import com.google.zxing.common.HybridBinarizer
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.ZoomSuggestionOptions
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.common.InputImage
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.max
+import kotlin.math.abs
+import kotlin.math.roundToInt
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
@@ -321,20 +356,37 @@ private data class ScannedQrPayload(
     val materialId: String,
 )
 
+private fun parseQrJson(raw: String): JSONObject? {
+    val normalized = raw.trim().removePrefix("\uFEFF").removeSurrounding("\"")
+    val start = normalized.indexOf('{')
+    val end = normalized.lastIndexOf('}')
+    if (start < 0 || end <= start) return null
+    return runCatching { JSONObject(normalized.substring(start, end + 1)) }.getOrNull()
+}
+
 private fun extractScannedQrPayload(raw: String): ScannedQrPayload? {
     val trimmed = raw.trim()
     if (trimmed.isEmpty()) return null
-    return runCatching {
-        val json = JSONObject(trimmed)
-        val materialId = json.optString("materialId").ifBlank { json.optString("material_id") }
-        val labelId = json.optString("labelId").ifBlank { json.optString("label_id") }
-        if (materialId.isBlank() || labelId.isBlank()) null else ScannedQrPayload(labelId = labelId, materialId = materialId)
-    }.getOrNull()
+    val json = parseQrJson(trimmed) ?: return null
+    val materialId = json.optString("materialId").ifBlank { json.optString("material_id") }
+    val labelId = json.optString("labelId").ifBlank { json.optString("label_id") }
+    return if (materialId.isBlank() || labelId.isBlank()) {
+        null
+    } else {
+        ScannedQrPayload(labelId = labelId, materialId = materialId)
+    }
+}
+
+private fun isPreviewQrPayload(raw: String): Boolean {
+    val trimmed = raw.trim()
+    if (trimmed.isEmpty()) return false
+    val json = parseQrJson(trimmed) ?: return false
+    return json.optBoolean("preview") &&
+        (json.optString("materialId").isNotBlank() || json.optString("material_id").isNotBlank())
 }
 
 private data class ProcessedEvidence(
     val photoUri: String,
-    val scannedQr: ScannedQrPayload?,
 )
 
 private fun decodeEvidenceBitmap(file: File, maxDimension: Int = 2400): Bitmap {
@@ -387,23 +439,12 @@ private fun normalizeEvidenceOrientation(file: File, bitmap: Bitmap): Bitmap {
     return normalized
 }
 
-private fun scanQrFromBitmap(bitmap: Bitmap): String? {
-    val pixels = IntArray(bitmap.width * bitmap.height)
-    bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
-    val source = RGBLuminanceSource(bitmap.width, bitmap.height, pixels)
-    val binaryBitmap = BinaryBitmap(HybridBinarizer(source))
-    val hints = mapOf(DecodeHintType.TRY_HARDER to true)
-    return runCatching { MultiFormatReader().decode(binaryBitmap, hints).text }.getOrNull()
-}
-
 private suspend fun processCapturedEvidence(
     context: Context,
     sourceFile: File,
     watermarkLines: List<String>,
-    scanQr: Boolean,
 ): ProcessedEvidence = withContext(Dispatchers.Default) {
     val bitmap = normalizeEvidenceOrientation(sourceFile, decodeEvidenceBitmap(sourceFile))
-    val scannedQr = if (scanQr) scanQrFromBitmap(bitmap)?.let(::extractScannedQrPayload) else null
     val output = bitmap.copy(Bitmap.Config.ARGB_8888, true) ?: error("无法处理拍摄照片")
     bitmap.recycle()
 
@@ -436,7 +477,6 @@ private suspend fun processCapturedEvidence(
     output.recycle()
     ProcessedEvidence(
         photoUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", outputFile).toString(),
-        scannedQr = scannedQr,
     )
 }
 
@@ -503,6 +543,8 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
     var username by remember { mutableStateOf(initialRemembered?.username.orEmpty()) }
     var password by remember { mutableStateOf(initialRemembered?.password.orEmpty()) }
     var displayName by remember { mutableStateOf("") }
+    var employeeNo by remember { mutableStateOf("") }
+    var registerPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var ipFirst by remember { mutableStateOf("192") }
     var ipSecond by remember { mutableStateOf("168") }
@@ -520,6 +562,21 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
     var showServerDialog by remember { mutableStateOf(false) }
     var registerSubmitted by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val view = LocalView.current
+    DisposableEffect(registerMode, view) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            view.importantForAutofill = if (registerMode) {
+                View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
+            } else {
+                View.IMPORTANT_FOR_AUTOFILL_AUTO
+            }
+        }
+        onDispose {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                view.importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_AUTO
+            }
+        }
+    }
     Box(modifier = Modifier.fillMaxSize()) {
         Image(
             painter = painterResource(R.drawable.app_main_bg),
@@ -604,8 +661,23 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
                     }
                     if (registerMode) {
                         OutlinedTextField(displayName, { displayName = it }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("姓名") }, singleLine = true)
+                        OutlinedTextField(
+                            employeeNo,
+                            { employeeNo = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("工号（可选）") },
+                            singleLine = true,
+                        )
                     }
-                    OutlinedTextField(password, { password = it }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("密码") }, visualTransformation = PasswordVisualTransformation(), singleLine = true)
+                    OutlinedTextField(
+                        if (registerMode) registerPassword else password,
+                        { if (registerMode) registerPassword = it else password = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text(if (registerMode) "新密码（至少 8 位）" else "密码") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        singleLine = true,
+                    )
                     if (registerMode) {
                         OutlinedTextField(confirmPassword, { confirmPassword = it }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("确认密码") }, visualTransformation = PasswordVisualTransformation(), singleLine = true)
                         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -641,22 +713,30 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
                         }
                         error = null
                         if (registerMode) {
-                            if (username.length < 3 || displayName.isBlank() || password.length < 8) {
+                            if (username.length < 3 || displayName.isBlank() || registerPassword.length < 8) {
                                 error = "请完整填写注册信息，密码至少 8 位"
                                 return@Button
                             }
-                            if (password != confirmPassword) {
+                            if (registerPassword != confirmPassword) {
                                 error = "两次输入的密码不一致"
                                 return@Button
                             }
                             scope.launch {
-                                runCatching { repository.register(username.trim(), displayName.trim(), password) }
+                                runCatching {
+                                    repository.register(
+                                        username.trim(),
+                                        displayName.trim(),
+                                        employeeNo.trim(),
+                                        registerPassword,
+                                    )
+                                }
                                     .onSuccess {
                                         registerSubmitted = it.message
                                         registerMode = false
                                         username = ""
                                         displayName = ""
-                                        password = ""
+                                        employeeNo = ""
+                                        registerPassword = ""
                                         confirmPassword = ""
                                         agreed = false
                                     }
@@ -688,7 +768,12 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
                                 onClick = { showForgotDialog = true },
                                 modifier = Modifier.padding(start = 0.dp),
                             ) { Text("忘记密码", color = Green) }
-                            TextButton(onClick = { registerMode = true; error = null }) { Text("帐号注册", color = Green) }
+                            TextButton(onClick = {
+                                registerMode = true
+                                registerPassword = ""
+                                confirmPassword = ""
+                                error = null
+                            }) { Text("帐号注册", color = Green) }
                             TextButton(onClick = { showAgreementDialog = true }) { Text("用户协议", color = Green) }
                         }
                     } else {
@@ -2155,87 +2240,67 @@ private fun TypeConfirmationDialog(
     onUpdated: (WorkOrder) -> Unit,
 ) {
     val approvalMode = step.status == StepStatus.TYPE_CONFIRMATION
-    var labelId by remember { mutableStateOf("") }
-    var materialId by remember { mutableStateOf("") }
     var reason by remember { mutableStateOf("") }
     var photoUri by remember { mutableStateOf<String?>(null) }
-    var cameraOutputPath by rememberSaveable { mutableStateOf<String?>(null) }
+    var scannerOpen by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var working by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
-    val cameraLauncher = rememberLauncherForActivityResult(EvidenceTakePicture()) { saved ->
-        val outputFile = cameraOutputPath?.let(::File)
-        val captured = outputFile != null && (saved || outputFile.length() > 0L)
-        if (captured) {
-            working = true
-            error = null
-            labelId = ""
-            materialId = ""
-            reason = ""
-            photoUri = null
-            scope.launch {
-                runCatching {
-                    processCapturedEvidence(
-                        context = context,
-                        sourceFile = outputFile,
-                        watermarkLines = evidenceWatermarkLines(order, step, operatorName, "类型确认"),
-                        scanQr = true,
-                    )
-                }.onSuccess { processed ->
-                    photoUri = processed.photoUri
-                    labelId = processed.scannedQr?.labelId.orEmpty()
-                    materialId = processed.scannedQr?.materialId.orEmpty()
-                }.onFailure {
-                    error = "照片处理失败：${it.message}"
-                }
-                working = false
-            }
-        } else if (saved) {
-            error = "相机未返回有效照片，请重新拍摄"
-        }
+    val openScanner = cameraPermissionLauncher {
+        error = null
+        scannerOpen = true
     }
-    val launchEvidenceCamera = cameraPermissionLauncher {
-        val output = createCameraOutput(context)
-        cameraOutputPath = output.file.absolutePath
-        runCatching { cameraLauncher.launch(output.uri) }
-            .onFailure { error = "无法启动相机：${it.message}" }
+
+    if (scannerOpen) {
+        TypeQrScannerDialog(
+            order = order,
+            step = step,
+            operatorName = operatorName,
+            repository = repository,
+            onConfirmed = onUpdated,
+            onNoCodePhoto = { capturedUri ->
+                photoUri = capturedUri
+                reason = ""
+                error = null
+                scannerOpen = false
+            },
+            onDismiss = { scannerOpen = false },
+        )
     }
+
     AlertDialog(
-        onDismissRequest = { if (!working) onDismiss() },
+        onDismissRequest = { if (!working && !scannerOpen) onDismiss() },
         title = { Text("类型确认 · 步骤 ${step.stepNo}") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text("当前步骤要求：${step.materialName} · ${step.materialCode}", color = Ink, fontWeight = FontWeight.Bold)
+                Text("当前步骤要求：${step.materialName} · ${step.materialCode} · ${step.materialId}", color = Ink, fontWeight = FontWeight.Bold)
                 Text("应称 ${step.requiredWeightKg} kg · 允差 ±${step.toleranceKg} kg", color = Muted)
                 if (approvalMode) {
                     Text("已提交无码拍照申请，等待后台审批。", color = Muted)
                 } else {
+                    Text("对准二维码后系统会自动识别并确认，无需手动拍照。", color = Muted, fontSize = 14.sp)
                     OutlinedButton(
-                        onClick = launchEvidenceCamera,
+                        onClick = openScanner,
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !working,
                     ) {
                         Icon(Icons.Default.CameraAlt, null)
                         Spacer(Modifier.width(6.dp))
-                        Text(if (photoUri == null) "拍照扫码" else "重新拍照扫码")
+                        Text(if (photoUri == null) "打开拍照扫码" else "重新拍摄无码照片")
                     }
                     if (working) {
-                        Text("正在处理照片并识别二维码...", color = Muted)
+                        Text("正在提交照片审批...", color = Muted)
                     }
                     if (photoUri != null && !working) {
-                        if (labelId.isNotBlank() && materialId.isNotBlank()) {
-                            Text("二维码识别结果：$materialId · $labelId", color = Ink, fontWeight = FontWeight.Bold)
-                        } else {
-                            Text("未识别到二维码，可填写原因后提交后台拍照审批。", color = Color(0xFFC9854C), fontSize = 14.sp)
-                            OutlinedTextField(
-                                reason,
-                                { reason = it; error = null },
-                                modifier = Modifier.fillMaxWidth(),
-                                label = { Text("放行原因") },
-                                singleLine = true,
-                            )
-                        }
+                        Text("已拍摄无码包装照片，请选择或填写放行原因。", color = Color(0xFFC9854C), fontSize = 14.sp)
+                        OutlinedTextField(
+                            reason,
+                            { reason = it; error = null },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("无码原因") },
+                            placeholder = { Text("例如：包装本身没有二维码") },
+                            singleLine = true,
+                        )
                     }
                 }
                 error?.let { Text(it, color = Color(0xFFC7473C), fontSize = 14.sp) }
@@ -2255,18 +2320,6 @@ private fun TypeConfirmationDialog(
                         }
                     }
                 }, enabled = !working) { Text("审批通过") }
-                labelId.isNotBlank() && materialId.isNotBlank() -> Button(onClick = {
-                    if (!working) {
-                        working = true
-                        error = null
-                        scope.launch {
-                            runCatching { repository.confirmStepQr(order.orderNo, step.stepNo, labelId, materialId, photoUri.orEmpty()) }
-                                .onSuccess { onUpdated(it) }
-                                .onFailure { error = it.message }
-                                .also { working = false }
-                        }
-                    }
-                }, enabled = !working && photoUri != null) { Text("确认类型") }
                 photoUri != null -> Button(onClick = {
                     if (!working) {
                         working = true
@@ -2279,11 +2332,333 @@ private fun TypeConfirmationDialog(
                         }
                     }
                 }, enabled = !working && reason.isNotBlank()) { Text("提交拍照申请") }
-                else -> Button(onClick = {}, enabled = false) { Text("请先拍照扫码") }
+                else -> Button(onClick = {}, enabled = false) { Text("请先打开拍照扫码") }
             }
         },
         dismissButton = { TextButton(onClick = { if (!working) onDismiss() }) { Text("取消") } },
     )
+}
+
+private enum class TypeScannerMode {
+    QR,
+    PHOTO,
+}
+
+@AndroidxOptIn(markerClass = [ExperimentalGetImage::class])
+@Composable
+private fun TypeQrScannerDialog(
+    order: WorkOrder,
+    step: WorkOrderStep,
+    operatorName: String,
+    repository: MilkRepository,
+    onConfirmed: (WorkOrder) -> Unit,
+    onNoCodePhoto: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val scope = rememberCoroutineScope()
+    val previewView = remember {
+        PreviewView(context).apply {
+            scaleType = PreviewView.ScaleType.FILL_CENTER
+            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+        }
+    }
+    val imageCapture = remember {
+        ImageCapture.Builder()
+            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+            .build()
+    }
+    val imageAnalysis = remember {
+        ImageAnalysis.Builder()
+            .setResolutionSelector(
+                ResolutionSelector.Builder()
+                    .setResolutionStrategy(
+                        ResolutionStrategy(
+                            Size(1280, 720),
+                            ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER,
+                        ),
+                    )
+                    .build(),
+            )
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .build()
+    }
+    var camera by remember { mutableStateOf<Camera?>(null) }
+    var maxZoomRatio by remember { mutableStateOf(1f) }
+    val cameraState = rememberUpdatedState(camera)
+    val maxZoomState = rememberUpdatedState(maxZoomRatio)
+    val zoomSuggestionsEnabled = remember { AtomicBoolean(true) }
+    val zoomRequestCount = remember { AtomicInteger(0) }
+    val lastZoomRequestAt = remember { AtomicLong(0L) }
+    val lastRequestedZoom = remember { AtomicReference(0f) }
+    val barcodeScanner = remember {
+        val zoomOptions = ZoomSuggestionOptions.Builder { requestedZoom ->
+            val cameraControl = cameraState.value?.cameraControl
+            if (cameraControl == null || !zoomSuggestionsEnabled.get() || zoomRequestCount.get() >= 4) {
+                false
+            } else {
+                val maxZoom = maxZoomState.value.coerceAtLeast(1f)
+                val currentZoom = cameraState.value?.cameraInfo?.zoomState?.value?.zoomRatio ?: 1f
+                val targetZoom = ((requestedZoom.coerceIn(1f, maxZoom) * 2f).roundToInt() / 2f)
+                val now = SystemClock.elapsedRealtime()
+                when {
+                    abs(targetZoom - currentZoom) < 0.2f -> true
+                    now - lastZoomRequestAt.get() < 700L -> true
+                    abs(targetZoom - lastRequestedZoom.get()) < 0.25f -> true
+                    else -> {
+                        lastZoomRequestAt.set(now)
+                        lastRequestedZoom.set(targetZoom)
+                        zoomRequestCount.incrementAndGet()
+                        cameraControl.setZoomRatio(targetZoom)
+                        true
+                    }
+                }
+            }
+        }
+            .setMaxSupportedZoomRatio(8f)
+            .build()
+        val scannerOptions = BarcodeScannerOptions.Builder()
+            .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+            .enableAllPotentialBarcodes()
+            .setZoomSuggestionOptions(zoomOptions)
+            .build()
+        BarcodeScanning.getClient(scannerOptions)
+    }
+    val analysisExecutor = remember { Executors.newSingleThreadExecutor() }
+    val processing = remember { AtomicBoolean(false) }
+    val mainExecutor = remember(context) { ContextCompat.getMainExecutor(context) }
+    var mode by remember { mutableStateOf(TypeScannerMode.QR) }
+    val currentMode = rememberUpdatedState(mode)
+    var cameraProvider by remember { mutableStateOf<ProcessCameraProvider?>(null) }
+    val providerState = rememberUpdatedState(cameraProvider)
+    var showNoCodeAction by remember { mutableStateOf(false) }
+    var working by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var cameraError by remember { mutableStateOf<String?>(null) }
+    var scanHint by remember { mutableStateOf("正在启动相机...") }
+
+    suspend fun captureStill(): File {
+        val directory = File(context.cacheDir, "evidence").apply { mkdirs() }
+        val file = File.createTempFile("scanner_", ".jpg", directory)
+        return suspendCancellableCoroutine { continuation ->
+            continuation.invokeOnCancellation { file.delete() }
+            val options = ImageCapture.OutputFileOptions.Builder(file).build()
+            imageCapture.takePicture(
+                options,
+                mainExecutor,
+                object : ImageCapture.OnImageSavedCallback {
+                    override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                        if (continuation.isActive) continuation.resume(file)
+                    }
+
+                    override fun onError(exception: ImageCaptureException) {
+                        file.delete()
+                        if (continuation.isActive) continuation.resumeWithException(exception)
+                    }
+                },
+            )
+        }
+    }
+
+    suspend fun captureAndProcess(payload: ScannedQrPayload?) {
+        working = true
+        error = null
+        runCatching {
+            val sourceFile = captureStill()
+            val processed = processCapturedEvidence(
+                context = context,
+                sourceFile = sourceFile,
+                watermarkLines = evidenceWatermarkLines(order, step, operatorName, "类型确认"),
+            )
+            sourceFile.delete()
+            if (payload == null) {
+                onNoCodePhoto(processed.photoUri)
+            } else {
+                val updated = repository.confirmStepQr(
+                    orderNo = order.orderNo,
+                    stepNo = step.stepNo,
+                    labelId = payload.labelId,
+                    materialId = payload.materialId,
+                    evidenceUri = processed.photoUri,
+                )
+                onConfirmed(updated)
+            }
+        }.onFailure {
+            error = it.message ?: "照片处理失败，请重新尝试"
+            processing.set(false)
+        }
+        working = false
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            analysisExecutor.shutdown()
+            barcodeScanner.close()
+            providerState.value?.unbindAll()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        delay(5000)
+        showNoCodeAction = true
+    }
+
+    LaunchedEffect(lifecycleOwner, previewView) {
+        imageAnalysis.setAnalyzer(analysisExecutor) { imageProxy ->
+            if (currentMode.value != TypeScannerMode.QR || processing.get()) {
+                imageProxy.close()
+                return@setAnalyzer
+            }
+            val mediaImage = imageProxy.image
+            if (mediaImage == null) {
+                imageProxy.close()
+                return@setAnalyzer
+            }
+            val input = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+            barcodeScanner.process(input)
+                .addOnSuccessListener { barcodes ->
+                    if (currentMode.value != TypeScannerMode.QR || processing.get()) return@addOnSuccessListener
+                    val payload = barcodes.asSequence()
+                        .mapNotNull { it.rawValue }
+                        .mapNotNull(::extractScannedQrPayload)
+                        .firstOrNull()
+                    if (payload != null && processing.compareAndSet(false, true)) {
+                        scope.launch { captureAndProcess(payload) }
+                    } else if (barcodes.mapNotNull { it.rawValue }.any(::isPreviewQrPayload)) {
+                        zoomSuggestionsEnabled.set(false)
+                        scanHint = "这是标签预览二维码，请先在电脑端点击“打印”生成正式标签"
+                    } else if (barcodes.any { !it.rawValue.isNullOrBlank() }) {
+                        zoomSuggestionsEnabled.set(false)
+                        scanHint = "已识别到二维码，但内容不是本系统正式标签"
+                    } else if (barcodes.isNotEmpty()) {
+                        scanHint = "已检测到二维码，正在自动放大并解析..."
+                    }
+                }
+                .addOnCompleteListener {
+                    imageProxy.close()
+                }
+        }
+        runCatching {
+            val provider = withContext(Dispatchers.IO) {
+                ProcessCameraProvider.getInstance(context).get()
+            }
+            cameraProvider = provider
+            val preview = Preview.Builder().build().also {
+                it.setSurfaceProvider(previewView.surfaceProvider)
+            }
+            val rotation = previewView.display?.rotation ?: Surface.ROTATION_0
+            imageCapture.targetRotation = rotation
+            imageAnalysis.targetRotation = rotation
+            provider.unbindAll()
+            val boundCamera = provider.bindToLifecycle(
+                lifecycleOwner,
+                androidx.camera.core.CameraSelector.DEFAULT_BACK_CAMERA,
+                preview,
+                imageCapture,
+                imageAnalysis,
+            )
+            camera = boundCamera
+            maxZoomRatio = boundCamera.cameraInfo.zoomState.value?.maxZoomRatio ?: 1f
+            scanHint = "将二维码对准取景框，系统会自动识别"
+            cameraError = null
+        }.onFailure {
+            cameraError = "无法启动相机：${it.message}"
+            scanHint = "相机启动失败"
+        }
+    }
+
+    Dialog(
+        onDismissRequest = { if (!working && !processing.get()) onDismiss() },
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+        ) {
+            AndroidView(
+                factory = { previewView },
+                modifier = Modifier.fillMaxSize(),
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(260.dp)
+                    .border(3.dp, Green, RoundedCornerShape(18.dp)),
+            )
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .background(Color.Black.copy(alpha = 0.58f))
+                    .padding(horizontal = 18.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("类型确认 · 步骤 ${step.stepNo}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text("当前要求：${step.materialCode} ${step.materialName} · ${step.materialId}", color = Color.White.copy(alpha = 0.82f), fontSize = 14.sp)
+                }
+                IconButton(onClick = { if (!working && !processing.get()) onDismiss() }) {
+                    Icon(Icons.Default.Close, "关闭", tint = Color.White)
+                }
+            }
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .background(Color.Black.copy(alpha = 0.66f))
+                    .padding(horizontal = 24.dp, vertical = 18.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                when (mode) {
+                    TypeScannerMode.QR -> {
+                        Text(scanHint, color = Color.White, fontWeight = FontWeight.Bold)
+                        if (showNoCodeAction) {
+                            OutlinedButton(onClick = {
+                                mode = TypeScannerMode.PHOTO
+                                error = null
+                            }) {
+                                Icon(Icons.Default.CameraAlt, null)
+                                Spacer(Modifier.width(6.dp))
+                                Text("没有二维码？拍照申请放行")
+                            }
+                        }
+                    }
+                    TypeScannerMode.PHOTO -> {
+                        Text("无码拍照模式", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("请完整拍摄包装外观，拍摄后填写放行原因", color = Color.White.copy(alpha = 0.82f), fontSize = 14.sp)
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            TextButton(onClick = { mode = TypeScannerMode.QR }) {
+                                Text("返回扫码", color = Color.White)
+                            }
+                            Button(onClick = { scope.launch { captureAndProcess(null) } }, enabled = !working) {
+                                Icon(Icons.Default.CameraAlt, null)
+                                Spacer(Modifier.width(6.dp))
+                                Text("拍摄包装照片")
+                            }
+                        }
+                    }
+                }
+                cameraError?.let { Text(it, color = Color(0xFFFFB4AB), fontSize = 14.sp) }
+                error?.let { Text(it, color = Color(0xFFFFB4AB), fontSize = 14.sp) }
+            }
+            if (working) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.72f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        CircularProgressIndicator(color = Green)
+                        Text("正在保存现场照片并提交...", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -2318,7 +2693,6 @@ private fun WeightDialog(
                         context = context,
                         sourceFile = outputFile,
                         watermarkLines = evidenceWatermarkLines(order, step, operatorName, "电子秤读数"),
-                        scanQr = false,
                     )
                 }.onSuccess { processed ->
                     photoUri = processed.photoUri

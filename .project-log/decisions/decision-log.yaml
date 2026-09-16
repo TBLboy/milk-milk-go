@@ -2368,10 +2368,10 @@ decisions:
     updated_at: "2026-09-13T06:35:00Z"
   - id: DEC-043
     title: 标签页改为选择即预览、点击打印时生成正式记录
-    category: product
+    category: business
     status: active
     authority: C
-    user_approval: required
+    user_approval: approved
     related_tasks:
       - TASK-103
     related_business_logic:
@@ -2427,3 +2427,68 @@ decisions:
     supersedes: []
     created_at: "2026-09-14T03:50:00Z"
     updated_at: "2026-09-14T03:50:00Z"
+  - id: DEC-044
+    title: 类型确认改为实时扫码自动抓拍并自动确认
+    category: business
+    status: active
+    authority: C
+    user_approval: approved
+    related_tasks:
+      - TASK-104
+    related_business_logic:
+      - BL-RECOG-001
+      - BL-EVID-001
+      - BL-WEIGH-005
+    context: 当前类型确认要求用户先拍照再解析二维码，角度不理想时需要反复拍摄。用户确认改为打开摄像头实时识别，二维码识别成功后自动保存当前画面；识别结果正确时自动确认，不再要求用户手动拍照或再次点击确认。无二维码时仍需提供现场拍照和后台审批入口。
+    hypothesis: 将识别与现场证据采集合并为一次自动扫码抓拍，可以减少现场重复操作，同时保留本系统二维码校验、操作员水印、照片证据和错误拦截能力。
+    options:
+      - name: 实时扫码自动抓拍并自动确认
+        benefits:
+          - 无需反复拍照重试
+          - 识别与证据采集在同一次现场操作中完成
+          - 正确辅料可立即进入称重
+        costs:
+          - Android 端需要 CameraX 和 ML Kit 依赖
+          - 真机兼容性需要现场验收
+        risks:
+          - 识别成功到抓拍之间二维码移出画面时抓拍可能失败
+      - name: 保留手工拍照后解析
+        benefits:
+          - 实现简单且现有流程无需变化
+        costs:
+          - 角度不合适时需多次拍照重试
+          - 现场操作效率较低
+        risks:
+          - 操作员为了通过流程可能反复尝试，影响体验
+      - name: 实时扫码但不自动抓拍
+        benefits:
+          - 用户可确认抓拍时机
+        costs:
+          - 仍需额外操作
+          - 识别与确认之间可能出现画面变化
+        risks:
+          - 没有完全解决重复拍照问题
+    decision: 类型确认改为打开后置摄像头实时检测二维码；识别到包含 labelId 和 materialId 的本系统有效二维码后，系统自动抓拍当前画面、添加现场水印并调用现有类型确认接口；识别结果正确时自动进入称重步骤。识别失败或错误时保持扫码并提示，连续 5 秒无有效二维码时显示“没有二维码？拍照申请放行”，无码照片固定绑定当前步骤辅料，填写原因后提交后台审批。
+    reason_summary:
+      - 用户反馈手动拍照扫码角度不理想且需要多次重试
+      - 用户明确要求识别后自动保存图片
+      - 用户明确要求结果正确时自动确认
+      - 无码流程仍需保留现场拍照与后台审批
+    conditions:
+      - 只接受能解析出 labelId 和 materialId 的本系统二维码触发抓拍
+      - 供应商码、预览码和无效码不得自动确认
+      - 抓拍照片必须包含操作员、时间、工单和步骤水印
+      - 错误辅料由后端拒绝，界面继续停留在扫码状态
+      - 无码审批通过前不得进入重量确认
+    action: 引入 CameraX 和 ML Kit，重做 APP 类型确认扫码界面，保留现有后端确认和拍照审批接口
+    expected_result: 平板打开类型确认后只需对准二维码，系统自动完成识别、抓拍、留证和正确辅料确认；无码时仍可现场拍照并提交审批
+    reversal_plan: 若真实平板存在普遍性兼容或识别问题，可恢复手工拍照入口并保留实时识别作为辅助，不修改后端数据模型和审批接口
+    observation: 用户答复“可以，你先按照这个逻辑实现一版本，然后我再检查验收”
+    actual_result: Android 实时扫码抓拍和自动确认代码已实现，等待真实平板验收
+    outcome_status: successful
+    lesson: 现场扫码应把识别与证据采集合并为同一次低操作成本会话，同时保持证据来源和服务端校验不可绕过
+    evidence:
+      - user-statement/2026-09-14 实时扫码自动抓拍并自动确认
+    supersedes: []
+    created_at: "2026-09-14T04:14:55Z"
+    updated_at: "2026-09-14T04:14:55Z"

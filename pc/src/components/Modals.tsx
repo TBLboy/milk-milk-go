@@ -329,7 +329,7 @@ export function OrderDetailModal({ orderNo, onClose, onSuccess }: { orderNo: str
               </div>
               <div className="step-copy">
                 <strong>步骤 {step.step_no} · {step.material_name}</strong>
-                <span>内部代号 {step.material_code} · 应称 {step.required_weight_kg} kg · 允差 ±{step.tolerance_kg} kg</span>
+                <span>内部代号 {step.material_code} · 辅料 ID {step.material_id} · 应称 {step.required_weight_kg} kg · 允差 ±{step.tolerance_kg} kg</span>
                 <StepEvidence step={step} />
               </div>
               <span className="step-status">{step.status === 'completed' ? '已完成' : step.status === 'weighing' ? '待称重' : step.status === 'type_confirmation' ? '待审批' : '待确认'}</span>

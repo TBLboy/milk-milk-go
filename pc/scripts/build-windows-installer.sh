@@ -14,9 +14,21 @@ PYTHON_EMBED_URLS=(
   "https://mirrors.huaweicloud.com/python/3.11.9/python-3.11.9-embed-amd64.zip"
   "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip"
 )
-APP_VERSION="1.0.4"
+APP_VERSION="1.0.5"
 OUTPUT_STAGE="$BUILD_ROOT/MilkWeigh-Windows-Setup.exe"
 OUTPUT_RELEASE="$RELEASE_DIR/牧衡辅料称重防错系统-Windows-${APP_VERSION}-Setup.exe"
+DEMO_MATERIAL_IMAGE_IDS=(
+  "FILE-7f014209079f8bb72d1ffcc7"
+  "FILE-de3e92b165b028854881aed2"
+  "FILE-5e607996c8a06ceaca9ef951"
+  "FILE-ca585337246d195956b87179"
+  "FILE-92b5154561699d6f8e645d83"
+  "FILE-734589df56298ab824901c0a"
+  "FILE-45eeeef499a05d0f6927b4cc"
+  "FILE-3a172e22eb7ab931e58104f0"
+  "FILE-3b2fcd46ca0324c9fe2cd2cc"
+  "FILE-1b859f40464b081cec1d9836"
+)
 
 mkdir -p "$BUILD_ROOT" "$PAYLOAD_DIR" "$CONFIG_STAGE" "$RELEASE_DIR"
 rm -rf "$PAYLOAD_DIR" "$CONFIG_STAGE" "$TOOLS_DIR"
@@ -46,6 +58,18 @@ cp "$PC_DIR/packaging/windows/seed_install.py" "$PAYLOAD_DIR/server/seed_install
 cp "$PC_DIR/packaging/windows/MilkWeighService.py" "$PAYLOAD_DIR/server/MilkWeighService.py"
 cp "$PC_DIR/packaging/windows/smtp_test.py" "$PAYLOAD_DIR/server/smtp_test.py"
 cp "$PC_DIR/packaging/windows/restore_backup.ps1" "$PAYLOAD_DIR/server/restore_backup.ps1"
+mkdir -p "$PAYLOAD_DIR/server/demo_assets/uploads"
+for file_id in "${DEMO_MATERIAL_IMAGE_IDS[@]}"; do
+  source_dir="$PC_DIR/data/uploads/${file_id:0:8}"
+  mapfile -t matches < <(find "$source_dir" -maxdepth 1 -type f -name "${file_id}.*" -print)
+  if [[ "${#matches[@]}" -ne 1 ]]; then
+    echo "演示辅料图片缺失或重复：${file_id}" >&2
+    exit 1
+  fi
+  target_dir="$PAYLOAD_DIR/server/demo_assets/uploads/${file_id:0:8}"
+  mkdir -p "$target_dir"
+  cp "${matches[0]}" "$target_dir/"
+done
 find "$PAYLOAD_DIR/server" -type d -name "__pycache__" -prune -exec rm -rf {} +
 find "$PAYLOAD_DIR/server" -type f -name "*.pyc" -delete
 

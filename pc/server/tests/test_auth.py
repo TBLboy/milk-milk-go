@@ -10,6 +10,7 @@ def test_operator_registration_and_admin_protection(client):
     assert registered.status_code == 201
     assert registered.json()["status"] == "pending"
     assert registered.json()["submitted"] is True
+    assert registered.json()["employee_no"] == ""
     login = client.post("/api/v1/auth/login", json={"username": "operator01", "password": "operator123"})
     assert login.status_code == 403
 
@@ -139,6 +140,32 @@ def test_duplicate_registration_is_rejected(client):
     duplicate = client.post("/api/v1/auth/register", json=body)
     assert duplicate.status_code == 409
     assert duplicate.json()["detail"]["code"] == "USERNAME_EXISTS"
+
+
+def test_operator_registration_accepts_optional_employee_no(client):
+    registered = client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": "employee_registration",
+            "display_name": "自主注册员工",
+            "employee_no": " MH0300 ",
+            "password": "operator123",
+        },
+    )
+    assert registered.status_code == 201
+    assert registered.json()["employee_no"] == "MH0300"
+
+    duplicate = client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": "employee_registration_2",
+            "display_name": "重复工号员工",
+            "employee_no": "MH0300",
+            "password": "operator123",
+        },
+    )
+    assert duplicate.status_code == 409
+    assert duplicate.json()["detail"]["code"] == "EMPLOYEE_NO_EXISTS"
 
 
 def test_admin_create_user_and_reset_password(client):

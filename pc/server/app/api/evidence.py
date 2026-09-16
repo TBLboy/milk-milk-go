@@ -1,3 +1,4 @@
+import json
 import hashlib
 import secrets
 from datetime import datetime, timezone
@@ -11,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.api.auth import current_user, require_admin
 from app.core.config import get_settings
-from app.db.models import EvidenceFile, Label, TypeConfirmation, User, WeighingAttempt, WorkOrderStep
+from app.db.models import EvidenceFile, Label, Material, TypeConfirmation, User, WeighingAttempt, WorkOrderStep
 from app.db.session import get_db
 from app.services.audit import write_audit
 from app.services.idempotency import execute_idempotent
@@ -43,6 +44,36 @@ class WeightSubmission(BaseModel):
 class PhotoRequest(BaseModel):
     reason: str = Field(min_length=1, max_length=500)
     file_id: str = Field(min_length=1, max_length=64)
+
+
+def _material_identity(db: Session, material_id: str, label: Label | None = None) -> dict[str, str]:
+    material = db.scalar(select(Material).where(Material.material_id == material_id))
+    if material is not None:
+        return {
+            "material_id": material.material_id,
+            "material_code": material.material_code,
+            "material_name": material.name_zh,
+        }
+
+    if label is not None and label.payload_json:
+        try:
+            payload = json.loads(label.payload_json)
+        except (TypeError, ValueError):
+            payload = {}
+        return {
+            "material_id": material_id,
+            "material_code": str(payload.get("materialCode") or payload.get("material_code") or ""),
+            "material_name": str(payload.get("name") or payload.get("materialName") or ""),
+        }
+
+    return {"material_id": material_id, "material_code": "", "material_name": ""}
+
+
+def _material_identity_text(identity: dict[str, str]) -> str:
+    code = identity.get("material_code", "").strip()
+    name = identity.get("material_name", "").strip()
+    label = " ".join(part for part in (code, name) if part) or "未登记辅料"
+    return f"{label}（{identity['material_id']}）"
 
 
 def get_step(db: Session, order_no: str, step_no: int) -> WorkOrderStep:
@@ -166,15 +197,42 @@ def confirm_qr(
             status="rejected",
         )
 
-        rejection: tuple[str, str] | None = None
+        label_identity = _material_identity(db, label.material_id, label) if label is not None else None
+        scanned_identity = _material_identity(
+            db,
+            body.material_id,
+            label if label is not None and label.material_id == body.material_id else None,
+        )
+        required_identity = {
+            "material_id": step.material_id_snapshot,
+            "material_code": step.material_code_snapshot,
+            "material_name": step.material_name_snapshot,
+        }
+
+        rejection: dict | None = None
         if label is None:
-            rejection = ("LABEL_NOT_FOUND", "二维码标签不存在")
+            rejection = {"code": "LABEL_NOT_FOUND", "message": "二维码标签不存在"}
         elif label.status != "active":
-            rejection = ("LABEL_NOT_ACTIVE", "二维码标签已失效")
+            rejection = {"code": "LABEL_NOT_ACTIVE", "message": "二维码标签已失效"}
         elif label.material_id != body.material_id:
-            rejection = ("LABEL_MATERIAL_MISMATCH", "二维码标签与扫描到的辅料不一致")
+            rejection = {
+                "code": "LABEL_MATERIAL_MISMATCH",
+                "message": (
+                    "二维码标签与扫描结果不一致："
+                    f"标签为 {_material_identity_text(label_identity)}，"
+                    f"扫描结果为 {_material_identity_text(scanned_identity)}"
+                ),
+            }
         elif body.material_id != step.material_id_snapshot:
-            rejection = ("MATERIAL_MISMATCH", "扫描到的辅料与当前步骤要求不一致")
+            rejection = {
+                "code": "MATERIAL_MISMATCH",
+                "message": (
+                    "扫描到的辅料与当前步骤要求不一致："
+                    f"当前步骤要求 {_material_identity_text(required_identity)}，"
+                    f"扫描标签为 {_material_identity_text(scanned_identity)}。"
+                    "请确认当前工单是否使用了最新配方。"
+                ),
+            }
 
         if rejection is not None:
             db.add(confirmation)
@@ -192,12 +250,13 @@ def confirm_qr(
                     "step_no": step_no,
                     "required_material_id": step.material_id_snapshot,
                     "scanned_material_id": body.material_id,
+                    "label_material_id": label.material_id if label is not None else None,
                     "scanned_label_id": body.label_id,
-                    "reason": rejection[0],
+                    "reason": rejection["code"],
                 },
             )
             db.commit()
-            raise HTTPException(status_code=422, detail={"code": rejection[0], "message": rejection[1]})
+            raise HTTPException(status_code=422, detail=rejection)
 
         confirmation.status = "passed"
         db.add(confirmation)

@@ -27,14 +27,16 @@ class RealMilkRepository(
         return refreshUser()
     }
 
-    override suspend fun register(username: String, displayName: String, password: String): RegistrationResult {
+    override suspend fun register(username: String, displayName: String, employeeNo: String, password: String): RegistrationResult {
+        val body = JSONObject()
+            .put("username", username)
+            .put("display_name", displayName)
+            .put("password", password)
+        employeeNo.trim().takeIf { it.isNotEmpty() }?.let { body.put("employee_no", it) }
         val response = jsonObjectRequest(
             path = "auth/register",
             method = "POST",
-            body = JSONObject()
-                .put("username", username)
-                .put("display_name", displayName)
-                .put("password", password),
+            body = body,
         )
         return RegistrationResult(
             username = response.optString("username", username),

@@ -131,7 +131,7 @@ data class RecipeVersion(
 
 interface MilkRepository {
     suspend fun login(username: String, password: String): AppUser
-    suspend fun register(username: String, displayName: String, password: String): RegistrationResult
+    suspend fun register(username: String, displayName: String, employeeNo: String, password: String): RegistrationResult
     suspend fun refreshUser(): AppUser
     suspend fun uploadAvatar(uri: String): String
     suspend fun uploadImage(uri: String): String
@@ -531,7 +531,7 @@ class MockMilkRepository : MilkRepository {
         ).also { mockUser = it }
     }
 
-    override suspend fun register(username: String, displayName: String, password: String): RegistrationResult {
+    override suspend fun register(username: String, displayName: String, employeeNo: String, password: String): RegistrationResult {
         if (username.length < 3 || displayName.isBlank() || password.length < 8) error("请检查注册信息")
         return RegistrationResult(username, "pending", "注册申请已提交，等待管理员审批")
     }

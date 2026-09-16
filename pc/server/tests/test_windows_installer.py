@@ -54,3 +54,20 @@ def test_windows_installer_runs_bounded_smtp_self_test_after_service_start():
         'cp "$PC_DIR/packaging/windows/smtp_test.py" '
         '"$PAYLOAD_DIR/server/smtp_test.py"'
     ) in build_script
+
+
+def test_windows_installer_packages_demo_master_data_assets():
+    pc_root = Path(__file__).resolve().parents[2]
+    build_script = (pc_root / "scripts" / "build-windows-installer.sh").read_text(
+        encoding="utf-8"
+    )
+    seed_installer = (
+        pc_root / "packaging" / "windows" / "seed_install.py"
+    ).read_text(encoding="utf-8")
+
+    assert 'DEMO_MATERIAL_IMAGE_IDS=(' in build_script
+    assert 'payload/server/demo_assets/uploads' in build_script.replace(
+        "$PAYLOAD_DIR/", "payload/"
+    )
+    assert 'MILK_DEMO_ASSETS_DIR' in seed_installer
+    assert build_script.count('"FILE-') == 10
