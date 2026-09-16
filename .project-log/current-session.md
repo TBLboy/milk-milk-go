@@ -9,11 +9,11 @@
 
 ## 当前状态
 
-  - 当前阶段：implementation / TASK-109 注册页密码自动填充与可选工号已实现
+  - 当前阶段：implementation / TASK-119 构建最新版 Windows 安装包和 Android APK
   - 当前目标：完成剩余生产级可本地实现缺口，并在真实 Android 平板、Windows 11 和公司内部 WiFi 完成独立验收
-  - 当前任务：TASK-109 已完成注册密码状态隔离、注册模式自动填充排除、可选工号字段、后端保存和唯一性校验；真实平板复验待执行
-  - 当前状态：注册密码不再复用登录保存密码；注册页可填写可选工号，后端留空允许提交、审批前仍要求管理员补齐，填写后直接保存并检查唯一性
-  - 下一步：下一次统一打包时重建 Android APK，在真实平板验证注册页密码框不会带入保存密码且工号可正常提交
+  - 当前任务：TASK-119 已完成 Windows 1.0.6 EXE 与 Android 1.0.14 APK 构建和产物校验
+  - 当前状态：Windows PE 安装器、Android v2/v3 签名、版本清单和 SHA-256 校验均通过
+  - 下一步：在 Windows 11 客户机和 Android 平板安装本轮产物，执行真实场景回归
   - 当前状态补记：TASK-103 已收口；PC 标签页选择辅料即显示 preview 预览且不落库，点击“打印”才创建正式标签记录并显示真实 `labelId`
   - 当前状态补记：用户反馈浏览器可扫码但 APP 长时间无法识别；已提高分析分辨率并接入 ML Kit 自动缩放，修复版本为 Android `1.0.5`
   - 当前状态补记：用户反馈正确二维码偶尔提示非本系统标签且镜头反复缩放；已区分 `preview=true` 的预览码，并限制自动缩放抖动，修复版本为 Android `1.0.6`
@@ -89,6 +89,66 @@
 2. 覆盖安装一次，确认 `%ProgramData%\MilkWeigh\data` 中数据库和证据文件保留
 3. 在真实 Android 平板安装发布签名 APK，回归登录、扫码、称重证据和 BUG 反馈
 4. 补充安装后 SMTP 非阻塞测试、自动备份调度和 Windows 实机升级验证
+
+## 2026-09-16 TASK-119 构建最新版 Windows 安装包和 Android APK
+
+- PC 版本提升到 `1.0.6`，Android 保持 `1.0.14` / `versionCode 15`
+- Windows 输出：`发布版本/牧衡辅料称重防错系统-Windows-1.0.6-Setup.exe`
+- Android 输出：`发布版本/牧衡辅料称重防错系统-Android-1.0.14.apk`
+- Windows SHA-256：`ee42405a7db666a1219d243958b0e03d8ff73d124f4e769e78330fe633620df0`
+- Android SHA-256：`7a1f665b8be93edbf06abc7631d889b99e74da7f1ecdb300034c6ea38b9086a1`
+- 验证：PE32 安装器有效；Android v2/v3 签名有效；清单版本 `1.0.14/15`；两个 `.sha256` 文件匹配；`git diff --check` 通过
+- 证据：EV-TASK-119-WINDOWS、EV-TASK-119-ANDROID、EV-TASK-119-VERIFY、EV-TASK-119-DIFF
+- 限制：未在真实 Windows 11 客户机和 Android 平板执行安装及端到端业务验收
+
+## 2026-09-16 TASK-111 注册历史账号串入与工单执行人越权
+
+- 注册账号改用独立状态；进入或退出注册模式时重建账号输入框并清除焦点，避免登录保存账号及 Android 自动填充浮层串入
+- 工单详情新增当前执行人判断：非执行普通操作员只可查看和申请接管，不显示类型确认、填写称重、开始执行、提交完成和申请撤销
+- 后端证据提交、开始、完成和撤销申请统一要求管理员或 `order.operator_id == current_user.id`；创建人不再自动获得执行权限
+- 新增接管后原创建人失去开始权限的回归测试，并保留未审批工单返回状态冲突的既有契约
+- 后端专项 37 项、完整回归、Android Kotlin 编译与 Lint、差异检查通过
+- Android `1.0.9`（`versionCode=10`）已构建，v2/v3 签名和 SHA-256 校验通过；`8011` 已重启并返回健康状态
+- 证据：EV-TASK-111-BACKEND-FOCUSED、EV-TASK-111-BACKEND-SUITE、EV-TASK-111-ANDROID-BUILD-LINT、EV-TASK-111-APK、EV-TASK-111-RUNTIME、EV-TASK-111-DIFF
+- 限制：真实平板的密码管理器行为与双账号越权复验尚未执行
+
+## 2026-09-16 TASK-112 限制电脑端工作台最新工单为 5 条
+
+- 电脑端工作台“最新工单”在搜索和状态筛选后只截取前 5 条，避免工单数量增加后纵向无限拉长
+- 完整工单列表不受影响，继续通过“查看全部”进入工单管理页
+- `npm run build` 通过；Playwright 注入 8 个模拟工单后页面实际只渲染 5 行
+- 证据：EV-TASK-112-PC-BUILD、EV-TASK-112-UI、EV-TASK-112-DIFF
+
+## 2026-09-16 TASK-115 超差重量不上传证据并禁止提交
+
+- 新增 `POST /evidence/work-orders/{order_no}/steps/{step_no}/weight/validate`，只校验执行人、步骤状态和重量允差，不接收照片
+- APP `submitStepWeight` 改为先调用重量预校验，只有返回 `passed` 才上传电子秤读数照片并正式提交
+- 正式称重接口在超差时返回 `422 WEIGHT_OUT_OF_TOLERANCE`，且不再创建 `WeighingAttempt`；超差照片不会进入后端
+- 后端专项 20 项、完整回归、Android 干净编译与 Lint、调用顺序检查、8011 运行接口和差异检查通过
+- Android `1.0.12`（`versionCode=13`）已构建，v2/v3 签名和 SHA-256 校验通过；产物在 `发布版本/牧衡辅料称重防错系统-Android-1.0.12.apk`
+- 证据：EV-TASK-115-BACKEND-FOCUSED、EV-TASK-115-BACKEND-SUITE、EV-TASK-115-ANDROID-BUILD-LINT、EV-TASK-115-NO-PREUPLOAD、EV-TASK-115-APK、EV-TASK-115-RUNTIME、EV-TASK-115-DIFF
+- 限制：真实平板的超差重量、正确重量和重新称重三条路径尚未人工回归
+
+## 2026-09-16 TASK-114 错误二维码不上传类型确认照片
+
+- 后端新增 `POST /evidence/work-orders/{order_no}/steps/{step_no}/qr/validate`，只校验登录/执行人权限、步骤状态、标签存在与有效、标签和扫描结果一致、扫描辅料与步骤快照一致，不接收照片
+- 预校验和正式确认共用 `_evaluate_qr_scan`，正式确认仍保留二次校验，避免绕过或标签在提交前失效
+- APP `captureAndProcess` 改为 `validateStepQr -> captureStill -> process -> upload -> confirmStepQr`；无码拍照申请继续直接拍摄
+- 错误标签、无效标签、错误辅料和工单快照不匹配均不会创建 `EvidenceFile`
+- 后端专项 13 项、完整回归、Android Kotlin 编译与 Lint、调用顺序静态检查、8011 接口加载和差异检查通过
+- Android `1.0.11`（`versionCode=12`）已构建，v2/v3 签名和 SHA-256 校验通过；产物在 `发布版本/牧衡辅料称重防错系统-Android-1.0.11.apk`
+- 证据：EV-TASK-114-BACKEND-FOCUSED、EV-TASK-114-BACKEND-SUITE、EV-TASK-114-ANDROID-BUILD-LINT、EV-TASK-114-NO-PRECAPTURE、EV-TASK-114-APK、EV-TASK-114-RUNTIME、EV-TASK-114-DIFF
+- 限制：真实平板的错误二维码、正确二维码和无码申请三条路径尚未人工回归
+
+## 2026-09-16 TASK-113 删除 APP 类型确认扫码自动缩放
+
+- 删除 ML Kit `ZoomSuggestionOptions`、自动变焦状态、最大倍率、节流计数和 CameraX `setZoomRatio` 调用
+- 二维码检测提示改为“请保持镜头稳定”，不再出现自动放大或自动缩放文案
+- 保留 1280x720 分析分辨率、正式标签解析、自动抓拍上传和无码申请流程
+- Android Kotlin 编译与 Lint 通过，源码静态检查确认自动缩放代码无残留
+- Android `1.0.10`（`versionCode=11`）已构建，v2/v3 签名和 SHA-256 校验通过
+- 证据：EV-TASK-113-ANDROID-BUILD-LINT、EV-TASK-113-NO-ZOOM、EV-TASK-113-APK、EV-TASK-113-DIFF
+- 限制：真实平板上的镜头倍率稳定性仍需最终复验
 
 ## 2026-09-15 TASK-108 同名辅料扫码不一致诊断
 

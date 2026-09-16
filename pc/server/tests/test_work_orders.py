@@ -47,6 +47,80 @@ def test_operator_order_requires_admin_approval(client):
     assert client.post(f"/api/v1/work-orders/{response.json()['order_no']}/start", headers={"Authorization": f"Bearer {token}"}).status_code == 409
 
 
+def test_only_assigned_operator_can_start_and_complete_order(client):
+    headers = admin_headers(client)
+    product_id = create_product(client, headers)
+    assigned = client.post(
+        "/api/v1/auth/users",
+        headers=headers,
+        json={"username": "assigned_operator", "display_name": "执行人", "password": "operator123", "employee_no": "MH1010"},
+    ).json()["user"]
+    other = client.post(
+        "/api/v1/auth/users",
+        headers=headers,
+        json={"username": "other_operator", "display_name": "其他操作员", "password": "operator123", "employee_no": "MH1011"},
+    ).json()["user"]
+    assigned_headers = {
+        "Authorization": f"Bearer {client.post('/api/v1/auth/login', json={'username': 'assigned_operator', 'password': 'operator123'}).json()['access_token']}"
+    }
+    other_headers = {
+        "Authorization": f"Bearer {client.post('/api/v1/auth/login', json={'username': 'other_operator', 'password': 'operator123'}).json()['access_token']}"
+    }
+    order = client.post(
+        "/api/v1/work-orders",
+        headers=headers,
+        json={"product_id": product_id, "target_weight_kg": 1000, "operator_id": assigned["id"]},
+    ).json()
+
+    denied_start = client.post(f"/api/v1/work-orders/{order['order_no']}/start", headers=other_headers)
+    assert denied_start.status_code == 403
+    assert denied_start.json()["detail"]["code"] == "WORK_ORDER_OPERATOR_REQUIRED"
+    assert client.post(f"/api/v1/work-orders/{order['order_no']}/start", headers=assigned_headers).status_code == 200
+
+    denied_complete = client.post(f"/api/v1/work-orders/{order['order_no']}/complete", headers=other_headers)
+    assert denied_complete.status_code == 403
+    assert denied_complete.json()["detail"]["code"] == "WORK_ORDER_OPERATOR_REQUIRED"
+
+
+def test_work_order_creator_cannot_operate_after_takeover(client):
+    headers = admin_headers(client)
+    product_id = create_product(client, headers)
+    creator = client.post(
+        "/api/v1/auth/users",
+        headers=headers,
+        json={"username": "creator_operator", "display_name": "原创建人", "password": "operator123", "employee_no": "MH1014"},
+    ).json()["user"]
+    replacement = client.post(
+        "/api/v1/auth/users",
+        headers=headers,
+        json={"username": "replacement_operator", "display_name": "接管执行人", "password": "operator123", "employee_no": "MH1015"},
+    ).json()["user"]
+    creator_headers = {
+        "Authorization": f"Bearer {client.post('/api/v1/auth/login', json={'username': 'creator_operator', 'password': 'operator123'}).json()['access_token']}"
+    }
+    replacement_headers = {
+        "Authorization": f"Bearer {client.post('/api/v1/auth/login', json={'username': 'replacement_operator', 'password': 'operator123'}).json()['access_token']}"
+    }
+    order = client.post(
+        "/api/v1/work-orders",
+        headers=creator_headers,
+        json={"product_id": product_id, "target_weight_kg": 1000},
+    ).json()
+    assert client.post(f"/api/v1/work-orders/{order['order_no']}/approve", headers=headers).status_code == 200
+
+    takeover = client.post(
+        f"/api/v1/work-orders/{order['order_no']}/requests",
+        headers=replacement_headers,
+        json={"request_type": "takeover", "reason": "现场接替执行"},
+    ).json()
+    assert client.post(f"/api/v1/work-orders/requests/{takeover['id']}/approve", headers=headers).status_code == 200
+
+    denied = client.post(f"/api/v1/work-orders/{order['order_no']}/start", headers=creator_headers)
+    assert denied.status_code == 403
+    assert denied.json()["detail"]["code"] == "WORK_ORDER_OPERATOR_REQUIRED"
+    assert client.post(f"/api/v1/work-orders/{order['order_no']}/start", headers=replacement_headers).status_code == 200
+
+
 def test_pending_work_order_appears_in_admin_approvals(client):
     headers = admin_headers(client)
     product_id = create_product(client, headers)

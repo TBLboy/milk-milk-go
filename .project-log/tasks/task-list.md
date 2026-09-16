@@ -105,6 +105,16 @@ Active goal: -
 | TASK-107 | done | task | high | 将当前 Demo 主数据写入安装包并重建发布文件 |
 | TASK-108 | implemented-unverified | repair | critical | 增强同名辅料扫码不一致诊断 |
 | TASK-109 | implemented-unverified | repair | high | 修复注册页密码自动填充并支持注册人填写可选工号 |
+| TASK-110 | implemented-unverified | repair | high | 修复已驳回账号无法重新注册 |
+| TASK-111 | implemented-unverified | repair | critical | 修复注册历史账号串入与工单执行人越权 |
+| TASK-112 | done | repair | high | 限制电脑端工作台最新工单为 5 条 |
+| TASK-113 | implemented-unverified | repair | high | 删除 APP 类型确认扫码自动缩放 |
+| TASK-114 | implemented-unverified | repair | critical | 错误二维码不上传类型确认照片 |
+| TASK-115 | implemented-unverified | repair | critical | 超差重量不上传证据并禁止提交 |
+| TASK-116 | implemented-unverified | repair | critical | 重量读数变化或提交失败后作废旧照片 |
+| TASK-117 | implemented-unverified | repair | medium | 强化 APP 应称重量视觉警示 |
+| TASK-118 | done | task | high | 电脑端动态下拉框支持输入搜索 |
+| TASK-119 | done | milestone | high | 构建最新版 Windows 安装包和 Android APK |
 
 ## verification
 

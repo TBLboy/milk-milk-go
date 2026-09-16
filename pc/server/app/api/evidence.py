@@ -36,9 +36,18 @@ class QRConfirmation(BaseModel):
     evidence_file_id: str = Field(min_length=1, max_length=64)
 
 
+class QRValidation(BaseModel):
+    label_id: str = Field(min_length=1, max_length=64)
+    material_id: str = Field(min_length=1, max_length=32)
+
+
 class WeightSubmission(BaseModel):
     weight_kg: float = Field(ge=0, le=1_000_000)
     scale_photo_file_id: str = Field(min_length=1, max_length=64)
+
+
+class WeightValidation(BaseModel):
+    weight_kg: float = Field(ge=0, le=1_000_000)
 
 
 class PhotoRequest(BaseModel):
@@ -84,8 +93,78 @@ def get_step(db: Session, order_no: str, step_no: int) -> WorkOrderStep:
 
 
 def authorize_step(step: WorkOrderStep, user: User) -> None:
-    if user.role != "admin" and step.work_order.operator_id != user.id and step.work_order.created_by != user.id:
-        raise HTTPException(status_code=404, detail={"code": "STEP_NOT_FOUND", "message": "工单步骤不存在"})
+    if user.role != "admin" and step.work_order.operator_id != user.id:
+        raise HTTPException(
+            status_code=403,
+            detail={"code": "WORK_ORDER_OPERATOR_REQUIRED", "message": "只有当前执行人可以操作该工单"},
+        )
+
+
+def _evaluate_qr_scan(
+    db: Session,
+    step: WorkOrderStep,
+    label_id: str,
+    material_id: str,
+) -> tuple[Label | None, dict | None, dict[str, str], dict[str, str], dict[str, str]]:
+    label = db.scalar(select(Label).where(Label.label_id == label_id))
+    label_identity = _material_identity(db, label.material_id, label) if label is not None else None
+    scanned_identity = _material_identity(
+        db,
+        material_id,
+        label if label is not None and label.material_id == material_id else None,
+    )
+    required_identity = {
+        "material_id": step.material_id_snapshot,
+        "material_code": step.material_code_snapshot,
+        "material_name": step.material_name_snapshot,
+    }
+
+    rejection: dict | None = None
+    if label is None:
+        rejection = {"code": "LABEL_NOT_FOUND", "message": "二维码标签不存在"}
+    elif label.status != "active":
+        rejection = {"code": "LABEL_NOT_ACTIVE", "message": "二维码标签已失效"}
+    elif label.material_id != material_id:
+        rejection = {
+            "code": "LABEL_MATERIAL_MISMATCH",
+            "message": (
+                "二维码标签与扫描结果不一致："
+                f"标签为 {_material_identity_text(label_identity)}，"
+                f"扫描结果为 {_material_identity_text(scanned_identity)}"
+            ),
+        }
+    elif material_id != step.material_id_snapshot:
+        rejection = {
+            "code": "MATERIAL_MISMATCH",
+            "message": (
+                "扫描到的辅料与当前步骤要求不一致："
+                f"当前步骤要求 {_material_identity_text(required_identity)}，"
+                f"扫描标签为 {_material_identity_text(scanned_identity)}。"
+                "请确认当前工单是否使用了最新配方。"
+            ),
+        }
+
+    return label, rejection, label_identity or {}, scanned_identity, required_identity
+
+
+def _evaluate_weight(step: WorkOrderStep, weight_kg: float) -> tuple[bool, dict]:
+    passed = abs(weight_kg - step.required_weight_kg) <= step.tolerance_kg
+    result = {
+        "required_weight_kg": step.required_weight_kg,
+        "tolerance_kg": step.tolerance_kg,
+        "weight_kg": weight_kg,
+    }
+    if not passed:
+        result.update(
+            {
+                "code": "WEIGHT_OUT_OF_TOLERANCE",
+                "message": (
+                    f"称重 {weight_kg:g} kg，超出允差范围 "
+                    f"{step.required_weight_kg:g} ± {step.tolerance_kg:g} kg，请重新称重。"
+                ),
+            }
+        )
+    return passed, result
 
 
 @router.post("/files", status_code=status.HTTP_201_CREATED)
@@ -169,6 +248,37 @@ def get_evidence_file(file_id: str, user: User = Depends(current_user), db: Sess
     return FileResponse(path, media_type=evidence.content_type)
 
 
+@router.post("/work-orders/{order_no}/steps/{step_no}/qr/validate")
+def validate_qr(
+    order_no: str,
+    step_no: int,
+    body: QRValidation,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    step = get_step(db, order_no, step_no)
+    authorize_step(step, user)
+    if step.status not in {"pending", "type_confirmation"}:
+        raise HTTPException(status_code=409, detail={"code": "STEP_STATE_CONFLICT", "message": "当前步骤不允许类型确认"})
+
+    _, rejection, _, scanned_identity, _ = _evaluate_qr_scan(
+        db,
+        step,
+        body.label_id,
+        body.material_id,
+    )
+    if rejection is not None:
+        raise HTTPException(status_code=422, detail=rejection)
+
+    return {
+        "status": "valid",
+        "label_id": body.label_id,
+        "material_id": body.material_id,
+        "material_code": scanned_identity["material_code"],
+        "material_name": scanned_identity["material_name"],
+    }
+
+
 @router.post("/work-orders/{order_no}/steps/{step_no}/qr")
 def confirm_qr(
     order_no: str,
@@ -186,7 +296,12 @@ def confirm_qr(
         evidence = db.scalar(select(EvidenceFile).where(EvidenceFile.file_id == body.evidence_file_id, EvidenceFile.uploaded_by == user.id))
         if evidence is None:
             raise HTTPException(status_code=422, detail={"code": "EVIDENCE_NOT_FOUND", "message": "类型确认照片证据不存在"})
-        label = db.scalar(select(Label).where(Label.label_id == body.label_id))
+        label, rejection, label_identity, scanned_identity, required_identity = _evaluate_qr_scan(
+            db,
+            step,
+            body.label_id,
+            body.material_id,
+        )
         confirmation = TypeConfirmation(
             work_order_step_id=step.id,
             method="qr",
@@ -196,43 +311,6 @@ def confirm_qr(
             created_by=user.id,
             status="rejected",
         )
-
-        label_identity = _material_identity(db, label.material_id, label) if label is not None else None
-        scanned_identity = _material_identity(
-            db,
-            body.material_id,
-            label if label is not None and label.material_id == body.material_id else None,
-        )
-        required_identity = {
-            "material_id": step.material_id_snapshot,
-            "material_code": step.material_code_snapshot,
-            "material_name": step.material_name_snapshot,
-        }
-
-        rejection: dict | None = None
-        if label is None:
-            rejection = {"code": "LABEL_NOT_FOUND", "message": "二维码标签不存在"}
-        elif label.status != "active":
-            rejection = {"code": "LABEL_NOT_ACTIVE", "message": "二维码标签已失效"}
-        elif label.material_id != body.material_id:
-            rejection = {
-                "code": "LABEL_MATERIAL_MISMATCH",
-                "message": (
-                    "二维码标签与扫描结果不一致："
-                    f"标签为 {_material_identity_text(label_identity)}，"
-                    f"扫描结果为 {_material_identity_text(scanned_identity)}"
-                ),
-            }
-        elif body.material_id != step.material_id_snapshot:
-            rejection = {
-                "code": "MATERIAL_MISMATCH",
-                "message": (
-                    "扫描到的辅料与当前步骤要求不一致："
-                    f"当前步骤要求 {_material_identity_text(required_identity)}，"
-                    f"扫描标签为 {_material_identity_text(scanned_identity)}。"
-                    "请确认当前工单是否使用了最新配方。"
-                ),
-            }
 
         if rejection is not None:
             db.add(confirmation)
@@ -406,6 +484,24 @@ def approve_photo_confirmation(
     )
 
 
+@router.post("/work-orders/{order_no}/steps/{step_no}/weight/validate")
+def validate_weight(
+    order_no: str,
+    step_no: int,
+    body: WeightValidation,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    step = get_step(db, order_no, step_no)
+    authorize_step(step, user)
+    if step.status != "weighing":
+        raise HTTPException(status_code=409, detail={"code": "STEP_NOT_READY_FOR_WEIGHT", "message": "请先完成辅料类型确认"})
+    passed, result = _evaluate_weight(step, body.weight_kg)
+    if not passed:
+        raise HTTPException(status_code=422, detail=result)
+    return {"status": "passed", **result}
+
+
 @router.post("/work-orders/{order_no}/steps/{step_no}/weight")
 def submit_weight(
     order_no: str,
@@ -420,40 +516,40 @@ def submit_weight(
         authorize_step(step, user)
         if step.status != "weighing":
             raise HTTPException(status_code=409, detail={"code": "STEP_NOT_READY_FOR_WEIGHT", "message": "请先完成辅料类型确认"})
+        passed, weight_result = _evaluate_weight(step, body.weight_kg)
+        if not passed:
+            raise HTTPException(status_code=422, detail=weight_result)
         evidence = db.scalar(select(EvidenceFile).where(EvidenceFile.file_id == body.scale_photo_file_id, EvidenceFile.uploaded_by == user.id))
         if evidence is None:
             raise HTTPException(status_code=422, detail={"code": "SCALE_PHOTO_REQUIRED", "message": "请上传当前操作员拍摄的电子秤读数照片"})
-        passed = abs(body.weight_kg - step.required_weight_kg) <= step.tolerance_kg
         attempt = WeighingAttempt(work_order_step_id=step.id, weight_kg=body.weight_kg, weight_source="manual", scale_photo_file_id=body.scale_photo_file_id, passed=passed, created_by=user.id)
         db.add(attempt)
         db.flush()
-        if passed:
-            step_update = db.execute(
-                update(WorkOrderStep)
-                .where(WorkOrderStep.id == step.id, WorkOrderStep.status == "weighing")
-                .values(status="completed")
-            )
-            if step_update.rowcount != 1:
-                raise HTTPException(status_code=409, detail={"code": "STEP_STATE_CONFLICT", "message": "当前步骤已被其他设备完成"})
+        step_update = db.execute(
+            update(WorkOrderStep)
+            .where(WorkOrderStep.id == step.id, WorkOrderStep.status == "weighing")
+            .values(status="completed")
+        )
+        if step_update.rowcount != 1:
+            raise HTTPException(status_code=409, detail={"code": "STEP_STATE_CONFLICT", "message": "当前步骤已被其他设备完成"})
         write_audit(
             db,
             actor_id=user.id,
-            action="weighing.passed" if passed else "weighing.rejected",
+            action="weighing.passed",
             resource_type="weighing_attempt",
             resource_id=attempt.id,
             work_order_no=order_no,
-            result="success" if passed else "rejected",
+            result="success",
             detail={
                 "step_no": step_no,
                 "material_id": step.material_id_snapshot,
                 "required_weight_kg": step.required_weight_kg,
                 "tolerance_kg": step.tolerance_kg,
                 "submitted_weight_kg": body.weight_kg,
-                "reason": None if passed else "OUT_OF_TOLERANCE",
             },
         )
         return {
-            "status": "passed" if passed else "out_of_tolerance",
+            "status": "passed",
             "required_weight_kg": step.required_weight_kg,
             "tolerance_kg": step.tolerance_kg,
             "weight_kg": body.weight_kg,

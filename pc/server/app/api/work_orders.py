@@ -223,8 +223,15 @@ def start_work_order(
 ) -> dict:
     def operation() -> dict:
         order = _load_order(db, order_no)
-        if order is None or (user.role != "admin" and order.operator_id != user.id and order.created_by != user.id):
+        if order is None:
             raise HTTPException(status_code=404, detail={"code": "WORK_ORDER_NOT_FOUND", "message": "工单不存在"})
+        if order.status != "approved":
+            raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STATE_CONFLICT", "message": "工单尚未获得执行许可"})
+        if user.role != "admin" and order.operator_id != user.id:
+            raise HTTPException(
+                status_code=403,
+                detail={"code": "WORK_ORDER_OPERATOR_REQUIRED", "message": "只有当前执行人可以开始该工单"},
+            )
         result = db.execute(
             update(WorkOrder)
             .where(WorkOrder.id == order.id, WorkOrder.status == "approved")
@@ -319,8 +326,13 @@ def complete_work_order(
 ) -> dict:
     def operation() -> dict:
         order = _load_order(db, order_no)
-        if order is None or (user.role != "admin" and order.operator_id != user.id and order.created_by != user.id):
+        if order is None:
             raise HTTPException(status_code=404, detail={"code": "WORK_ORDER_NOT_FOUND", "message": "工单不存在"})
+        if user.role != "admin" and order.operator_id != user.id:
+            raise HTTPException(
+                status_code=403,
+                detail={"code": "WORK_ORDER_OPERATOR_REQUIRED", "message": "只有当前执行人可以完成该工单"},
+            )
         if any(step.status != "completed" for step in order.steps):
             raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STEPS_INCOMPLETE", "message": "所有辅料步骤完成前不能提交工单"})
         result = db.execute(

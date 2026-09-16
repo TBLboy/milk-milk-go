@@ -73,11 +73,16 @@ def create_work_order_request(
         _check_no_pending_request(db, order)
 
         if body.request_type == "takeover":
-            if order.operator_id == user.id or order.created_by == user.id:
+            if order.operator_id == user.id:
                 raise HTTPException(status_code=409, detail={"code": "ALREADY_BOUND", "message": "当前账号已是该工单的执行人"})
             if order.status not in ACTIVE_STATUSES:
                 raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STATE_CONFLICT", "message": "当前工单状态不能申请接管"})
         else:
+            if order.operator_id != user.id:
+                raise HTTPException(
+                    status_code=403,
+                    detail={"code": "WORK_ORDER_OPERATOR_REQUIRED", "message": "只有当前执行人可以申请撤销该工单"},
+                )
             if order.status not in ACTIVE_STATUSES:
                 raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STATE_CONFLICT", "message": "当前工单状态不能申请撤销"})
 

@@ -10,7 +10,7 @@ KEYSTORE="${MILK_APP_KEYSTORE:-$SIGNING_DIR/milkweigh-release.jks}"
 SIGNING_PROPERTIES="$SIGNING_DIR/signing.properties"
 JAVA_HOME="${JAVA_HOME:-/home/tbl/android-studio/jbr}"
 ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
-APP_VERSION="1.0.6"
+APP_VERSION="1.0.14"
 APK_NAME="牧衡辅料称重防错系统-Android-${APP_VERSION}.apk"
 
 if [[ ! -x "$JAVA_HOME/bin/java" ]]; then

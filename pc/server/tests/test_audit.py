@@ -287,8 +287,8 @@ def test_rejected_photo_and_weight_attempts_are_audited(client):
         headers=admin,
         json={"weight_kg": 8, "scale_photo_file_id": scale_file_id},
     )
-    assert rejected_weight.status_code == 200
-    assert rejected_weight.json()["status"] == "out_of_tolerance"
+    assert rejected_weight.status_code == 422
+    assert rejected_weight.json()["detail"]["code"] == "WEIGHT_OUT_OF_TOLERANCE"
 
     events = client.get(
         "/api/v1/operations/audit-logs",
@@ -299,7 +299,7 @@ def test_rejected_photo_and_weight_attempts_are_audited(client):
     assert ("type_confirmation.photo_requested", "success") in rejected
     assert ("type_confirmation.rejected", "rejected") in rejected
     assert ("type_confirmation.passed", "success") in rejected
-    assert ("weighing.rejected", "rejected") in rejected
+    assert ("weighing.rejected", "rejected") not in rejected
 
 
 def test_idempotent_replay_does_not_duplicate_audit_event(client):

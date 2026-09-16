@@ -6,6 +6,7 @@ import { api } from '../services/api'
 import { CreateMaterialModal, CreateOrderModal, CreateProductModal, CreateUserModal, EvidenceThumb, MaterialImageModal, Modal, OrderDetailModal, RecipeDetailModal } from '../components/Modals'
 import { StatusFilter } from '../components/StatusFilter'
 import { Pagination } from '../components/Pagination'
+import { SearchableSelect } from '../components/SearchableSelect'
 import { useAutoRefresh } from '../hooks/useAutoRefresh'
 import type {
   BugReportRecord,
@@ -699,19 +700,20 @@ export function LabelsPage() {
           {successNotice && <div className="info-note success" style={{ color: '#16a34a', borderColor: '#bbf7d0', background: '#f0fdf4' }}>{successNotice}</div>}
           <label>
             选择辅料
-            <select
+            <SearchableSelect
               value={selectedMat?.material_id || ''}
-              onChange={(e) => {
-                const found = materials.find((m) => m.material_id === e.target.value)
+              options={materials.map((m) => ({
+                value: m.material_id,
+                label: `${m.name_zh} · ${m.material_code}`,
+                keywords: `${m.name_zh} ${m.material_code} ${m.name_en || ''} ${m.material_id}`,
+              }))}
+              onChange={(nextValue) => {
+                const found = materials.find((m) => m.material_id === nextValue)
                 if (found) setSelectedMat(found)
               }}
-            >
-              {materials.map((m) => (
-                <option key={m.material_id} value={m.material_id}>
-                  {m.name_zh} · {m.material_code}
-                </option>
-              ))}
-            </select>
+              placeholder="输入辅料名称或代号搜索"
+              emptyMessage="没有匹配的辅料"
+            />
           </label>
           <div className="quantity-field">
             <span className="field-label">打印张数</span>
@@ -960,10 +962,20 @@ export function AuditLogsPage() {
         </label>
         <label>
           操作人员
-          <select value={draft.actorId} onChange={(event) => setDraft({ ...draft, actorId: event.target.value })}>
-            <option value="">全部人员</option>
-            {users.map((user) => <option key={user.id} value={user.id}>{user.display_name} · {user.username}</option>)}
-          </select>
+          <SearchableSelect
+            value={draft.actorId}
+            options={[
+              { value: '', label: '全部人员', keywords: '全部' },
+              ...users.map((user) => ({
+                value: String(user.id),
+                label: `${user.display_name} · ${user.username}`,
+                keywords: `${user.display_name} ${user.username} ${user.employee_no || ''}`,
+              })),
+            ]}
+            onChange={(nextValue) => setDraft({ ...draft, actorId: nextValue })}
+            placeholder="输入姓名或账号搜索"
+            emptyMessage="没有匹配的人员"
+          />
         </label>
         <label>
           工单号
@@ -971,19 +983,35 @@ export function AuditLogsPage() {
         </label>
         <label>
           操作类型
-          <select value={draft.action} onChange={(event) => setDraft({ ...draft, action: event.target.value })}>
-            <option value="">全部动作</option>
-            {Object.entries(AUDIT_ACTION_LABELS).map(([action, label]) => <option key={action} value={action}>{label}</option>)}
-          </select>
+          <SearchableSelect
+            value={draft.action}
+            options={[
+              { value: '', label: '全部动作', keywords: '全部' },
+              ...Object.entries(AUDIT_ACTION_LABELS).map(([action, label]) => ({
+                value: action,
+                label,
+                keywords: `${action} ${label}`,
+              })),
+            ]}
+            onChange={(nextValue) => setDraft({ ...draft, action: nextValue })}
+            placeholder="输入动作搜索"
+            emptyMessage="没有匹配的动作"
+          />
         </label>
         <label>
           结果
-          <select value={draft.result} onChange={(event) => setDraft({ ...draft, result: event.target.value })}>
-            <option value="">全部结果</option>
-            <option value="success">成功</option>
-            <option value="rejected">已驳回</option>
-            <option value="failure">失败</option>
-          </select>
+          <SearchableSelect
+            value={draft.result}
+            options={[
+              { value: '', label: '全部结果', keywords: '全部' },
+              { value: 'success', label: '成功', keywords: 'success 成功' },
+              { value: 'rejected', label: '已驳回', keywords: 'rejected 驳回' },
+              { value: 'failure', label: '失败', keywords: 'failure 失败' },
+            ]}
+            onChange={(nextValue) => setDraft({ ...draft, result: nextValue })}
+            placeholder="输入结果搜索"
+            emptyMessage="没有匹配的结果"
+          />
         </label>
         <div className="audit-filter-actions">
           <button type="button" className="outline-button" onClick={resetFilters}><RotateCcw size={15} />重置</button>

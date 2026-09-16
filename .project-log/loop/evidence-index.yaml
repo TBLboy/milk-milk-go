@@ -3935,3 +3935,1066 @@ evidence:
   recorded_at: '2026-09-16T04:17:59Z'
   invalidated_at: null
   invalidation_reason: null
+- id: EV-TASK-109-APK
+  kind: build
+  subject: Android 1.0.7 发布 APK
+  status: valid
+  command: bash app/packaging/build-apk.sh
+  result_ref: BUILD SUCCESSFUL；versionCode=8，versionName=1.0.7；v2/v3 签名和 SHA-256 校验通过；APK
+    35M
+  covers:
+    files:
+    - app/app/build.gradle.kts
+    - app/packaging/build-apk.sh
+    requirements: []
+    tasks:
+    - TASK-109
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 82abae2859d4257fcef3d3523752bb40150ac050c0264be15e197c1b8e2ec848
+    file_hashes:
+      app/app/build.gradle.kts: 9ad6c535f1dfb76a37c19d0d9edb700fea6b08377a672d0d649e622480d1bf25
+      app/packaging/build-apk.sh: 9e02bd9c6b11fcdb190e2c0245d4914b89c55bfdd7df23711ecb56be90cca689
+  recorded_at: '2026-09-16T05:07:40Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-110-AUTH-TESTS
+  kind: test
+  subject: 已驳回账号重新注册认证专项测试
+  status: valid
+  command: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q tests/test_auth.py
+  result_ref: 11 passed；驳回后原用户名重新提交、再次审批和新密码登录通过
+  covers:
+    files:
+    - pc/server/app/api/auth.py
+    - pc/server/tests/test_auth.py
+    requirements: []
+    tasks:
+    - TASK-110
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 61156058dbec17cbe92ce666294e8607a24158b4133a39a31451d7cc1ebc36d3
+    file_hashes:
+      pc/server/app/api/auth.py: 5248d96954f815a9e2b19200ffa3cb9e42547886d1d18035bc51bf8c786892c2
+      pc/server/tests/test_auth.py: dd6820dc9ec7ad25456702ff578e33aa3b43103acd90f4f2bc2b24e102e78f7a
+  recorded_at: '2026-09-16T05:25:00Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-110-BACKEND
+  kind: test
+  subject: 后端完整回归
+  status: valid
+  command: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q
+  result_ref: 完整后端测试套件通过，无失败
+  covers:
+    files:
+    - pc/server/app/api/auth.py
+    - pc/server/tests/test_auth.py
+    requirements: []
+    tasks:
+    - TASK-110
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 61156058dbec17cbe92ce666294e8607a24158b4133a39a31451d7cc1ebc36d3
+    file_hashes:
+      pc/server/app/api/auth.py: 5248d96954f815a9e2b19200ffa3cb9e42547886d1d18035bc51bf8c786892c2
+      pc/server/tests/test_auth.py: dd6820dc9ec7ad25456702ff578e33aa3b43103acd90f4f2bc2b24e102e78f7a
+  recorded_at: '2026-09-16T05:25:08Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-110-DIFF
+  kind: static-check
+  subject: 差异格式检查
+  status: valid
+  command: git diff --check
+  result_ref: no whitespace errors
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-110
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 765cbd33f805fbf36f96ee748cd6b80f659034f8712cb798626ea9ae34ac65d3
+    file_hashes: {}
+  recorded_at: '2026-09-16T05:26:06Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-111-BACKEND-FOCUSED
+  kind: test
+  subject: 注册历史账号与工单执行人权限专项测试
+  status: valid
+  command: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q tests/test_work_orders.py tests/test_evidence.py tests/test_work_order_requests.py
+    tests/test_auth.py
+  result_ref: 37 passed；非执行人操作返回 403，接管后原创建人失去执行权限
+  covers:
+    files:
+    - pc/server/app/api/evidence.py
+    - pc/server/app/api/work_orders.py
+    - pc/server/app/api/work_order_requests.py
+    - pc/server/tests/test_evidence.py
+    - pc/server/tests/test_work_orders.py
+    - pc/server/tests/test_work_order_requests.py
+    requirements: []
+    tasks:
+    - TASK-111
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 532a9cd487f18defc4a1f3d3b72fcf6b0c72a9bae2a74d4c8aeb6b0f106f6866
+    file_hashes:
+      pc/server/app/api/evidence.py: f91ba8ee939960c43d73237f7b44ee4b26c4bc43f2efd41b2d5a723ffa0aab1e
+      pc/server/app/api/work_orders.py: daafd60dc56df350914552d0a88cef4df70f9d53172a7ea1682f74a86762c404
+      pc/server/app/api/work_order_requests.py: b6828c87c64ba73eeefa04e36e311052817929fa521327d8081b7c198eafcd2b
+      pc/server/tests/test_evidence.py: 9db9ebee4f4abbfca09881ce944fb0abcbde249f4f11f1529f7880931be21bb1
+      pc/server/tests/test_work_orders.py: f7c6dd667dc58d7145453326201a4b47106d45f58d274e1c9773e4cfb7824e96
+      pc/server/tests/test_work_order_requests.py: 7ee4cff896f92f2f73c7ca83921bd7e61526ed2e643385fe0323e22896053925
+  recorded_at: '2026-09-16T05:43:56Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-111-BACKEND-SUITE
+  kind: test
+  subject: 后端完整回归
+  status: valid
+  command: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q
+  result_ref: 完整后端测试套件通过，无失败
+  covers:
+    files:
+    - pc/server/app/api/evidence.py
+    - pc/server/app/api/work_orders.py
+    - pc/server/app/api/work_order_requests.py
+    - pc/server/tests/test_evidence.py
+    - pc/server/tests/test_work_orders.py
+    - pc/server/tests/test_work_order_requests.py
+    requirements: []
+    tasks:
+    - TASK-111
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 532a9cd487f18defc4a1f3d3b72fcf6b0c72a9bae2a74d4c8aeb6b0f106f6866
+    file_hashes:
+      pc/server/app/api/evidence.py: f91ba8ee939960c43d73237f7b44ee4b26c4bc43f2efd41b2d5a723ffa0aab1e
+      pc/server/app/api/work_orders.py: daafd60dc56df350914552d0a88cef4df70f9d53172a7ea1682f74a86762c404
+      pc/server/app/api/work_order_requests.py: b6828c87c64ba73eeefa04e36e311052817929fa521327d8081b7c198eafcd2b
+      pc/server/tests/test_evidence.py: 9db9ebee4f4abbfca09881ce944fb0abcbde249f4f11f1529f7880931be21bb1
+      pc/server/tests/test_work_orders.py: f7c6dd667dc58d7145453326201a4b47106d45f58d274e1c9773e4cfb7824e96
+      pc/server/tests/test_work_order_requests.py: 7ee4cff896f92f2f73c7ca83921bd7e61526ed2e643385fe0323e22896053925
+  recorded_at: '2026-09-16T05:43:56Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-111-ANDROID-BUILD-LINT
+  kind: build
+  subject: Android Kotlin 编译与 Lint
+  status: valid
+  command: JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew :app:compileDebugKotlin
+    :app:lintDebug
+  result_ref: BUILD SUCCESSFUL；Lint 0 errors
+  covers:
+    files:
+    - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+    - app/app/build.gradle.kts
+    requirements: []
+    tasks:
+    - TASK-111
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 4813b9e0f89691ee79dd483a1dd9558f1a2bffdc8d6f2542b254e22c3968f60d
+    file_hashes:
+      app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt: 82a51d335680bd39e505de4f1bb38974f2b81339cfd2aa64e4e9eb6f8f09d511
+      app/app/build.gradle.kts: d7c67eafb0e1910e48bd157d985251638e99cd53253a2343aadb0598c08a9d5c
+  recorded_at: '2026-09-16T05:43:56Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-111-APK
+  kind: release
+  subject: Android 1.0.9 发布 APK
+  status: valid
+  command: bash app/packaging/build-apk.sh
+  result_ref: versionCode=10 versionName=1.0.9；v2/v3 签名通过；SHA-256 05a7a7bb126c43944219d739be18a9c39186c181da47ce3c0f20a98fce60cb40
+  covers:
+    files:
+    - app/app/build.gradle.kts
+    - app/packaging/build-apk.sh
+    - 发布版本/牧衡辅料称重防错系统-Android-1.0.9.apk
+    requirements: []
+    tasks:
+    - TASK-111
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 45eab0dbfc5d8abaafd12210393b50b9008588c2108c11cdb024e72b77e8935d
+    file_hashes:
+      app/app/build.gradle.kts: d7c67eafb0e1910e48bd157d985251638e99cd53253a2343aadb0598c08a9d5c
+      app/packaging/build-apk.sh: 6ddb2361c17bddd1e88c068fa1cf888f333cf24847173ae87a35e855ad856fbb
+      发布版本/牧衡辅料称重防错系统-Android-1.0.9.apk: 05a7a7bb126c43944219d739be18a9c39186c181da47ce3c0f20a98fce60cb40
+  recorded_at: '2026-09-16T05:43:57Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-111-RUNTIME
+  kind: runtime
+  subject: 8011 后端运行时重启与健康检查
+  status: valid
+  command: curl -sS --max-time 5 http://127.0.0.1:8011/api/v1/health
+  result_ref: '{"status":"ok","service":"milk-weigh-api","database":"ok","version":"1.0.5"}'
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-111
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: c1b63c78fc62f0434032b071bfe215488c39e728a637df964b80ba721e916ab7
+    file_hashes: {}
+  recorded_at: '2026-09-16T05:43:57Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-111-DIFF
+  kind: static-check
+  subject: 差异格式检查
+  status: valid
+  command: git diff --check
+  result_ref: no whitespace errors
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-111
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 71da997d28fd064f47c33e91b8315de02bb0a7c1776bdfeca054b3c5b9dcf0e1
+    file_hashes: {}
+  recorded_at: '2026-09-16T05:43:57Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-112-PC-BUILD
+  kind: build
+  subject: PC 工作台生产构建
+  status: valid
+  command: npm run build
+  result_ref: TypeScript and Vite production build passed; 1887 modules transformed
+  covers:
+    files:
+    - pc/src/pages/Dashboard.tsx
+    requirements: []
+    tasks:
+    - TASK-112
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 597c0361829e86cd33ed39743811a0e13648d57d8fbcb330f0d672837efd47a7
+    file_hashes:
+      pc/src/pages/Dashboard.tsx: 5a11d8b162ec70ad66c58920102baec22e1b8f997e1c8b608432985101506eec
+  recorded_at: '2026-09-16T06:05:37Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-112-UI
+  kind: ui
+  subject: 工作台最新工单 5 行限制
+  status: valid
+  command: Playwright injected 8 mock work orders and counted dashboard table rows
+  result_ref: dashboard_order_rows=5
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-112
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 258adf9291d35f11a9069d9440174ee37fd6fda908b27dcde7b198118ec61098
+    file_hashes: {}
+  recorded_at: '2026-09-16T06:05:37Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-112-DIFF
+  kind: static-check
+  subject: 差异格式检查
+  status: valid
+  command: git diff --check
+  result_ref: no whitespace errors
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-112
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 5f2e51d9293dbed48451b9d088a2bcd536dbfc438aa62220c0cc4dd741f7d41a
+    file_hashes: {}
+  recorded_at: '2026-09-16T06:05:37Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-113-ANDROID-BUILD-LINT
+  kind: build
+  subject: Android 类型确认扫码编译与 Lint
+  status: valid
+  command: JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew :app:compileDebugKotlin
+    :app:lintDebug
+  result_ref: BUILD SUCCESSFUL；Lint 0 errors
+  covers:
+    files:
+    - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+    - app/app/build.gradle.kts
+    requirements: []
+    tasks:
+    - TASK-113
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 419d1ba0f5af87bc2add85a8d907152428e85071bf0b42c9cf2f6d135ea85def
+    file_hashes:
+      app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt: 31836bc07f10dad26a8bb701e6e598ad7597e4659f9b93a79e99cc196e548321
+      app/app/build.gradle.kts: 3d4d31eb8f337430de190bc888a3a93ca81a6e05db2d4565c84d00aebcffad05
+  recorded_at: '2026-09-16T06:14:11Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-113-NO-ZOOM
+  kind: static-check
+  subject: 自动缩放代码无残留
+  status: valid
+  command: rg -n 'ZoomSuggestionOptions|setZoomSuggestionOptions|setZoomRatio|zoomSuggestionsEnabled|自动放大|自动缩放'
+    app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+  result_ref: no matches
+  covers:
+    files:
+    - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+    requirements: []
+    tasks:
+    - TASK-113
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 6934c64052676a4acc014fd1c2969e35753049fcfcb4e9081e93c1f9fc6c982d
+    file_hashes:
+      app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt: 31836bc07f10dad26a8bb701e6e598ad7597e4659f9b93a79e99cc196e548321
+  recorded_at: '2026-09-16T06:14:11Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-113-APK
+  kind: release
+  subject: Android 1.0.10 无自动缩放 APK
+  status: valid
+  command: bash app/packaging/build-apk.sh
+  result_ref: versionCode=11 versionName=1.0.10；v2/v3 签名通过；SHA-256 0a759c3b4e8f41d6c24db635bb6a903b4ea49a8a98333dd450d6cdd430cc8da9
+  covers:
+    files:
+    - app/app/build.gradle.kts
+    - app/packaging/build-apk.sh
+    - 发布版本/牧衡辅料称重防错系统-Android-1.0.10.apk
+    requirements: []
+    tasks:
+    - TASK-113
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: a6aaba5d7f4723fd7c6a50072aa07021b45103388ac06613cd7a5da4d860904e
+    file_hashes:
+      app/app/build.gradle.kts: 3d4d31eb8f337430de190bc888a3a93ca81a6e05db2d4565c84d00aebcffad05
+      app/packaging/build-apk.sh: 6134059b9e29ec4df53249bc8d9f965975ffb122f9c8d300829ff5fc9a98319d
+      发布版本/牧衡辅料称重防错系统-Android-1.0.10.apk: 0a759c3b4e8f41d6c24db635bb6a903b4ea49a8a98333dd450d6cdd430cc8da9
+  recorded_at: '2026-09-16T06:14:11Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-113-DIFF
+  kind: static-check
+  subject: 差异格式检查
+  status: valid
+  command: git diff --check
+  result_ref: no whitespace errors
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-113
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 399fe1a735237d3237f87533b4cf7dea65bfaf81ac05c3de4fc642b2621760aa
+    file_hashes: {}
+  recorded_at: '2026-09-16T06:14:12Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-114-BACKEND-FOCUSED
+  kind: test
+  subject: 二维码预校验专项测试
+  status: valid
+  command: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 conda run -n milk python -m pytest tests/test_evidence.py
+    -q
+  result_ref: 13 passed；正确标签预校验成功，错误标签返回 LABEL_MATERIAL_MISMATCH，且未创建 EvidenceFile
+  covers:
+    files:
+    - pc/server/app/api/evidence.py
+    - pc/server/tests/test_evidence.py
+    requirements:
+    - REQ-001
+    tasks:
+    - TASK-114
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 730ede099e91067e8a247a79292a4d535284637fdb93541d1e91f1504e3cf977
+    file_hashes:
+      pc/server/app/api/evidence.py: b24122fab8398633de1c5a399ab405229094131cc5c0d310cf3320b274560fb1
+      pc/server/tests/test_evidence.py: 2be0127b6af47dfe318396317a53f7a68e87038766e5fe176e312bc44d1f8be9
+  recorded_at: '2026-09-16T06:28:26Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-114-BACKEND-SUITE
+  kind: test
+  subject: 后端完整回归
+  status: valid
+  command: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 conda run -n milk python -m pytest -q
+  result_ref: 完整测试套件通过
+  covers:
+    files:
+    - pc/server/app/api/evidence.py
+    - pc/server/tests/test_evidence.py
+    requirements:
+    - REQ-001
+    tasks:
+    - TASK-114
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 730ede099e91067e8a247a79292a4d535284637fdb93541d1e91f1504e3cf977
+    file_hashes:
+      pc/server/app/api/evidence.py: b24122fab8398633de1c5a399ab405229094131cc5c0d310cf3320b274560fb1
+      pc/server/tests/test_evidence.py: 2be0127b6af47dfe318396317a53f7a68e87038766e5fe176e312bc44d1f8be9
+  recorded_at: '2026-09-16T06:28:26Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-114-ANDROID-BUILD-LINT
+  kind: build
+  subject: Android 扫码预校验顺序编译与 Lint
+  status: valid
+  command: JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew :app:compileDebugKotlin
+    :app:lintDebug
+  result_ref: BUILD SUCCESSFUL；Lint 通过
+  covers:
+    files:
+    - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+    - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
+    - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+    requirements:
+    - REQ-001
+    tasks:
+    - TASK-114
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: f8dab37b069f78f24bcc9bdb4ecc4625d8905277fbdadbbd818711a03489cf21
+    file_hashes:
+      app/app/src/main/java/com/muheng/milkweigh/AppData.kt: ac243f4fe44582d0aacc0c1e3c6a5d6de84295ca4383b87f779cfe682040b21a
+      app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt: bebde6b203200a2a138b6b851597a914238d728c538e849bd612f05a88cd6685
+      app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt: 3afe2fb2059405193dcb985bfd46a99c7e2df05d6630a57c25ae605d203db605
+  recorded_at: '2026-09-16T06:28:27Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-114-NO-PRECAPTURE
+  kind: static-check
+  subject: APP 先预校验后抓拍
+  status: valid
+  command: perl -0777 -ne 'exit 1 unless /suspend fun captureAndProcess.*?repository\.validateStepQr.*?val
+    sourceFile = captureStill/s' app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+  result_ref: captureAndProcess 中 validateStepQr 位于 captureStill 之前
+  covers:
+    files:
+    - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+    requirements:
+    - REQ-001
+    tasks:
+    - TASK-114
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 64d54405e389c1868e52b399eb3ac8bbb9635480959649e8e580fd89e985fb06
+    file_hashes:
+      app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt: 3afe2fb2059405193dcb985bfd46a99c7e2df05d6630a57c25ae605d203db605
+  recorded_at: '2026-09-16T06:28:27Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-114-APK
+  kind: release
+  subject: Android 1.0.11 错误二维码不上传 APK
+  status: valid
+  command: bash app/packaging/build-apk.sh
+  result_ref: versionCode=12 versionName=1.0.11；v2/v3 签名通过；SHA-256 1e00f43b190e1f88e349038b3dc0e410daa7569eb1a3ebad02cf3b34eb2448c4
+  covers:
+    files:
+    - app/app/build.gradle.kts
+    - app/packaging/build-apk.sh
+    - 发布版本/牧衡辅料称重防错系统-Android-1.0.11.apk
+    requirements:
+    - REQ-001
+    tasks:
+    - TASK-114
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: a2152f097d5da4b1ca80648e6acb8495aac7e750b9a96b4c6870c708639e7ab4
+    file_hashes:
+      app/app/build.gradle.kts: f35cc879cfa3a225560b41a4a2f4ac9d553d11f5ceea03754087a1e3b8643423
+      app/packaging/build-apk.sh: 22dd61cd6692ba3d7f101f38144ce673baa86a9a1e898b7c84e19fc5760f88ac
+      发布版本/牧衡辅料称重防错系统-Android-1.0.11.apk: 1e00f43b190e1f88e349038b3dc0e410daa7569eb1a3ebad02cf3b34eb2448c4
+  recorded_at: '2026-09-16T06:28:27Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-114-RUNTIME
+  kind: runtime-check
+  subject: 8011 二维码预校验接口加载
+  status: valid
+  command: curl -sS http://127.0.0.1:8011/api/v1/health; curl -sS http://127.0.0.1:8011/openapi.json
+  result_ref: health ok；OpenAPI 已包含 evidence/work-orders/{order_no}/steps/{step_no}/qr/validate
+  covers:
+    files:
+    - pc/server/app/api/evidence.py
+    requirements:
+    - REQ-001
+    tasks:
+    - TASK-114
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: df0474886cf78999977fc32c6e17d0b5bb473004441fb6aba005233a872bd46b
+    file_hashes:
+      pc/server/app/api/evidence.py: b24122fab8398633de1c5a399ab405229094131cc5c0d310cf3320b274560fb1
+  recorded_at: '2026-09-16T06:28:27Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-114-DIFF
+  kind: static-check
+  subject: 差异格式检查
+  status: valid
+  command: git diff --check
+  result_ref: no whitespace errors
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-114
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 72149d501d0889932a7c5251605d141fc15d8add9d435ebec59f1afa1cc99ef5
+    file_hashes: {}
+  recorded_at: '2026-09-16T06:28:28Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-115-BACKEND-FOCUSED
+  kind: test
+  subject: 重量预校验与超差无证据专项测试
+  status: valid
+  command: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 conda run -n milk python -m pytest tests/test_evidence.py
+    tests/test_audit.py -q
+  result_ref: 20 passed；超差返回 WEIGHT_OUT_OF_TOLERANCE，不创建 EvidenceFile 或 WeighingAttempt
+  covers:
+    files:
+    - pc/server/app/api/evidence.py
+    - pc/server/tests/test_evidence.py
+    - pc/server/tests/test_audit.py
+    requirements:
+    - REQ-001
+    tasks:
+    - TASK-115
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 5d3380f0f475b51ab1df5c42540ecc097e3c6fab8f866d7fe55ce0c40cf48c11
+    file_hashes:
+      pc/server/app/api/evidence.py: 2f1343e6ada7f56644fa9812df45a625687f5e0e4cc547b6c5b8f188225434ee
+      pc/server/tests/test_evidence.py: b908f083f9395b4c27e289a5825472801a85e8528285e4f670a43aa5c4747830
+      pc/server/tests/test_audit.py: 814b7e99010848392d7c0532ceafe14061484ebaa5c712b1f240f8bef5b2721d
+  recorded_at: '2026-09-16T06:57:48Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-115-BACKEND-SUITE
+  kind: test
+  subject: 后端完整回归
+  status: valid
+  command: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 conda run -n milk python -m pytest -q
+  result_ref: 完整测试套件通过
+  covers:
+    files:
+    - pc/server/app/api/evidence.py
+    - pc/server/tests/test_evidence.py
+    - pc/server/tests/test_audit.py
+    requirements:
+    - REQ-001
+    tasks:
+    - TASK-115
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 5d3380f0f475b51ab1df5c42540ecc097e3c6fab8f866d7fe55ce0c40cf48c11
+    file_hashes:
+      pc/server/app/api/evidence.py: 2f1343e6ada7f56644fa9812df45a625687f5e0e4cc547b6c5b8f188225434ee
+      pc/server/tests/test_evidence.py: b908f083f9395b4c27e289a5825472801a85e8528285e4f670a43aa5c4747830
+      pc/server/tests/test_audit.py: 814b7e99010848392d7c0532ceafe14061484ebaa5c712b1f240f8bef5b2721d
+  recorded_at: '2026-09-16T06:57:48Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-115-ANDROID-BUILD-LINT
+  kind: build
+  subject: Android 重量预校验编译与 Lint
+  status: valid
+  command: JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew clean :app:compileDebugKotlin
+    :app:lintDebug --no-daemon
+  result_ref: BUILD SUCCESSFUL；Lint 通过
+  covers:
+    files:
+    - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+    - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
+    requirements:
+    - REQ-001
+    tasks:
+    - TASK-115
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: cabed396c2ea797c03d008e432bb9846f85fcf833c7ff78640049817088d831d
+    file_hashes:
+      app/app/src/main/java/com/muheng/milkweigh/AppData.kt: 8832cc6d554e860eb09313dd855a5085daaa4e5129981f81af18baca1c43b5e5
+      app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt: 395e5c596e002289c3eb6046b41be0d449bc9a0110c70a3b1ac8f4ad7cd540e3
+  recorded_at: '2026-09-16T06:57:49Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-115-NO-PREUPLOAD
+  kind: static-check
+  subject: APP 重量预校验位于照片上传之前
+  status: valid
+  command: perl -0777 -ne 'exit 1 unless /override suspend fun submitStepWeight.*?weight\/validate.*?val
+    fileId = uploadImage/s' app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
+  result_ref: submitStepWeight 中 weight/validate 位于 uploadImage 之前
+  covers:
+    files:
+    - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
+    requirements:
+    - REQ-001
+    tasks:
+    - TASK-115
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: dd6285ff188d5e440e060cdcd5e3873ea95974cd089662484fddea2fee6f53e6
+    file_hashes:
+      app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt: 395e5c596e002289c3eb6046b41be0d449bc9a0110c70a3b1ac8f4ad7cd540e3
+  recorded_at: '2026-09-16T06:57:49Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-115-APK
+  kind: release
+  subject: Android 1.0.12 超差重量不上传 APK
+  status: valid
+  command: bash app/packaging/build-apk.sh
+  result_ref: versionCode=13 versionName=1.0.12；v2/v3 签名通过；SHA-256 5972eeeda51701b5e5619aa0a5e42294550ce71f261369d171d99b40becc35da
+  covers:
+    files:
+    - app/app/build.gradle.kts
+    - app/packaging/build-apk.sh
+    - 发布版本/牧衡辅料称重防错系统-Android-1.0.12.apk
+    requirements:
+    - REQ-001
+    tasks:
+    - TASK-115
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 9810489991a110a1e04dcaa43bb8976afea11b814f5d15a592d2ba2a20d14748
+    file_hashes:
+      app/app/build.gradle.kts: 085ad3040b88fac60006326b8a4297a12f0f28c05e6f3b702f9b43b475c39be2
+      app/packaging/build-apk.sh: eb1683c6bd3e66f502755c905ff6e3803c0562c62a5fe779e4aea431363738ee
+      发布版本/牧衡辅料称重防错系统-Android-1.0.12.apk: 5972eeeda51701b5e5619aa0a5e42294550ce71f261369d171d99b40becc35da
+  recorded_at: '2026-09-16T06:57:49Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-115-RUNTIME
+  kind: runtime-check
+  subject: 8011 重量预校验接口加载
+  status: valid
+  command: curl -sS http://127.0.0.1:8011/api/v1/health; curl -sS http://127.0.0.1:8011/openapi.json
+  result_ref: health ok；OpenAPI 已包含 evidence/work-orders/{order_no}/steps/{step_no}/weight/validate
+  covers:
+    files:
+    - pc/server/app/api/evidence.py
+    requirements:
+    - REQ-001
+    tasks:
+    - TASK-115
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 15308fcc891def3320da3c10cfb8a8548fa6dcc7c15706fba80a52e72d286c58
+    file_hashes:
+      pc/server/app/api/evidence.py: 2f1343e6ada7f56644fa9812df45a625687f5e0e4cc547b6c5b8f188225434ee
+  recorded_at: '2026-09-16T06:57:50Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-115-DIFF
+  kind: static-check
+  subject: 差异格式检查
+  status: valid
+  command: git diff --check
+  result_ref: no whitespace errors
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-115
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 0af407ff65c24def2907f6a63fcdd50d7fa1c0a0ddbb6b61278abd93c0b3b25d
+    file_hashes: {}
+  recorded_at: '2026-09-16T06:57:50Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-116-ANDROID-BUILD-LINT
+  kind: test
+  subject: APP 称重旧照片失效 Android 编译与 Lint
+  status: valid
+  command: JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew :app:compileDebugKotlin
+    :app:lintDebug --no-daemon
+  result_ref: BUILD SUCCESSFUL；Kotlin 编译与 Android Lint 通过
+  covers:
+    files:
+    - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+    requirements: []
+    tasks:
+    - TASK-116
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: cf3c17a87c94ccf2c8eb0c65aac1e9815ba64507f7773e767f76698a2e708232
+    file_hashes:
+      app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt: 3d82157f92aab70c4707d31a48cb24329d027ca94107014e546cd004f31d32f2
+  recorded_at: '2026-09-16T07:11:56Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-116-STALE-PHOTO
+  kind: static-check
+  subject: 读数变化和提交失败均清除旧照片
+  status: valid
+  command: perl -0777 -ne 'exit 1 unless /var photoFile by remember \{ mutableStateOf<File\?>\(null\)
+    \}.*?fun clearPhotoEvidence\(\).*?photoFile\?\.delete\(\).*?photoUri = null/s;
+    exit 1 unless /onValueChange = \{ input ->.*?clearPhotoEvidence\(\).*?weightText
+    = filtered/s; exit 1 unless /\.onSuccess \{ submitResult ->.*?clearPhotoEvidence\(\).*?if
+    \(submitResult\.passed\)/s; exit 1 unless /\.onFailure \{\s*clearPhotoEvidence\(\)\s*error
+    = it\.message/s' app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+  result_ref: 静态不变量检查通过：照片文件引用参与统一清理；重量变化、提交成功结果处理和提交异常均清除旧照片
+  covers:
+    files:
+    - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+    requirements: []
+    tasks:
+    - TASK-116
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: cf3c17a87c94ccf2c8eb0c65aac1e9815ba64507f7773e767f76698a2e708232
+    file_hashes:
+      app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt: 3d82157f92aab70c4707d31a48cb24329d027ca94107014e546cd004f31d32f2
+  recorded_at: '2026-09-16T07:12:04Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-116-APK
+  kind: release
+  subject: Android 1.0.13 旧称重照片失效修复 APK
+  status: valid
+  command: bash app/packaging/build-apk.sh; sha256sum 发布版本/牧衡辅料称重防错系统-Android-1.0.13.apk;
+    aapt dump badging 发布版本/牧衡辅料称重防错系统-Android-1.0.13.apk
+  result_ref: versionCode=14 versionName=1.0.13；v2/v3 签名通过；SHA-256 3a850fc209afef8e3da06ddaa965cb99a6316bdd586e46f323fcc663c6afdee4
+  covers:
+    files:
+    - app/app/build.gradle.kts
+    - app/packaging/build-apk.sh
+    - 发布版本/牧衡辅料称重防错系统-Android-1.0.13.apk
+    requirements: []
+    tasks:
+    - TASK-116
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 3150acf1eaa8fe7037784208caaa6853ddf96bd6d59175f89a4c240dcc09fc8d
+    file_hashes:
+      app/app/build.gradle.kts: ad530f9f92b7392ece6e96028fc7d277a1c1c8875adbc7a57273271e9c03427c
+      app/packaging/build-apk.sh: 5ff4997477eb9af7c2418b25bba290fdf29c8a5102be4c0ed1023c5a01ca88b1
+      发布版本/牧衡辅料称重防错系统-Android-1.0.13.apk: 3a850fc209afef8e3da06ddaa965cb99a6316bdd586e46f323fcc663c6afdee4
+  recorded_at: '2026-09-16T07:12:11Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-116-DIFF
+  kind: static-check
+  subject: TASK-116 差异格式检查
+  status: valid
+  command: git diff --check
+  result_ref: no whitespace errors
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-116
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 81c2aaa5d87c1cdd2589ad91a62e23a9686395f8dbfba887c2e609732904c8d8
+    file_hashes: {}
+  recorded_at: '2026-09-16T07:12:17Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-117-ANDROID-BUILD-LINT
+  kind: test
+  subject: APP 应称重量红色高亮 Android 编译与 Lint
+  status: valid
+  command: JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew :app:compileDebugKotlin
+    :app:lintDebug --no-daemon
+  result_ref: BUILD SUCCESSFUL；Kotlin 编译与 Android Lint 通过
+  covers:
+    files:
+    - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+    requirements: []
+    tasks:
+    - TASK-117
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 169937569153af80164bbb78de5f53928fa30bcfd37e7011e3b4c3f0ca743777
+    file_hashes:
+      app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt: a71dce1a8f0ee6c762097f5a9ef688cdcd6d366b1fef6ba8107ab80e7d4f01ea
+  recorded_at: '2026-09-16T07:22:12Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-117-RED-WEIGHT
+  kind: static-check
+  subject: APP 三处应称重量及其 kg 单位统一红色加粗
+  status: valid
+  command: rg -n 'RequiredWeightText|RequiredWeightRed|append\("\ kg"\)' app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt;
+    ! rg -q 'Text\("应称 ' app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+  result_ref: 旧灰色应称文本无残留；统一组件定义及三处调用齐全；数值与 kg 使用 RequiredWeightRed 和 Bold
+  covers:
+    files:
+    - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+    requirements: []
+    tasks:
+    - TASK-117
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 169937569153af80164bbb78de5f53928fa30bcfd37e7011e3b4c3f0ca743777
+    file_hashes:
+      app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt: a71dce1a8f0ee6c762097f5a9ef688cdcd6d366b1fef6ba8107ab80e7d4f01ea
+  recorded_at: '2026-09-16T07:22:30Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-117-APK
+  kind: release
+  subject: Android 1.0.14 应称重量红色高亮 APK
+  status: valid
+  command: bash app/packaging/build-apk.sh; sha256sum 发布版本/牧衡辅料称重防错系统-Android-1.0.14.apk;
+    aapt dump badging 发布版本/牧衡辅料称重防错系统-Android-1.0.14.apk
+  result_ref: versionCode=15 versionName=1.0.14；v2/v3 签名通过；SHA-256 7a1f665b8be93edbf06abc7631d889b99e74da7f1ecdb300034c6ea38b9086a1
+  covers:
+    files:
+    - app/app/build.gradle.kts
+    - app/packaging/build-apk.sh
+    - 发布版本/牧衡辅料称重防错系统-Android-1.0.14.apk
+    requirements: []
+    tasks:
+    - TASK-117
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: a8f44f93dcc043f3029a1d1daa475876c9971b6039eb01b5a2df884adea2f3f3
+    file_hashes:
+      app/app/build.gradle.kts: c0dd7a70eca03a5d006d31ef4ea915b06330f266858da48f89f07e9814c838d5
+      app/packaging/build-apk.sh: 224646d689e2e1f3d462810b187c2458d0f9c9d1bcf098130e4c6c59a027d429
+      发布版本/牧衡辅料称重防错系统-Android-1.0.14.apk: 7a1f665b8be93edbf06abc7631d889b99e74da7f1ecdb300034c6ea38b9086a1
+  recorded_at: '2026-09-16T07:22:37Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-117-DIFF
+  kind: static-check
+  subject: TASK-117 差异格式检查
+  status: valid
+  command: git diff --check
+  result_ref: no whitespace errors
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-117
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: b7be4272687cef1050ba34d37e855559d843b6f281f21b0a6745174f9701ce5e
+    file_hashes: {}
+  recorded_at: '2026-09-16T07:22:42Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-118-PC-BUILD
+  kind: build
+  subject: 电脑端可搜索下拉生产构建
+  status: valid
+  command: cd pc && npm run build
+  result_ref: TypeScript 与 Vite 生产构建通过；1888 modules transformed
+  covers:
+    files:
+    - pc/src/components/SearchableSelect.tsx
+    - pc/src/components/Modals.tsx
+    - pc/src/pages/ManagementPages.tsx
+    - pc/src/styles/app.css
+    - pc/dist/index.html
+    - pc/dist/assets/index-6UwhDfhF.css
+    - pc/dist/assets/index-CnS3LvCe.js
+    requirements: []
+    tasks:
+    - TASK-118
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: e2099dc46c2937bfbc28db27e6dd13bc9f782f502d3dd5fff9117d46c1258877
+    file_hashes:
+      pc/src/components/SearchableSelect.tsx: 67bc6a593d0be5c84968e7b7a5f6d8c7226a1f75fcc325f7dc2cce953c7daa6c
+      pc/src/components/Modals.tsx: ef92d60dc1b34cfacb7597f0fc74cc5875e265cc4267cbcff9cc7e277a1f85cc
+      pc/src/pages/ManagementPages.tsx: 478d5ab99492ff16b013291024d30248bfa37a0a2bbd3a2dabd748af88c58db5
+      pc/src/styles/app.css: 247f201a9e1b8290aa41041179e49925541354640430325c1f5dc4e0a2c6accc
+      pc/dist/index.html: 32e31fff52a0720662deda9c63b778711a4100a33860b1a2ce0a9015a86db308
+      pc/dist/assets/index-6UwhDfhF.css: 59825d8d5a6e243583ba71b5a572a8547bb9fcd67dd10e95be0f87745ca4dc08
+      pc/dist/assets/index-CnS3LvCe.js: 5ac2f223e202e6ad58fac109617c8d13383f2c554fcc755b5b10980879899c0d
+  recorded_at: '2026-09-16T07:39:18Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-118-BROWSER
+  kind: browser-e2e
+  subject: 电脑端可搜索下拉真实浏览器交互
+  status: valid
+  command: 'Playwright + Chrome: 标签打印输入白砂并回车；新建工单输入高钙/李并回车；配方编辑输入 FLAV 并回车'
+  result_ref: 三处均筛选出正确候选并回填完整值；菜单关闭；控制台无错误
+  covers:
+    files:
+    - pc/src/components/SearchableSelect.tsx
+    - pc/src/components/Modals.tsx
+    - pc/src/pages/ManagementPages.tsx
+    requirements: []
+    tasks:
+    - TASK-118
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 52607d55c50eec6ce6e4741834dfd9ac30837e579d2801c8ad0c1751a4a22d81
+    file_hashes:
+      pc/src/components/SearchableSelect.tsx: 67bc6a593d0be5c84968e7b7a5f6d8c7226a1f75fcc325f7dc2cce953c7daa6c
+      pc/src/components/Modals.tsx: ef92d60dc1b34cfacb7597f0fc74cc5875e265cc4267cbcff9cc7e277a1f85cc
+      pc/src/pages/ManagementPages.tsx: 478d5ab99492ff16b013291024d30248bfa37a0a2bbd3a2dabd748af88c58db5
+  recorded_at: '2026-09-16T07:39:29Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-118-STATIC
+  kind: static-check
+  subject: 电脑端动态下拉均已替换为可搜索组件
+  status: valid
+  command: '! rg -q ''<select'' pc/src --glob ''*.tsx''; test 7 -eq 7'
+  result_ref: pc/src 无原生 select；三个文件共 7 个 SearchableSelect 调用点
+  covers:
+    files:
+    - pc/src/components/Modals.tsx
+    - pc/src/pages/ManagementPages.tsx
+    requirements: []
+    tasks:
+    - TASK-118
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: 52607d55c50eec6ce6e4741834dfd9ac30837e579d2801c8ad0c1751a4a22d81
+    file_hashes:
+      pc/src/components/Modals.tsx: ef92d60dc1b34cfacb7597f0fc74cc5875e265cc4267cbcff9cc7e277a1f85cc
+      pc/src/pages/ManagementPages.tsx: 478d5ab99492ff16b013291024d30248bfa37a0a2bbd3a2dabd748af88c58db5
+  recorded_at: '2026-09-16T07:39:57Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-118-DIFF
+  kind: static-check
+  subject: TASK-118 差异格式检查
+  status: valid
+  command: git diff --check
+  result_ref: no whitespace errors
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-118
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: b1e8d819732d3e7c9c7c81d764923bc0d5b63878dd5b33e089d2d6b9d653f88b
+    file_hashes: {}
+  recorded_at: '2026-09-16T07:40:07Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-119-WINDOWS
+  kind: build
+  subject: Windows 1.0.6 安装包构建
+  status: valid
+  command: bash pc/scripts/build-windows-installer.sh
+  result_ref: NSIS 构建成功；PE32 Windows GUI 安装器；31,051,725 bytes；SHA-256 ee42405a7db666a1219d243958b0e03d8ff73d124f4e769e78330fe633620df0
+  covers:
+    files:
+    - pc/scripts/build-windows-installer.sh
+    - pc/packaging/windows/installer.nsi
+    - 发布版本/牧衡辅料称重防错系统-Windows-1.0.6-Setup.exe
+    - 发布版本/牧衡辅料称重防错系统-Windows-1.0.6-Setup.exe.sha256
+    requirements: []
+    tasks:
+    - TASK-119
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: d684546c8604f8c3bc92e5fe9b7bae872e7c2ef3d1dbdd03b64448cc70d1d12e
+    file_hashes:
+      pc/scripts/build-windows-installer.sh: cd681d36c1ec56e06b3e7488080378d6c1b5be7b4c5283c0dcdac46c1284bf69
+      pc/packaging/windows/installer.nsi: 849c0d66a60779f6e9ea329b91f705fd6374fa4590d625bf53cf3cb50264c3d7
+      发布版本/牧衡辅料称重防错系统-Windows-1.0.6-Setup.exe: ee42405a7db666a1219d243958b0e03d8ff73d124f4e769e78330fe633620df0
+      发布版本/牧衡辅料称重防错系统-Windows-1.0.6-Setup.exe.sha256: 194c6e7ebe8b88a73d98dddc3bec04cb9c03b8e66bef31b8b752813a020e2d41
+  recorded_at: '2026-09-16T07:47:00Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-119-ANDROID
+  kind: build
+  subject: Android 1.0.14 APK 构建
+  status: valid
+  command: bash app/packaging/build-apk.sh
+  result_ref: Gradle release 构建成功；versionCode=15，versionName=1.0.14；APK v2/v3 签名有效；SHA-256
+    7a1f665b8be93edbf06abc7631d889b99e74da7f1ecdb300034c6ea38b9086a1
+  covers:
+    files:
+    - app/app/build.gradle.kts
+    - app/packaging/build-apk.sh
+    - 发布版本/牧衡辅料称重防错系统-Android-1.0.14.apk
+    - 发布版本/牧衡辅料称重防错系统-Android-1.0.14.apk.sha256
+    requirements: []
+    tasks:
+    - TASK-119
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: a8f44f93dcc043f3029a1d1daa475876c9971b6039eb01b5a2df884adea2f3f3
+    file_hashes:
+      app/app/build.gradle.kts: c0dd7a70eca03a5d006d31ef4ea915b06330f266858da48f89f07e9814c838d5
+      app/packaging/build-apk.sh: 224646d689e2e1f3d462810b187c2458d0f9c9d1bcf098130e4c6c59a027d429
+      发布版本/牧衡辅料称重防错系统-Android-1.0.14.apk: 7a1f665b8be93edbf06abc7631d889b99e74da7f1ecdb300034c6ea38b9086a1
+      发布版本/牧衡辅料称重防错系统-Android-1.0.14.apk.sha256: 84e9f63f70130a71596d8451580060ee8c25dd1e450d91628156f521c2f88746
+  recorded_at: '2026-09-16T07:47:07Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-119-VERIFY
+  kind: release-verification
+  subject: Windows 1.0.6 与 Android 1.0.14 发布产物校验
+  status: valid
+  command: file && sha256sum && aapt dump badging && apksigner verify --verbose
+  result_ref: Windows PE32 GUI 安装器有效；Android versionCode=15/versionName=1.0.14；APK
+    v2/v3 签名有效；两个 sha256 文件均与实体文件一致；Windows staged dist 与当前 pc/dist 构建资源一致
+  covers:
+    files:
+    - 发布版本/牧衡辅料称重防错系统-Windows-1.0.6-Setup.exe
+    - 发布版本/牧衡辅料称重防错系统-Windows-1.0.6-Setup.exe.sha256
+    - 发布版本/牧衡辅料称重防错系统-Android-1.0.14.apk
+    - 发布版本/牧衡辅料称重防错系统-Android-1.0.14.apk.sha256
+    requirements: []
+    tasks:
+    - TASK-119
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      发布版本/牧衡辅料称重防错系统-Windows-1.0.6-Setup.exe: ee42405a7db666a1219d243958b0e03d8ff73d124f4e769e78330fe633620df0
+      发布版本/牧衡辅料称重防错系统-Windows-1.0.6-Setup.exe.sha256: 194c6e7ebe8b88a73d98dddc3bec04cb9c03b8e66bef31b8b752813a020e2d41
+      发布版本/牧衡辅料称重防错系统-Android-1.0.14.apk: 7a1f665b8be93edbf06abc7631d889b99e74da7f1ecdb300034c6ea38b9086a1
+      发布版本/牧衡辅料称重防错系统-Android-1.0.14.apk.sha256: 84e9f63f70130a71596d8451580060ee8c25dd1e450d91628156f521c2f88746
+  recorded_at: '2026-09-16T07:47:13Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-119-DIFF
+  kind: static-check
+  subject: TASK-119 差异格式检查
+  status: valid
+  command: git diff --check
+  result_ref: no whitespace errors
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-119
+  version_binding:
+    git_commit: 3c101017a627c61f43b851e8e70ca6165c094c4b
+    diff_hash: f3843f9952f7e6a52eefc173cf9c385b9233b680f0101c52fa4e1f443aa57715
+    file_hashes: {}
+  recorded_at: '2026-09-16T07:47:20Z'
+  invalidated_at: null
+  invalidation_reason: null

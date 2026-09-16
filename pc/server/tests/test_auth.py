@@ -168,6 +168,61 @@ def test_operator_registration_accepts_optional_employee_no(client):
     assert duplicate.json()["detail"]["code"] == "EMPLOYEE_NO_EXISTS"
 
 
+def test_rejected_registration_can_be_resubmitted(client):
+    registered = client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": "reapply_operator",
+            "display_name": "首次申请",
+            "employee_no": "MH0400",
+            "password": "operator123",
+        },
+    )
+    assert registered.status_code == 201
+    user_id = registered.json()["id"]
+
+    admin_token = client.post(
+        "/api/v1/auth/login",
+        json={"username": "admin", "password": "admin123"},
+    ).json()["access_token"]
+    rejected = client.post(
+        f"/api/v1/auth/users/{user_id}/reject",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert rejected.status_code == 200
+    assert rejected.json()["user"]["status"] == "rejected"
+
+    resubmitted = client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": "reapply_operator",
+            "display_name": "重新申请",
+            "employee_no": "MH0401",
+            "password": "newpassword123",
+        },
+    )
+    assert resubmitted.status_code == 201
+    assert resubmitted.json()["id"] == user_id
+    assert resubmitted.json()["resubmitted"] is True
+    assert resubmitted.json()["display_name"] == "重新申请"
+    assert resubmitted.json()["employee_no"] == "MH0401"
+    assert resubmitted.json()["status"] == "pending"
+
+    approved = client.post(
+        f"/api/v1/auth/users/{user_id}/approve",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert approved.status_code == 200
+    assert client.post(
+        "/api/v1/auth/login",
+        json={"username": "reapply_operator", "password": "operator123"},
+    ).status_code == 401
+    assert client.post(
+        "/api/v1/auth/login",
+        json={"username": "reapply_operator", "password": "newpassword123"},
+    ).status_code == 200
+
+
 def test_admin_create_user_and_reset_password(client):
     admin_login = client.post("/api/v1/auth/login", json={"username": "admin", "password": "admin123"})
     admin_token = admin_login.json()["access_token"]

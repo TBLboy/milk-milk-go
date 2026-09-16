@@ -14,7 +14,6 @@ import android.graphics.Paint
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.SystemClock
 import android.provider.MediaStore
 import android.util.Size
 import android.view.Surface
@@ -26,7 +25,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn as AndroidxOptIn
-import androidx.camera.core.Camera
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
@@ -122,6 +120,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -137,11 +136,15 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -154,7 +157,6 @@ import androidx.exifinterface.media.ExifInterface
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.barcode.ZoomSuggestionOptions
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import java.io.File
@@ -164,12 +166,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicLong
-import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.max
-import kotlin.math.abs
-import kotlin.math.roundToInt
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.Dispatchers
@@ -231,6 +228,7 @@ private fun cameraPermissionLauncher(onGranted: () -> Unit): () -> Unit {
 private val Green = Color(0xFF1F9469)
 private val Ink = Color(0xFF17202B)
 private val Muted = Color(0xFF77858F)
+private val RequiredWeightRed = Color(0xFFD32F2F)
 private val Page = Color(0xFFF5F7F9)
 private const val UserAgreementVersion = "1.1"
 private val UserAgreementText = """
@@ -387,6 +385,7 @@ private fun isPreviewQrPayload(raw: String): Boolean {
 
 private data class ProcessedEvidence(
     val photoUri: String,
+    val photoFile: File,
 )
 
 private fun decodeEvidenceBitmap(file: File, maxDimension: Int = 2400): Bitmap {
@@ -477,6 +476,7 @@ private suspend fun processCapturedEvidence(
     output.recycle()
     ProcessedEvidence(
         photoUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", outputFile).toString(),
+        photoFile = outputFile,
     )
 }
 
@@ -541,6 +541,7 @@ fun MilkWeighApp(customRepository: MilkRepository? = null) {
 private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, onLoggedIn: (AppUser) -> Unit) {
     val initialRemembered = remember { sessionStore.rememberedLogins().firstOrNull() }
     var username by remember { mutableStateOf(initialRemembered?.username.orEmpty()) }
+    var registerUsername by remember { mutableStateOf("") }
     var password by remember { mutableStateOf(initialRemembered?.password.orEmpty()) }
     var displayName by remember { mutableStateOf("") }
     var employeeNo by remember { mutableStateOf("") }
@@ -562,6 +563,7 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
     var showServerDialog by remember { mutableStateOf(false) }
     var registerSubmitted by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
     val view = LocalView.current
     DisposableEffect(registerMode, view) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -612,51 +614,60 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
                             Icon(Icons.Default.Settings, contentDescription = "服务器设置", tint = Muted)
                         }
                     }
-                    Box {
-                        OutlinedTextField(
-                            username,
-                            { username = it; accountMenuExpanded = false },
-                            modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("账号") },
-                            singleLine = true,
-                            trailingIcon = {
-                                if (rememberedAccounts.isNotEmpty()) {
-                                    IconButton(onClick = { accountMenuExpanded = true }) {
-                                        Icon(
-                                            Icons.Default.KeyboardArrowDown,
-                                            contentDescription = "选择已记住账号",
-                                            tint = Muted,
-                                        )
-                                    }
-                                }
-                            },
-                        )
-                        DropdownMenu(
-                            expanded = accountMenuExpanded,
-                            onDismissRequest = { accountMenuExpanded = false },
-                        ) {
-                            rememberedAccounts.forEach { account ->
-                                DropdownMenuItem(
-                                    text = { Text(account.username, fontSize = 16.sp) },
-                                    onClick = {
-                                        username = account.username
-                                        password = account.password.orEmpty()
-                                        rememberPassword = !account.password.isNullOrBlank()
+                    key(registerMode) {
+                        Box {
+                            OutlinedTextField(
+                                if (registerMode) registerUsername else username,
+                                {
+                                    if (registerMode) {
+                                        registerUsername = it
+                                    } else {
+                                        username = it
                                         accountMenuExpanded = false
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                placeholder = { Text("账号") },
+                                singleLine = true,
+                                trailingIcon = {
+                                    if (!registerMode && rememberedAccounts.isNotEmpty()) {
+                                        IconButton(onClick = { accountMenuExpanded = true }) {
+                                            Icon(
+                                                Icons.Default.KeyboardArrowDown,
+                                                contentDescription = "选择已记住账号",
+                                                tint = Muted,
+                                            )
+                                        }
+                                    }
+                                },
+                            )
+                            DropdownMenu(
+                                expanded = accountMenuExpanded,
+                                onDismissRequest = { accountMenuExpanded = false },
+                            ) {
+                                rememberedAccounts.forEach { account ->
+                                    DropdownMenuItem(
+                                        text = { Text(account.username, fontSize = 16.sp) },
+                                        onClick = {
+                                            username = account.username
+                                            password = account.password.orEmpty()
+                                            rememberPassword = !account.password.isNullOrBlank()
+                                            accountMenuExpanded = false
+                                        },
+                                    )
+                                }
+                                DropdownMenuItem(
+                                    text = { Text("清除已记账号", color = Muted) },
+                                    onClick = {
+                                        sessionStore.clearRememberedLogins()
+                                        rememberedAccounts = emptyList()
+                                        accountMenuExpanded = false
+                                        username = ""
+                                        password = ""
+                                        rememberPassword = false
                                     },
                                 )
                             }
-                            DropdownMenuItem(
-                                text = { Text("清除已记账号", color = Muted) },
-                                onClick = {
-                                    sessionStore.clearRememberedLogins()
-                                    rememberedAccounts = emptyList()
-                                    accountMenuExpanded = false
-                                    username = ""
-                                    password = ""
-                                    rememberPassword = false
-                                },
-                            )
                         }
                     }
                     if (registerMode) {
@@ -713,7 +724,7 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
                         }
                         error = null
                         if (registerMode) {
-                            if (username.length < 3 || displayName.isBlank() || registerPassword.length < 8) {
+                            if (registerUsername.length < 3 || displayName.isBlank() || registerPassword.length < 8) {
                                 error = "请完整填写注册信息，密码至少 8 位"
                                 return@Button
                             }
@@ -724,7 +735,7 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
                             scope.launch {
                                 runCatching {
                                     repository.register(
-                                        username.trim(),
+                                        registerUsername.trim(),
                                         displayName.trim(),
                                         employeeNo.trim(),
                                         registerPassword,
@@ -734,6 +745,7 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
                                         registerSubmitted = it.message
                                         registerMode = false
                                         username = ""
+                                        registerUsername = ""
                                         displayName = ""
                                         employeeNo = ""
                                         registerPassword = ""
@@ -769,9 +781,12 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
                                 modifier = Modifier.padding(start = 0.dp),
                             ) { Text("忘记密码", color = Green) }
                             TextButton(onClick = {
+                                focusManager.clearFocus(force = true)
                                 registerMode = true
+                                registerUsername = ""
                                 registerPassword = ""
                                 confirmPassword = ""
+                                accountMenuExpanded = false
                                 error = null
                             }) { Text("帐号注册", color = Green) }
                             TextButton(onClick = { showAgreementDialog = true }) { Text("用户协议", color = Green) }
@@ -783,7 +798,11 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             TextButton(
-                                onClick = { registerMode = false; error = null },
+                                onClick = {
+                                    focusManager.clearFocus(force = true)
+                                    registerMode = false
+                                    error = null
+                                },
                                 modifier = Modifier.padding(start = 0.dp),
                             ) { Text("返回登录", color = Green) }
                             TextButton(onClick = { showAgreementDialog = true }) { Text("用户协议", color = Green) }
@@ -2093,6 +2112,8 @@ private fun OrderDetailScreen(
             if (order == null) {
                 Text("暂无工单", color = Muted)
             } else {
+                val isAssignedOperator = order.operatorId == currentUserId
+                val canOperate = canApprove || isAssignedOperator
                 val currentStepNo = order.steps.firstOrNull { it.status != StepStatus.COMPLETED }?.stepNo ?: order.totalSteps + 1
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                     Column(modifier = Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -2107,7 +2128,14 @@ private fun OrderDetailScreen(
                 }
                 Text("辅料称量步骤", color = Ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 order.steps.forEach { step ->
-                    StepCard(step, order.status, currentStepNo, canApprove, onAction = { actionStepNo = step.stepNo })
+                    StepCard(
+                        step = step,
+                        orderStatus = order.status,
+                        currentStepNo = currentStepNo,
+                        canApprove = canApprove,
+                        canOperate = canOperate,
+                        onAction = { actionStepNo = step.stepNo },
+                    )
                 }
                 error?.let { Text(it, color = Color(0xFFC7473C), fontSize = 14.sp) }
                 val canRequest = order.pendingRequest == null &&
@@ -2121,7 +2149,7 @@ private fun OrderDetailScreen(
                 ) {
                     when {
                         order.status == WorkOrderStatus.PENDING_APPROVAL -> Text("等待后台审批通过后开始执行", color = Muted)
-                        order.status == WorkOrderStatus.APPROVED -> Button(onClick = {
+                        order.status == WorkOrderStatus.APPROVED && canOperate -> Button(onClick = {
                             if (!working) {
                                 working = true
                                 error = null
@@ -2133,7 +2161,7 @@ private fun OrderDetailScreen(
                                 }
                             }
                         }, enabled = !working) { Text("开始执行") }
-                        order.status == WorkOrderStatus.IN_PROGRESS && order.completedSteps == order.totalSteps -> Button(onClick = {
+                        order.status == WorkOrderStatus.IN_PROGRESS && order.completedSteps == order.totalSteps && canOperate -> Button(onClick = {
                             if (!working) {
                                 working = true
                                 error = null
@@ -2145,13 +2173,19 @@ private fun OrderDetailScreen(
                                 }
                             }
                         }, enabled = !working) { Text("提交完成") }
-                        order.status == WorkOrderStatus.IN_PROGRESS -> Text("请按顺序完成所有辅料步骤后再提交完成", color = Muted)
+                        order.status == WorkOrderStatus.APPROVED -> Text("等待当前执行人开始工单", color = Muted)
+                        order.status == WorkOrderStatus.IN_PROGRESS -> Text(
+                            if (canOperate) "请按顺序完成所有辅料步骤后再提交完成" else "仅当前执行人可操作本工单",
+                            color = Muted,
+                        )
                     }
                     if (canRequest) {
-                        if (order.operatorId != currentUserId && order.createdBy != currentUserId) {
+                        if (!isAssignedOperator && !canApprove) {
                             OutlinedButton(onClick = { requestAction = "接管" }) { Text("申请接管") }
                         }
-                        OutlinedButton(onClick = { requestAction = "撤销" }) { Text("申请撤销") }
+                        if (isAssignedOperator) {
+                            OutlinedButton(onClick = { requestAction = "撤销" }) { Text("申请撤销") }
+                        }
                     } else if (order.pendingRequest != null) {
                         Text("已提交申请，等待后台审批", color = Muted)
                     }
@@ -2194,7 +2228,14 @@ private fun OrderDetailScreen(
 }
 
 @Composable
-private fun StepCard(step: WorkOrderStep, orderStatus: WorkOrderStatus, currentStepNo: Int, canApprove: Boolean, onAction: () -> Unit) {
+private fun StepCard(
+    step: WorkOrderStep,
+    orderStatus: WorkOrderStatus,
+    currentStepNo: Int,
+    canApprove: Boolean,
+    canOperate: Boolean,
+    onAction: () -> Unit,
+) {
     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White)) {
         Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(
@@ -2210,10 +2251,14 @@ private fun StepCard(step: WorkOrderStep, orderStatus: WorkOrderStatus, currentS
             )
             Column(Modifier.padding(start = 14.dp).weight(1f)) {
                 Text("步骤 ${step.stepNo} · ${step.materialCode} ${step.materialName}", color = Ink, fontWeight = FontWeight.Bold)
-                Text("应称 ${step.requiredWeightKg} kg · 允差 ±${step.toleranceKg} kg", color = Muted, fontSize = 14.sp)
+                RequiredWeightText(
+                    requiredWeightKg = step.requiredWeightKg,
+                    toleranceKg = step.toleranceKg,
+                    compact = true,
+                )
                 Text(step.status.label, color = if (step.status == StepStatus.COMPLETED) Green else Muted, fontSize = 13.sp)
             }
-            if (orderStatus == WorkOrderStatus.IN_PROGRESS && step.stepNo == currentStepNo && step.status != StepStatus.COMPLETED) {
+            if (canOperate && orderStatus == WorkOrderStatus.IN_PROGRESS && step.stepNo == currentStepNo && step.status != StepStatus.COMPLETED) {
                 when (step.status) {
                     StepStatus.PENDING -> Button(onClick = onAction) { Text("类型确认") }
                     StepStatus.TYPE_CONFIRMATION -> if (canApprove) {
@@ -2224,9 +2269,40 @@ private fun StepCard(step: WorkOrderStep, orderStatus: WorkOrderStatus, currentS
                     StepStatus.WEIGHING -> Button(onClick = onAction) { Text("填写称重") }
                     StepStatus.COMPLETED -> {}
                 }
+            } else if (orderStatus == WorkOrderStatus.IN_PROGRESS && step.stepNo == currentStepNo && step.status != StepStatus.COMPLETED) {
+                Text("仅当前执行人可操作", color = Muted, fontSize = 13.sp)
             }
         }
     }
+}
+
+@Composable
+private fun RequiredWeightText(
+    requiredWeightKg: Double,
+    toleranceKg: Double,
+    compact: Boolean = false,
+) {
+    val regularFontSize = if (compact) 14.sp else 16.sp
+    val requiredFontSize = if (compact) 17.sp else 19.sp
+    Text(
+        buildAnnotatedString {
+            withStyle(SpanStyle(color = Muted, fontSize = regularFontSize)) {
+                append("应称 ")
+            }
+            withStyle(
+                SpanStyle(
+                    color = RequiredWeightRed,
+                    fontSize = requiredFontSize,
+                    fontWeight = FontWeight.Bold,
+                ),
+            ) {
+                append("$requiredWeightKg kg")
+            }
+            withStyle(SpanStyle(color = Muted, fontSize = regularFontSize)) {
+                append(" · 允差 ±$toleranceKg kg")
+            }
+        },
+    )
 }
 
 @Composable
@@ -2274,7 +2350,10 @@ private fun TypeConfirmationDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Text("当前步骤要求：${step.materialName} · ${step.materialCode} · ${step.materialId}", color = Ink, fontWeight = FontWeight.Bold)
-                Text("应称 ${step.requiredWeightKg} kg · 允差 ±${step.toleranceKg} kg", color = Muted)
+                RequiredWeightText(
+                    requiredWeightKg = step.requiredWeightKg,
+                    toleranceKg = step.toleranceKg,
+                )
                 if (approvalMode) {
                     Text("已提交无码拍照申请，等待后台审批。", color = Muted)
                 } else {
@@ -2384,44 +2463,10 @@ private fun TypeQrScannerDialog(
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
     }
-    var camera by remember { mutableStateOf<Camera?>(null) }
-    var maxZoomRatio by remember { mutableStateOf(1f) }
-    val cameraState = rememberUpdatedState(camera)
-    val maxZoomState = rememberUpdatedState(maxZoomRatio)
-    val zoomSuggestionsEnabled = remember { AtomicBoolean(true) }
-    val zoomRequestCount = remember { AtomicInteger(0) }
-    val lastZoomRequestAt = remember { AtomicLong(0L) }
-    val lastRequestedZoom = remember { AtomicReference(0f) }
     val barcodeScanner = remember {
-        val zoomOptions = ZoomSuggestionOptions.Builder { requestedZoom ->
-            val cameraControl = cameraState.value?.cameraControl
-            if (cameraControl == null || !zoomSuggestionsEnabled.get() || zoomRequestCount.get() >= 4) {
-                false
-            } else {
-                val maxZoom = maxZoomState.value.coerceAtLeast(1f)
-                val currentZoom = cameraState.value?.cameraInfo?.zoomState?.value?.zoomRatio ?: 1f
-                val targetZoom = ((requestedZoom.coerceIn(1f, maxZoom) * 2f).roundToInt() / 2f)
-                val now = SystemClock.elapsedRealtime()
-                when {
-                    abs(targetZoom - currentZoom) < 0.2f -> true
-                    now - lastZoomRequestAt.get() < 700L -> true
-                    abs(targetZoom - lastRequestedZoom.get()) < 0.25f -> true
-                    else -> {
-                        lastZoomRequestAt.set(now)
-                        lastRequestedZoom.set(targetZoom)
-                        zoomRequestCount.incrementAndGet()
-                        cameraControl.setZoomRatio(targetZoom)
-                        true
-                    }
-                }
-            }
-        }
-            .setMaxSupportedZoomRatio(8f)
-            .build()
         val scannerOptions = BarcodeScannerOptions.Builder()
             .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
             .enableAllPotentialBarcodes()
-            .setZoomSuggestionOptions(zoomOptions)
             .build()
         BarcodeScanning.getClient(scannerOptions)
     }
@@ -2437,6 +2482,7 @@ private fun TypeQrScannerDialog(
     var error by remember { mutableStateOf<String?>(null) }
     var cameraError by remember { mutableStateOf<String?>(null) }
     var scanHint by remember { mutableStateOf("正在启动相机...") }
+    var progressText by remember { mutableStateOf("正在处理...") }
 
     suspend fun captureStill(): File {
         val directory = File(context.cacheDir, "evidence").apply { mkdirs() }
@@ -2465,6 +2511,16 @@ private fun TypeQrScannerDialog(
         working = true
         error = null
         runCatching {
+            if (payload != null) {
+                progressText = "正在校验二维码标签..."
+                repository.validateStepQr(
+                    orderNo = order.orderNo,
+                    stepNo = step.stepNo,
+                    labelId = payload.labelId,
+                    materialId = payload.materialId,
+                )
+            }
+            progressText = "正在保存现场照片并提交..."
             val sourceFile = captureStill()
             val processed = processCapturedEvidence(
                 context = context,
@@ -2526,13 +2582,11 @@ private fun TypeQrScannerDialog(
                     if (payload != null && processing.compareAndSet(false, true)) {
                         scope.launch { captureAndProcess(payload) }
                     } else if (barcodes.mapNotNull { it.rawValue }.any(::isPreviewQrPayload)) {
-                        zoomSuggestionsEnabled.set(false)
                         scanHint = "这是标签预览二维码，请先在电脑端点击“打印”生成正式标签"
                     } else if (barcodes.any { !it.rawValue.isNullOrBlank() }) {
-                        zoomSuggestionsEnabled.set(false)
                         scanHint = "已识别到二维码，但内容不是本系统正式标签"
                     } else if (barcodes.isNotEmpty()) {
-                        scanHint = "已检测到二维码，正在自动放大并解析..."
+                        scanHint = "已检测到二维码，请保持镜头稳定"
                     }
                 }
                 .addOnCompleteListener {
@@ -2551,15 +2605,13 @@ private fun TypeQrScannerDialog(
             imageCapture.targetRotation = rotation
             imageAnalysis.targetRotation = rotation
             provider.unbindAll()
-            val boundCamera = provider.bindToLifecycle(
+            provider.bindToLifecycle(
                 lifecycleOwner,
                 androidx.camera.core.CameraSelector.DEFAULT_BACK_CAMERA,
                 preview,
                 imageCapture,
                 imageAnalysis,
             )
-            camera = boundCamera
-            maxZoomRatio = boundCamera.cameraInfo.zoomState.value?.maxZoomRatio ?: 1f
             scanHint = "将二维码对准取景框，系统会自动识别"
             cameraError = null
         }.onFailure {
@@ -2653,7 +2705,7 @@ private fun TypeQrScannerDialog(
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         CircularProgressIndicator(color = Green)
-                        Text("正在保存现场照片并提交...", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text(progressText, color = Color.White, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -2673,18 +2725,34 @@ private fun WeightDialog(
     var weightText by remember { mutableStateOf("") }
     var photoName by remember { mutableStateOf("") }
     var photoUri by remember { mutableStateOf<String?>(null) }
+    var photoFile by remember { mutableStateOf<File?>(null) }
     var cameraOutputPath by rememberSaveable { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var result by remember { mutableStateOf<String?>(null) }
     var working by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    fun clearPhotoEvidence() {
+        photoFile?.delete()
+        cameraOutputPath?.let(::File)?.delete()
+        photoUri = null
+        photoName = ""
+        photoFile = null
+        cameraOutputPath = null
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { clearPhotoEvidence() }
+    }
+
     val cameraLauncher = rememberLauncherForActivityResult(EvidenceTakePicture()) { saved ->
         val outputFile = cameraOutputPath?.let(::File)
         val captured = outputFile != null && (saved || outputFile.length() > 0L)
         if (captured) {
             working = true
             error = null
+            photoFile?.delete()
             photoUri = null
             photoName = ""
             scope.launch {
@@ -2697,20 +2765,29 @@ private fun WeightDialog(
                 }.onSuccess { processed ->
                     photoUri = processed.photoUri
                     photoName = "现场拍摄"
+                    photoFile = processed.photoFile
                 }.onFailure {
                     error = "照片处理失败：${it.message}"
                 }
+                outputFile.delete()
+                cameraOutputPath = null
                 working = false
             }
-        } else if (saved) {
-            error = "相机未返回有效照片，请重新拍摄"
+        } else {
+            if (saved) error = "相机未返回有效照片，请重新拍摄"
+            outputFile?.delete()
+            cameraOutputPath = null
         }
     }
     val launchEvidenceCamera = cameraPermissionLauncher {
         val output = createCameraOutput(context)
         cameraOutputPath = output.file.absolutePath
         runCatching { cameraLauncher.launch(output.uri) }
-            .onFailure { error = "无法启动相机：${it.message}" }
+            .onFailure {
+                output.file.delete()
+                cameraOutputPath = null
+                error = "无法启动相机：${it.message}"
+            }
     }
     AlertDialog(
         onDismissRequest = { if (!working) onDismiss() },
@@ -2718,10 +2795,31 @@ private fun WeightDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Text("${step.materialName} · ${step.materialCode}", color = Ink, fontWeight = FontWeight.Bold)
-                Text("应称 ${step.requiredWeightKg} kg · 允差 ±${step.toleranceKg} kg", color = Muted)
-                OutlinedTextField(weightText, { weightText = it.filter { c -> c.isDigit() || c == '.' } }, modifier = Modifier.fillMaxWidth(), label = { Text("电子秤读数 (kg)") }, singleLine = true)
+                RequiredWeightText(
+                    requiredWeightKg = step.requiredWeightKg,
+                    toleranceKg = step.toleranceKg,
+                )
+                OutlinedTextField(
+                    value = weightText,
+                    onValueChange = { input ->
+                        val filtered = input.filter { c -> c.isDigit() || c == '.' }
+                        if (filtered != weightText) {
+                            clearPhotoEvidence()
+                            weightText = filtered
+                            error = null
+                            result = null
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("电子秤读数 (kg)") },
+                    singleLine = true,
+                    enabled = !working,
+                )
                 OutlinedButton(
-                    onClick = launchEvidenceCamera,
+                    onClick = {
+                        clearPhotoEvidence()
+                        launchEvidenceCamera()
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !working,
                 ) {
@@ -2750,9 +2848,13 @@ private fun WeightDialog(
                         runCatching { repository.submitStepWeight(order.orderNo, step.stepNo, weight, photoUri ?: "") }
                             .onSuccess { submitResult ->
                                 result = submitResult.message
+                                clearPhotoEvidence()
                                 if (submitResult.passed) onUpdated(submitResult.order)
                             }
-                            .onFailure { error = it.message }
+                            .onFailure {
+                                clearPhotoEvidence()
+                                error = it.message
+                            }
                             .also { working = false }
                     }
                 }
