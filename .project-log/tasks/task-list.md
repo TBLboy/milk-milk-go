@@ -85,18 +85,26 @@ Active goal: -
 | TASK-079 | done | task | high | 扩展关键操作审计日志和查询页面 |
 | TASK-080 | done | task | high | 补齐产品和配方的 Excel 导入导出 |
 | TASK-085 | done | task | high | 增加证据完整性检查管理界面和异常清单导出 |
+| TASK-086 | pending | task | high | 接入真实标签打印机并实现打印状态闭环 |
+| TASK-090 | done | repair | critical | 修复 Windows 覆盖升级覆盖已有配置的问题 |
+| TASK-091 | done | task | high | Windows 安装后执行 SMTP 非阻塞自检 |
+| TASK-092 | done | task | high | 增加 BUG 邮件发送状态、自检和手动重试 |
 | TASK-093 | done | task | high | 补齐辅料主数据 Excel 导出 |
 | TASK-094 | done | repair | high | 修正 Demo 标签生成界面与真实打印语义漂移 |
 | TASK-095 | done | repair | high | Android 证据照片 EXIF 解析安全加固 |
-| TASK-096 | done | task | high | 收敛历史任务状态与跨端验证证据 |
 | TASK-097 | done | task | high | 构建 1.0.2 演示测试安装包 |
 | TASK-098 | done | repair | high | 平板服务器 IP 四段均可编辑并重建 APK |
 | TASK-099 | done | repair | critical | 修复 PC 标签预览使用 PREVIEW 导致扫码标签不存在 |
 | TASK-100 | done | task | high | 增加标签尺寸设置并控制预览与后续打印 |
 | TASK-101 | done | task | medium | APP 工单详情下拉刷新 |
 | TASK-102 | done | repair | critical | 恢复标签生成后端运行时版本 |
-| TASK-103 | in-progress | task | high | 标签选择即预览并调整打印入口 |
-| TASK-086 | pending | task | high | 接入真实标签打印机并实现打印状态闭环 |
+| TASK-103 | done | task | high | 标签选择即预览并调整打印入口 |
+| TASK-104 | implemented-unverified | task | critical | APP 类型确认改为实时自动扫码抓拍 |
+| TASK-105 | implemented-unverified | repair | critical | 修复 APP 实时二维码识别率低 |
+| TASK-106 | implemented-unverified | repair | critical | 修正预览二维码误判与自动缩放抖动 |
+| TASK-107 | done | task | high | 将当前 Demo 主数据写入安装包并重建发布文件 |
+| TASK-108 | implemented-unverified | repair | critical | 增强同名辅料扫码不一致诊断 |
+| TASK-109 | implemented-unverified | repair | high | 修复注册页密码自动填充并支持注册人填写可选工号 |
 
 ## verification
 
@@ -109,9 +117,6 @@ Active goal: -
 | TASK-083 | blocked | task | critical | Windows 11 安装、升级和数据保留验收 |
 | TASK-084 | pending | task | critical | 内部 WiFi 完整工单和韧性验收 |
 | TASK-089 | pending | milestone | critical | 冻结最终版本并重建 Windows 安装包和 Android APK |
-| TASK-090 | done | repair | critical | 修复 Windows 覆盖升级覆盖已有配置的问题 |
-| TASK-091 | done | task | high | Windows 安装后执行 SMTP 非阻塞自检 |
-| TASK-092 | done | task | high | 增加 BUG 邮件发送状态、自检和手动重试 |
 
 ## business-clarification
 
@@ -124,3 +129,9 @@ Active goal: -
 | ID | Status | Kind | Priority | Title |
 |---|---|---|---|---|
 | TASK-088 | pending | task | medium | 研究并接入电子秤实时读数 |
+
+## alignment
+
+| ID | Status | Kind | Priority | Title |
+|---|---|---|---|---|
+| TASK-096 | done | task | high | 收敛历史任务状态与跨端验证证据 |

@@ -106,6 +106,42 @@ def test_qr_confirmation_rejects_label_material_mismatch(client):
     assert response.json()["detail"]["code"] == "LABEL_MATERIAL_MISMATCH"
 
 
+def test_qr_confirmation_explains_same_name_different_material_id(client):
+    headers, order_no, _, _ = setup_order(client)
+    current = client.post(
+        "/api/v1/master-data/materials",
+        headers=headers,
+        json={"material_code": "SWEET-01", "name_zh": "蔗糖", "shelf_life_months": 24},
+    ).json()
+    current_label = client.post(
+        "/api/v1/labels/print-batches",
+        headers=headers,
+        json={"material_id": current["material_id"], "quantity": 1},
+    ).json()["labels"][0]
+    file_id = client.post(
+        "/api/v1/evidence/files",
+        headers=headers,
+        files={"file": ("qr.jpg", b"qr-image", "image/jpeg")},
+    ).json()["file_id"]
+
+    response = client.post(
+        f"/api/v1/evidence/work-orders/{order_no}/steps/1/qr",
+        headers=headers,
+        json={
+            "label_id": current_label,
+            "material_id": current["material_id"],
+            "evidence_file_id": file_id,
+        },
+    )
+
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert detail["code"] == "MATERIAL_MISMATCH"
+    assert "A1 蔗糖" in detail["message"]
+    assert "SWEET-01 蔗糖" in detail["message"]
+    assert "MAT-" in detail["message"]
+
+
 def test_photo_approval_is_required_before_weight(client):
     headers, order_no, _, _ = setup_order(client)
     file_id = client.post("/api/v1/evidence/files", headers=headers, files={"file": ("material.jpg", b"fake-image", "image/jpeg")}).json()["file_id"]

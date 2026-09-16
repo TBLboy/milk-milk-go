@@ -12,6 +12,7 @@ config_dir.mkdir(parents=True, exist_ok=True)
 data_dir.mkdir(parents=True, exist_ok=True)
 os.chdir(config_dir)
 os.environ["MILK_DATA_DIR"] = str(data_dir)
+os.environ["MILK_DEMO_ASSETS_DIR"] = str(install_root / "server" / "demo_assets" / "uploads")
 sys.path.insert(0, str(install_root / "server"))
 
 from seed import seed

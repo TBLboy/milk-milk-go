@@ -9,11 +9,14 @@
 
 ## 当前状态
 
-  - 当前阶段：implementation / TASK-102 标签生成后端运行时已恢复
+  - 当前阶段：implementation / TASK-109 注册页密码自动填充与可选工号已实现
   - 当前目标：完成剩余生产级可本地实现缺口，并在真实 Android 平板、Windows 11 和公司内部 WiFi 完成独立验收
-  - 当前任务：TASK-102 已完成；TASK-083/084 等待真实 Windows 11、Android 平板和内部 WiFi 验收
-  - 当前状态：`8011` 后端已从旧代码进程切换到当前源码，health 返回 `version=1.0.4`；标签专项测试 4 项通过，PC 页面可直接重试生成标签记录
-  - 下一步：在 PC 标签页重新点击生成标签记录，确认响应包含 `label_payloads`；随后继续安装 Windows `1.0.4` EXE 和 Android `1.0.3` APK，核对标签尺寸、真实扫码、覆盖升级、平板连接和完整工单
+  - 当前任务：TASK-109 已完成注册密码状态隔离、注册模式自动填充排除、可选工号字段、后端保存和唯一性校验；真实平板复验待执行
+  - 当前状态：注册密码不再复用登录保存密码；注册页可填写可选工号，后端留空允许提交、审批前仍要求管理员补齐，填写后直接保存并检查唯一性
+  - 下一步：下一次统一打包时重建 Android APK，在真实平板验证注册页密码框不会带入保存密码且工号可正常提交
+  - 当前状态补记：TASK-103 已收口；PC 标签页选择辅料即显示 preview 预览且不落库，点击“打印”才创建正式标签记录并显示真实 `labelId`
+  - 当前状态补记：用户反馈浏览器可扫码但 APP 长时间无法识别；已提高分析分辨率并接入 ML Kit 自动缩放，修复版本为 Android `1.0.5`
+  - 当前状态补记：用户反馈正确二维码偶尔提示非本系统标签且镜头反复缩放；已区分 `preview=true` 的预览码，并限制自动缩放抖动，修复版本为 Android `1.0.6`
   - 当前状态补记：`TASK-097` 已生成 Windows `1.0.2` EXE 和 Android `1.0.2`（versionCode 3）APK；全新数据库安装会初始化 4 种辅料、2 个配方和 1 张演示工单
   - 当前状态补记：`TASK-098` 已允许 Android 服务器地址前两段在默认 `192.168` 基础上编辑，并生成 Android `1.0.3`（versionCode 4）APK；Windows 安装包保持 `1.0.2`
   - 当前状态补记：已核查 GPT 意见；用户确认真实标签打印机接入推迟到第一版 Demo 验收后，当前 Demo 只保留标签生成、二维码预览和记录；网络确定使用公司内部 WiFi，当前版本采用 HTTP，不引入证书和固定 IP 要求
@@ -86,6 +89,29 @@
 2. 覆盖安装一次，确认 `%ProgramData%\MilkWeigh\data` 中数据库和证据文件保留
 3. 在真实 Android 平板安装发布签名 APK，回归登录、扫码、称重证据和 BUG 反馈
 4. 补充安装后 SMTP 非阻塞测试、自动备份调度和 Windows 实机升级验证
+
+## 2026-09-15 TASK-108 同名辅料扫码不一致诊断
+
+- 用户扫描新白砂糖正式标签后仍提示与当前步骤不一致，排查确认不是扫码解析失败，而是系统身份 `materialId` 不同
+- 当前 Demo 白砂糖为 `MAT-00001 / SWEET-01`，旧工单快照仍可能是 `MAT-00023 / A1`，两者中文名都为“精制白砂糖”
+- 未放宽防错规则，仍严格比较 `materialId`；旧身份不会因中文名称相同而自动放行
+- 后端不一致响应新增当前步骤、扫描标签和标签主数据的名称、内部代号及 `materialId`
+- App 类型确认弹窗与扫码界面、PC 工单详情均显示当前步骤 `materialId`
+- 新增同名不同 `materialId` 回归测试；后端专项 10 项、完整回归、PC 生产构建、Android Kotlin 编译和差异检查通过
+- 本地 `8011` 已用当前源码重启，health 返回 `1.0.5`
+- 证据：EV-TASK-108-FOCUSED、EV-TASK-108-BACKEND、EV-TASK-108-PC-BUILD、EV-TASK-108-ANDROID-COMPILE、EV-TASK-108-DIFF
+- 限制：尚未重建 Windows EXE/Android APK，也未在真实工单完成用户复验
+
+## 2026-09-15 TASK-107 Demo 主数据打包与发布文件重建
+
+- 当前 SQLite 中的 14 种辅料、6 个产品和 6 个配方已固化为 Windows 安装器种子数据，共 29 条配方项
+- 可可粉 `MAT-00014` 的 10 张包装图片已复制到安装器 payload，并由安装种子写入 `%ProgramData%\MilkWeigh\data\uploads`
+- 种子按 `materialId`、产品名称和配方业务键幂等同步，不删除其他现有业务数据
+- Windows 版本提升到 `1.0.5`，构建产物为 `发布版本/牧衡辅料称重防错系统-Windows-1.0.5-Setup.exe`
+- Android `1.0.6` 与 Windows 包一起重新构建，`versionCode=7`，v2/v3 签名通过
+- 验证：临时库和安装 payload 种子均为 14/6/29/10；重复执行无重复记录；完整后端测试、PC 构建、EXE/APK 哈希和签名校验通过
+- 证据：EV-TASK-107-SEED、EV-TASK-107-PAYLOAD、EV-TASK-107-BACKEND、EV-TASK-107-WINDOWS、EV-TASK-107-ANDROID、EV-TASK-107-HASH
+- 限制：尚未在真实 Windows 11 执行 1.0.5 全新安装或覆盖升级验收
 
 ## 2026-09-14 TASK-102 标签生成后端运行时恢复
 

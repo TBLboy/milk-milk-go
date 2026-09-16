@@ -27,6 +27,7 @@ class RegisterRequest(BaseModel):
     username: str = Field(min_length=3, max_length=64, pattern=r"^[A-Za-z0-9_.-]+$")
     display_name: str = Field(min_length=1, max_length=64)
     password: str = Field(min_length=8, max_length=128)
+    employee_no: str | None = Field(default=None, max_length=64)
 
 
 class CreateUserRequest(BaseModel):
@@ -340,6 +341,8 @@ def _login_response(user: User) -> dict:
 def register(body: RegisterRequest, db: Session = Depends(get_db)) -> dict:
     if db.scalar(select(User).where(User.username == body.username)) is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={"code": "USERNAME_EXISTS", "message": "账号已存在"})
+    employee_no = _normalize_employee_no(body.employee_no)
+    _validate_employee_no_available(db, employee_no)
     user = User(
         username=body.username,
         display_name=body.display_name,
@@ -347,6 +350,7 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)) -> dict:
         role="operator",
         status="pending",
         is_active=False,
+        employee_no=employee_no,
     )
     db.add(user)
     db.flush()
@@ -356,7 +360,7 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)) -> dict:
         action="account.registered",
         resource_type="user",
         resource_id=user.id,
-        detail={"username": user.username, "display_name": user.display_name},
+        detail={"username": user.username, "display_name": user.display_name, "employee_no": user.employee_no},
     )
     db.commit()
     db.refresh(user)
@@ -365,6 +369,7 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)) -> dict:
         "id": user.id,
         "username": user.username,
         "display_name": user.display_name,
+        "employee_no": user.employee_no or "",
         "status": "pending",
         "message": "注册申请已提交，等待管理员审批",
     }

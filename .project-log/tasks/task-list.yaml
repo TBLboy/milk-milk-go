@@ -6255,7 +6255,7 @@ tasks:
     parent_id: null
     phase: implementation
     goal: 让 PC 标签页选择辅料后立即显示预览，并在点击“打印”时才生成正式标签记录。
-    status: in-progress
+    status: done
     priority: high
     risk: medium
     authority: B
@@ -6290,14 +6290,450 @@ tasks:
       - 页面明确提示当前未发送真实打印任务
       - PC 生产构建通过
     verification:
-      status: pending
-      commands: []
-      evidence: []
-      limitations: []
+      status: passed
+      commands:
+        - cd pc && npm run build
+        - Playwright 交互验证：切换辅料时无 POST，点击打印时仅创建一次正式标签记录
+      evidence:
+        - EV-TASK-103-PC-BUILD
+        - EV-TASK-103-PLAYWRIGHT
+      limitations:
+        - 未连接物理打印机，当前打印操作只创建正式标签记录。
     result:
-      summary: null
-      changed_files: []
+      summary: PC 标签页选择辅料后立即显示 preview 预览，不写数据库；按钮已改为打印，点击后按数量只创建一次正式标签记录并切换为真实 labelId 预览，页面明确提示当前未连接打印机。
+      changed_files:
+        - pc/src/pages/ManagementPages.tsx
+        - pc/src/layouts/AppShell.tsx
+        - pc/src/pages/Dashboard.tsx
+        - .project-log/specs/TASK-103.md
+        - .project-log/business-logic/atoms.yaml
+        - .project-log/decisions/decision-log.yaml
+        - .project-log/tasks/task-list.yaml
       deviations: []
       follow_ups: []
     created_at: "2026-09-14T03:50:00Z"
     updated_at: "2026-09-14T03:50:00Z"
+  - id: TASK-104
+    title: APP 类型确认改为实时自动扫码抓拍
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 让平板类型确认打开后实时检测本系统二维码，识别成功后自动抓拍现场照片、添加水印并调用现有接口自动确认；无码时提供现场拍照和后台审批入口。
+    status: implemented-unverified
+    priority: critical
+    risk: high
+    authority: C
+    owner: agent
+    tags: [app, recognition, camera, barcode, evidence, android]
+    related_business_logic: [BL-RECOG-001, BL-EVID-001, BL-WEIGH-005]
+    acceptance_refs: [AC-RECOG-001, AC-EVID-001, AC-WEIGH-005]
+    related_decisions: [DEC-044]
+    depends_on: [TASK-042, TASK-071, TASK-103]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing]
+    spec_ref: .project-log/specs/TASK-104.md
+    inputs:
+      - 现有类型确认弹窗和手工拍照扫码流程
+      - 本系统二维码标签 labelId 与 materialId
+      - 现有现场拍摄水印和图片上传能力
+      - 现有类型确认与无码拍照审批接口
+    outputs:
+      - CameraX 后置摄像头实时预览
+      - ML Kit 二维码实时识别
+      - 有效二维码自动抓拍、水印上传和自动确认
+      - 5 秒无码入口、现场拍照、原因填写和审批提交
+      - Android 1.0.4 测试 APK
+    plan:
+      - 引入 CameraX 和 ML Kit 依赖
+      - 将类型确认主入口改为实时扫码 Dialog
+      - 有效二维码触发一次自动抓拍和水印处理
+      - 调用现有 confirmStepQr 自动确认并在失败后继续扫码
+      - 5 秒后显示无码入口并复用现有拍照审批
+      - 执行 Android Debug、Lint、Release 构建和模拟器安装启动检查
+    done_when:
+      - 扫码界面显示实时后置摄像头预览
+      - 有效本系统二维码自动抓拍且只提交一次
+      - 错误辅料由后端拒绝并保持扫码状态
+      - 无效码、供应商码和预览码不会触发确认
+      - 无码照片固定绑定当前步骤并需填写原因后提交审批
+      - Android Debug 构建与 Lint 通过
+      - 签名 APK 构建和基础安装启动检查通过
+    verification:
+      status: partial
+      commands:
+        - cd app && JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk ./gradlew assembleDebug lintDebug --no-daemon
+        - ./app/packaging/build-apk.sh
+      evidence:
+        - EV-TASK-104-ANDROID-BUILD-LINT
+        - EV-TASK-104-APK
+        - EV-TASK-104-EMULATOR-SMOKE
+      limitations:
+        - 当前仅在构建机和 Android 模拟器做基础验证，未用真实平板验证摄像头兼容、扫码距离、自动抓拍清晰度和现场审批联动。
+        - 后端不修改，沿用现有标签校验、类型确认和无码审批接口。
+    result:
+      summary: 类型确认已改为 CameraX 实时预览与 ML Kit 自动识别；有效本系统二维码触发自动抓拍、水印、上传和自动确认，错误或无效码继续扫码，5 秒后提供无码现场拍照与审批入口。Android 1.0.4/versionCode 5 测试包已进入构建验证。
+      changed_files:
+        - app/app/build.gradle.kts
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - app/packaging/build-apk.sh
+        - .project-log/specs/TASK-104.md
+        - .project-log/business-logic/atoms.yaml
+        - .project-log/decisions/decision-log.yaml
+      deviations:
+        - 没有修改后端，现有接口已支持二维码类型确认和无码审批。
+      follow_ups:
+        - 用户在真实平板安装 1.0.4，验收实时扫码、自动抓拍、错误码保持扫描和无码审批。
+    created_at: "2026-09-14T04:14:55Z"
+    updated_at: "2026-09-14T04:14:55Z"
+  - id: TASK-105
+    title: 修复 APP 实时二维码识别率低
+    kind: repair
+    parent_id: null
+    phase: implementation
+    goal: 提高 Android 实时扫码对 PC 标签预览和实际标签二维码的识别率，解决用户反馈浏览器可识别但 APP 长时间无响应的问题。
+    status: implemented-unverified
+    priority: critical
+    risk: high
+    authority: B
+    owner: agent
+    tags: [app, barcode, camera, mlkit, repair]
+    related_business_logic: [BL-RECOG-001, BL-EVID-001]
+    acceptance_refs: [AC-RECOG-001, AC-EVID-001]
+    related_decisions: [DEC-044]
+    depends_on: [TASK-104]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing]
+    spec_ref: .project-log/specs/TASK-105.md
+    inputs:
+      - 用户反馈浏览器可识别二维码，但 APP 实时扫码长时间无结果
+      - CameraX 分析流使用默认分辨率
+      - ML Kit 未启用二维码专用格式、自动缩放建议和潜在码结果
+      - 普通标签预览二维码尺寸较小
+    outputs:
+      - 1280x720 优先的 CameraX 二维码分析流
+      - ML Kit 二维码格式专用配置
+      - 基于 CameraX 镜头控制的 ML Kit 自动缩放
+      - 识别状态提示
+      - Android 1.0.5 测试 APK
+    plan:
+      - 核查二维码载荷和现有实时分析链路
+      - 提高 ImageAnalysis 分辨率并设置 1280x720 回退策略
+      - 启用二维码专用格式、潜在码结果和自动缩放建议
+      - 将相机变焦控制接入 ML Kit 缩放回调
+      - 增加未识别、已检测和无效码提示
+      - 执行 Debug、Lint、Release APK 和模拟器安装启动检查
+    done_when:
+      - APP 使用二维码专用 ML Kit 配置和高分辨率分析流
+      - QR 较小时 ML Kit 可请求 CameraX 自动缩放
+      - 非本系统二维码显示明确提示且不会自动确认
+      - 原有自动抓拍、水印、无码审批逻辑保持不变
+      - Android Debug、Lint 和签名 APK 构建通过
+    verification:
+      status: partial
+      commands:
+        - cd app && JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk ./gradlew assembleDebug lintDebug --no-daemon
+        - ./app/packaging/build-apk.sh
+      evidence:
+        - EV-TASK-105-ANDROID-BUILD-LINT
+        - EV-TASK-105-APK
+        - EV-TASK-105-EMULATOR-SMOKE
+      limitations:
+        - 本地无法替代真实平板摄像头验证，必须现场确认识别距离、屏幕二维码和曲面包装上的识别率。
+    result:
+      summary: 已将 CameraX 分析流优先分辨率提高到 1280x720，启用二维码专用 ML Kit 模式、潜在码结果和自动缩放建议，并接入相机镜头控制；扫码界面会提示未识别、已检测或非本系统二维码状态。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - app/app/build.gradle.kts
+        - app/packaging/build-apk.sh
+        - .project-log/specs/TASK-105.md
+      deviations: []
+      follow_ups:
+        - 用户安装 1.0.5 后测试普通预览、放大预览、打印标签和瓶身曲面二维码，反馈识别距离和成功率。
+    created_at: "2026-09-14T04:31:00Z"
+    updated_at: "2026-09-14T04:31:00Z"
+  - id: TASK-106
+    title: 修正预览二维码误判与自动缩放抖动
+    kind: repair
+    parent_id: null
+    phase: implementation
+    goal: 区分标签预览二维码与正式标签，修复正确二维码被泛化提示为非法，并抑制自动缩放连续放大缩小的抖动。
+    status: implemented-unverified
+    priority: critical
+    risk: high
+    authority: B
+    owner: agent
+    tags: [app, barcode, preview-label, zoom, repair]
+    related_business_logic: [BL-LABEL-002, BL-RECOG-001]
+    acceptance_refs: [AC-LABEL-002, AC-RECOG-001]
+    related_decisions: [DEC-043, DEC-044]
+    depends_on: [TASK-103, TASK-105]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing]
+    spec_ref: .project-log/specs/TASK-106.md
+    inputs:
+      - 普通标签预览包含 preview=true 和 materialId，但不包含正式 labelId
+      - 用户反馈正确二维码被提示为不是本系统标签
+      - ML Kit 缩放建议连续帧请求不同倍率
+    outputs:
+      - 预览二维码专用提示
+      - 更宽容的 JSON 二维码提取
+      - 带节流、量化和次数限制的自动缩放
+      - Android 1.0.6 测试 APK
+    plan:
+      - 为 JSON 二维码增加 BOM、引号和附加文本容错
+      - 单独识别 preview=true 的标签预览码
+      - 对自动缩放倍率量化到 0.5，并设置 700ms 节流和四次上限
+      - 识别非正式标签后停止继续缩放
+      - 执行 Debug、Lint、Release APK 和模拟器检查
+    done_when:
+      - 扫描标签预览码时明确提示先点击打印
+      - 正式标签二维码可以正常提取 labelId 和 materialId
+      - 自动缩放不会持续来回抖动
+      - Android Debug、Lint 和签名 APK 构建通过
+    verification:
+      status: partial
+      commands:
+        - cd app && JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk ./gradlew assembleDebug lintDebug --no-daemon
+        - ./app/packaging/build-apk.sh
+      evidence:
+        - EV-TASK-106-ANDROID-BUILD-LINT
+        - EV-TASK-106-APK
+        - EV-TASK-106-EMULATOR-SMOKE
+      limitations:
+        - 真实平板上需要分别扫描普通预览、放大预览、正式标签和供应商二维码，确认提示与缩放行为。
+    result:
+      summary: 已增加标签预览二维码专用识别和提示，JSON 解析兼容 BOM、外层引号和前后附加文本；自动缩放倍率量化到 0.5，增加 700ms 节流和四次上限，遇到预览码或非正式标签后停止建议。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - app/app/build.gradle.kts
+        - app/packaging/build-apk.sh
+        - .project-log/specs/TASK-106.md
+      deviations: []
+      follow_ups:
+        - 用户安装 1.0.6 后扫描预览和正式标签，核对提示准确性和缩放稳定性。
+    created_at: "2026-09-14T05:15:00Z"
+    updated_at: "2026-09-14T05:15:00Z"
+  - id: TASK-107
+    title: 将当前 Demo 主数据写入安装包并重建发布文件
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 把当前演示辅料、产品配方和包装图片固化为 Windows 安装器种子数据，幂等同步到新装或升级环境，并重建 Windows 和 Android 发布安装包。
+    status: done
+    priority: high
+    risk: medium
+    authority: A
+    owner: agent
+    tags: [packaging, seed, demo, windows, android]
+    related_business_logic: [BL-DATA-003, BL-DATA-004, BL-LABEL-001]
+    acceptance_refs: []
+    related_decisions: [DEC-017, DEC-028, DEC-037]
+    depends_on: [TASK-097, TASK-100, TASK-106]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing, a-verification]
+    spec_ref: .project-log/specs/TASK-107.md
+    inputs:
+      - 当前本地数据库中的 14 种辅料、6 个产品和 6 个单版本配方
+      - 用户要求把 Demo 辅料、配方和包装图片同步打包
+      - 现有 Windows 安装器只在空库写入旧版 4 种辅料
+    outputs:
+      - 可重复同步的 Demo 主数据种子脚本
+      - 安装器内置 10 张可可粉包装图片
+      - Windows 1.0.5 安装包
+      - Android 1.0.6 安装包
+      - 更新后的发布说明和 SHA-256 清单
+    plan:
+      - 从当前 SQLite 提取完整的辅料、产品和配方项数据
+      - 用稳定业务键实现辅料、产品和配方的幂等同步
+      - 将演示图片复制到安装 payload，并由安装种子写入 ProgramData
+      - 增加种子数量、幂等性和安装器资源测试
+      - 构建 Windows 1.0.5 和 Android 1.0.6 安装包
+      - 校验 payload、版本、签名、哈希和完整后端回归
+    done_when:
+      - 临时空库中生成 14 种辅料、6 个配方、29 条配方项和 10 张辅料图片
+      - 重复执行种子脚本不增加重复记录
+      - Windows 安装器包含演示图片资源和最新种子脚本
+      - Windows 1.0.5 EXE 与 Android 1.0.6 APK 生成并通过哈希及签名校验
+      - 后端完整测试和 PC 生产构建通过
+    verification:
+      status: passed
+      commands:
+        - ./pc/scripts/build-windows-installer.sh
+        - ./app/packaging/build-apk.sh
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - sha256sum -c 发布版本/SHA256SUMS.txt
+        - "$HOME/Android/Sdk/build-tools/34.0.0/apksigner verify --verbose 发布版本/牧衡辅料称重防错系统-Android-1.0.6.apk"
+      evidence:
+        - EV-TASK-107-SEED
+        - EV-TASK-107-PAYLOAD
+        - EV-TASK-107-BACKEND
+        - EV-TASK-107-WINDOWS
+        - EV-TASK-107-ANDROID
+        - EV-TASK-107-HASH
+      limitations:
+        - 真实 Windows 11 全新安装、覆盖升级和客户局域网完整工单仍需现场验收。
+    result:
+      summary: Windows 1.0.5 安装器已内置 14 种辅料、6 个配方、29 条配方项和 10 张可可粉包装图片，采用不删除其他业务数据的幂等同步；Android 1.0.6 已重建并通过版本、签名和哈希校验。
+      changed_files:
+        - pc/server/seed.py
+        - pc/packaging/windows/seed_install.py
+        - pc/scripts/build-windows-installer.sh
+        - pc/package.json
+        - pc/package-lock.json
+        - pc/server/app/core/config.py
+        - pc/packaging/windows/installer.nsi
+        - pc/server/tests/test_demo_seed.py
+        - pc/server/tests/test_windows_installer.py
+        - pc/server/tests/test_health.py
+        - pc/server/tests/test_operations.py
+        - 发布版本/安装说明.txt
+        - 发布版本/SHA256SUMS.txt
+        - .project-log/docs/release-candidate-1.0.5-windows.md
+        - .project-log/docs/release-candidate-1.0.6-android.md
+      deviations: []
+      follow_ups:
+        - 在 Windows 11 安装 1.0.5，确认 14 种辅料、6 个配方和可可粉 10 张包装图片在 PC 与 App 端均可见。
+    created_at: "2026-09-15T14:25:00Z"
+    updated_at: "2026-09-15T14:25:00Z"
+  - id: TASK-108
+    title: 增强同名辅料扫码不一致诊断
+    kind: repair
+    parent_id: null
+    phase: implementation
+    goal: 定位“名称相同但扫码提示不一致”的原因，并在不放宽 materialId 校验的前提下提供可核查的双方身份信息。
+    status: implemented-unverified
+    priority: critical
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [app, pc, qr, material-id, diagnostics]
+    related_business_logic: [BL-LABEL-002, BL-RECOG-001]
+    acceptance_refs: [AC-LABEL-002, AC-RECOG-001]
+    related_decisions: [DEC-017, DEC-043, DEC-044]
+    depends_on: [TASK-103, TASK-107]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing, a-verification]
+    spec_ref: .project-log/specs/TASK-108.md
+    inputs:
+      - 新标签为 MAT-00001 / SWEET-01 / 精制白砂糖
+      - 旧演示工单可能仍保存 MAT-00023 / A1 / 精制白砂糖
+      - 现有 mismatch 文案未显示 materialId，无法快速判断同名身份差异
+    outputs:
+      - 带双方名称、内部代号和 materialId 的扫码不一致提示
+      - App 与 PC 当前步骤的 materialId 展示
+      - 同名不同 materialId 的回归测试
+    plan:
+      - 为后端一致性拒绝构造当前步骤、扫描标签和标签主数据身份
+      - 保留 materialId 严格匹配规则
+      - 在 App 扫码界面和 PC 工单详情补充 materialId
+      - 增加专项测试并运行完整回归和编译检查
+    done_when:
+      - 同名不同 materialId 仍被拒绝
+      - 错误响应可以明确显示双方辅料身份
+      - 后端完整测试、PC 构建和 Android Kotlin 编译通过
+    verification:
+      status: partial
+      commands:
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q tests/test_evidence.py
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - npm run build
+        - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew :app:compileDebugKotlin
+        - git diff --check
+      evidence:
+        - EV-TASK-108-FOCUSED
+        - EV-TASK-108-BACKEND
+        - EV-TASK-108-PC-BUILD
+        - EV-TASK-108-ANDROID-COMPILE
+        - EV-TASK-108-DIFF
+      limitations:
+        - 尚未重新构建 Windows EXE 和 Android APK。
+        - 尚未由用户在真实工单和新二维码上完成复验。
+    result:
+      summary: 已确认该提示可能来自“中文名相同但 materialId 不同”的新旧演示主数据；已增强后端不一致响应和 App/PC 身份展示，继续严格按 materialId 防错。
+      changed_files:
+        - pc/server/app/api/evidence.py
+        - pc/server/tests/test_evidence.py
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - pc/src/components/Modals.tsx
+        - .project-log/specs/TASK-108.md
+      deviations: []
+      follow_ups:
+        - 用户确认当前旧工单后，改用基于新 Demo 配方创建的工单复验扫码。
+        - 下一次统一打包时将本轮诊断改动写入 Windows EXE 和 Android APK。
+    created_at: "2026-09-15T15:05:00Z"
+    updated_at: "2026-09-15T15:05:00Z"
+  - id: TASK-109
+    title: 修复注册页密码自动填充并支持注册人填写可选工号
+    kind: repair
+    parent_id: null
+    phase: implementation
+    goal: 阻止登录页保存的密码进入注册页，并允许普通操作员注册时自主填写可选工号，同时保持管理员审批前必须存在唯一工号的规则。
+    status: implemented-unverified
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [app, auth, registration, autofill, employee-no]
+    related_business_logic: [BL-AUTH-001]
+    acceptance_refs: []
+    related_decisions: [DEC-024, DEC-030]
+    depends_on: [TASK-076]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing, a-verification]
+    spec_ref: .project-log/specs/TASK-109.md
+    inputs:
+      - 登录密码和注册密码共用同一 Compose 状态，切换模式时旧密码会显示在注册框
+      - Android 自动填充可能继续向注册密码框推荐已保存凭据
+      - 注册接口此前仅接收 username、display_name 和 password
+    outputs:
+      - 独立注册密码状态与注册模式自动填充排除
+      - 注册页可选工号输入框
+      - 后端可选 employee_no 注册参数、规范化、唯一性校验和测试
+    plan:
+      - 拆分登录密码与注册密码状态并清空注册确认密码
+      - 在注册模式对 Compose 根视图设置 IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
+      - 扩展 App Repository 和注册界面提交 employee_no
+      - 扩展后端 RegisterRequest 并复用既有工号规范化与唯一性校验
+      - 运行认证专项、完整后端回归、Android 编译与 Lint、差异检查
+    done_when:
+      - 登录页保存的密码不会预填到注册密码框
+      - 登录页记住密码功能保持不变
+      - 注册人可以选填工号，留空仍可提交
+      - 填写工号时后端正确保存并拒绝重复工号
+      - 后端认证专项和完整回归、Android 编译与 Lint 通过
+    verification:
+      status: partial
+      commands:
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q tests/test_auth.py
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew :app:compileDebugKotlin
+        - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew :app:lintDebug
+        - git diff --check
+      evidence:
+        - EV-TASK-109-AUTH-TESTS
+        - EV-TASK-109-BACKEND
+        - EV-TASK-109-ANDROID-BUILD-LINT
+        - EV-TASK-109-DIFF
+      limitations:
+        - Android 系统密码管理器的真实弹窗行为需要在最新 APK 安装到平板后人工复验。
+        - 尚未重新构建 Android APK。
+    result:
+      summary: 注册密码已拆为独立状态并在注册模式排除 Android 自动填充；注册页新增可选工号，后端保存并校验唯一性。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - pc/server/app/api/auth.py
+        - pc/server/tests/test_auth.py
+        - .project-log/specs/TASK-109.md
+      deviations: []
+      follow_ups:
+        - 下一次统一打包时构建 Android APK，并在真实平板验证注册页密码框与可选工号字段。
+    created_at: "2026-09-16T00:00:00Z"
+    updated_at: "2026-09-16T00:00:00Z"

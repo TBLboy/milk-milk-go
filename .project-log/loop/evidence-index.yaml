@@ -3407,3 +3407,531 @@ evidence:
   recorded_at: '2026-09-14T03:41:44Z'
   invalidated_at: null
   invalidation_reason: null
+- id: EV-TASK-104-ANDROID-BUILD-LINT
+  kind: command
+  subject: TASK-104 Android Debug 构建与 Lint
+  status: valid
+  command: cd app && JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk
+    ./gradlew assembleDebug lintDebug --no-daemon
+  result_ref: assembleDebug 和 lintDebug 均通过；已移除不再使用的 ZXing 拍照解析路径和依赖
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-104
+  version_binding:
+    git_commit: 8ff4c579286e614b43a1c07ded113903b4877c8c
+    diff_hash: 6291c05d896077f6fddbd257602023f49a5e00cf6484bd124e7de7e0e0e8191a
+    file_hashes: {}
+  recorded_at: '2026-09-14T04:23:46Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-104-APK
+  kind: artifact
+  subject: TASK-104 Android 1.0.4 签名 APK
+  status: valid
+  command: null
+  result_ref: versionCode=5, versionName=1.0.4；v2/v3 签名与 SHA-256 校验通过；SHA-256 fab022a475c40dbbb03a18f281c75fbd36b15ed2057b9ed97be153b37f8ad515
+  covers:
+    files:
+    - 发布版本/牧衡辅料称重防错系统-Android-1.0.4.apk
+    requirements: []
+    tasks:
+    - TASK-104
+  version_binding:
+    git_commit: 8ff4c579286e614b43a1c07ded113903b4877c8c
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      发布版本/牧衡辅料称重防错系统-Android-1.0.4.apk: fab022a475c40dbbb03a18f281c75fbd36b15ed2057b9ed97be153b37f8ad515
+  recorded_at: '2026-09-14T04:23:53Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-104-EMULATOR-SMOKE
+  kind: command
+  subject: TASK-104 Android 15 模拟器安装启动检查
+  status: valid
+  command: adb -s emulator-5554 uninstall com.muheng.milkweigh; adb -s emulator-5554
+    install 牧衡辅料称重防错系统-Android-1.0.4.apk; adb shell monkey -p com.muheng.milkweigh
+    -c android.intent.category.LAUNCHER 1
+  result_ref: 安装成功；versionCode=5/versionName=1.0.4；应用进程 PID 23916；logcat 无 FATAL EXCEPTION
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-104
+  version_binding:
+    git_commit: 8ff4c579286e614b43a1c07ded113903b4877c8c
+    diff_hash: 7742e77d5a39def235c2d789d29fcf194d9f3ea18ffcfb366a1c3b4dffa87350
+    file_hashes: {}
+  recorded_at: '2026-09-14T04:23:59Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-103-PC-BUILD
+  kind: command
+  subject: TASK-103 PC 生产构建
+  status: valid
+  command: cd pc && npm run build
+  result_ref: TypeScript 与 Vite 生产构建通过
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-103
+  version_binding:
+    git_commit: 8ff4c579286e614b43a1c07ded113903b4877c8c
+    diff_hash: bfd7efafb4b31094d17b7b83bf5bb5b120adbbc2cd712c669355f6fb08392382
+    file_hashes: {}
+  recorded_at: '2026-09-14T04:17:34Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-103-PLAYWRIGHT
+  kind: observation
+  subject: TASK-103 标签页交互验证
+  status: valid
+  command: null
+  result_ref: Playwright 会话确认：切换辅料只更新预览且无创建 POST；点击打印仅发送一次正式标签创建请求，随后显示真实 labelId
+    预览
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-103
+  version_binding:
+    git_commit: 8ff4c579286e614b43a1c07ded113903b4877c8c
+    diff_hash: 0bc775f2a0b641dc6c375f676c6eb3ab1d34c21ab4985bdcd8fd65d338e903d5
+    file_hashes: {}
+  recorded_at: '2026-09-14T04:17:42Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-105-ANDROID-BUILD-LINT
+  kind: command
+  subject: TASK-105 Android Debug 构建与 Lint
+  status: valid
+  command: cd app && JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk
+    ./gradlew assembleDebug lintDebug --no-daemon
+  result_ref: assembleDebug 和 lintDebug 均通过；CameraX 分辨率策略、二维码专用 ML Kit 和自动缩放 API 编译通过
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-105
+  version_binding:
+    git_commit: 8ff4c579286e614b43a1c07ded113903b4877c8c
+    diff_hash: 3248944bc9c5d5eed04e0cacc316dd96c62f5dc97d0fe7bdce60ef1633dff8e2
+    file_hashes: {}
+  recorded_at: '2026-09-14T04:59:36Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-105-APK
+  kind: artifact
+  subject: TASK-105 Android 1.0.5 签名 APK
+  status: valid
+  command: null
+  result_ref: versionCode=6, versionName=1.0.5；v2/v3 签名与 SHA-256 校验通过；SHA-256 9fc455deaa928a740f91c90904fc3e58e0513249db76820baaf9d14e860a60d4
+  covers:
+    files:
+    - 发布版本/牧衡辅料称重防错系统-Android-1.0.5.apk
+    requirements: []
+    tasks:
+    - TASK-105
+  version_binding:
+    git_commit: 8ff4c579286e614b43a1c07ded113903b4877c8c
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      发布版本/牧衡辅料称重防错系统-Android-1.0.5.apk: 9fc455deaa928a740f91c90904fc3e58e0513249db76820baaf9d14e860a60d4
+  recorded_at: '2026-09-14T04:59:46Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-105-EMULATOR-SMOKE
+  kind: command
+  subject: TASK-105 Android 15 模拟器安装启动检查
+  status: valid
+  command: adb -s emulator-5554 uninstall com.muheng.milkweigh; adb -s emulator-5554
+    install 牧衡辅料称重防错系统-Android-1.0.5.apk; adb shell monkey -p com.muheng.milkweigh
+    -c android.intent.category.LAUNCHER 1
+  result_ref: 安装成功；versionCode=6/versionName=1.0.5；应用进程 PID 25161；无应用 FATAL EXCEPTION
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-105
+  version_binding:
+    git_commit: 8ff4c579286e614b43a1c07ded113903b4877c8c
+    diff_hash: 2a78a1b3ff43c68dfd142e8d65d92de22d273791e6df8b2f62251c3a99a3daec
+    file_hashes: {}
+  recorded_at: '2026-09-14T04:59:54Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-106-ANDROID-BUILD-LINT
+  kind: command
+  subject: TASK-106 Android Debug 构建与 Lint
+  status: valid
+  command: cd app && JAVA_HOME=/home/tbl/android-studio/jbr ANDROID_HOME=/home/tbl/Android/Sdk
+    ./gradlew assembleDebug lintDebug --no-daemon
+  result_ref: assembleDebug 和 lintDebug 均通过；预览码识别、JSON 容错和缩放节流代码编译通过
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-106
+  version_binding:
+    git_commit: 8ff4c579286e614b43a1c07ded113903b4877c8c
+    diff_hash: bf1977e1892b0af1ea48e73e771c104ff52e6c5868d30deadfdaab0f1148155c
+    file_hashes: {}
+  recorded_at: '2026-09-14T05:21:43Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-106-APK
+  kind: artifact
+  subject: TASK-106 Android 1.0.6 签名 APK
+  status: valid
+  command: null
+  result_ref: versionCode=7, versionName=1.0.6；v2/v3 签名与 SHA-256 校验通过；SHA-256 ce4520e09a79563d34c16dba6fa75074e1fb15ea888d0dcc5a119b3e59a2267d
+  covers:
+    files:
+    - 发布版本/牧衡辅料称重防错系统-Android-1.0.6.apk
+    requirements: []
+    tasks:
+    - TASK-106
+  version_binding:
+    git_commit: 8ff4c579286e614b43a1c07ded113903b4877c8c
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      发布版本/牧衡辅料称重防错系统-Android-1.0.6.apk: ce4520e09a79563d34c16dba6fa75074e1fb15ea888d0dcc5a119b3e59a2267d
+  recorded_at: '2026-09-14T05:21:49Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-106-EMULATOR-SMOKE
+  kind: command
+  subject: TASK-106 Android 15 模拟器安装启动检查
+  status: valid
+  command: adb -s emulator-5554 uninstall com.muheng.milkweigh; adb -s emulator-5554
+    install 牧衡辅料称重防错系统-Android-1.0.6.apk; adb shell monkey -p com.muheng.milkweigh
+    -c android.intent.category.LAUNCHER 1
+  result_ref: 安装成功；versionCode=7/versionName=1.0.6；应用进程 PID 25727；无应用 FATAL EXCEPTION
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-106
+  version_binding:
+    git_commit: 8ff4c579286e614b43a1c07ded113903b4877c8c
+    diff_hash: 3cedd339d29103e70e0b60f190eba41a89a408a5d19f1ef0a879221924dd0ced
+    file_hashes: {}
+  recorded_at: '2026-09-14T05:21:56Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-107-SEED
+  kind: command
+  subject: 演示主数据种子完整性与幂等性
+  status: valid
+  command: MILK_DATA_DIR=<temp> MILK_DEMO_ASSETS_DIR=pc/data/uploads python pc/server/seed.py
+    (twice)
+  result_ref: 首次得到 14 materials / 6 products / 29 recipe_items / 10 material_images；第二次不增加重复记录
+  covers:
+    files:
+    - pc/server/seed.py
+    requirements: []
+    tasks:
+    - TASK-107
+  version_binding:
+    git_commit: 8ff4c579286e614b43a1c07ded113903b4877c8c
+    diff_hash: 51824cab055f8db5c05b5fa21ce1be1766c38b8932c19835e5e8ab74a79b2c79
+    file_hashes:
+      pc/server/seed.py: a27329b3ee8da135a18694b21a6573882113c1baaf2e892fb469e767da66b652
+  recorded_at: '2026-09-15T14:19:04Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-107-PAYLOAD
+  kind: command
+  subject: Windows 安装器 payload 演示数据与资源验证
+  status: valid
+  command: find .build/windows-installer/payload/server/demo_assets/uploads -type
+    f; MILK_DEMO_ASSETS_DIR=.build/windows-installer/payload/server/demo_assets/uploads
+    python .build/windows-installer/payload/server/seed.py
+  result_ref: payload 含 10 张图片；临时库得到 14 materials / 6 recipes / 29 recipe_items /
+    10 material_images，且无缺失图片
+  covers:
+    files:
+    - pc/scripts/build-windows-installer.sh
+    requirements: []
+    tasks:
+    - TASK-107
+  version_binding:
+    git_commit: 8ff4c579286e614b43a1c07ded113903b4877c8c
+    diff_hash: 08589dddeb9e2ea3730a938fcde6294e18a3052a18810e2694d03290804ce1e1
+    file_hashes:
+      pc/scripts/build-windows-installer.sh: 969d6a04884cdd8226a5be88c8c6f1583e3db499d3ce7544181da08b5020c32c
+  recorded_at: '2026-09-15T14:19:09Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-107-BACKEND
+  kind: test
+  subject: 后端完整回归与新增种子测试
+  status: valid
+  command: cd pc/server && PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q
+  result_ref: 完整测试集通过；新增测试覆盖 Demo 种子数量、重复执行幂等和 Windows 安装资源约束
+  covers:
+    files:
+    - pc/server/tests/test_demo_seed.py
+    requirements: []
+    tasks:
+    - TASK-107
+  version_binding:
+    git_commit: 8ff4c579286e614b43a1c07ded113903b4877c8c
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      pc/server/tests/test_demo_seed.py: 6c4587f09e95daddcb1e421b70ae5f00b729f759579bcd0ad2b937e4839dac64
+  recorded_at: '2026-09-15T14:19:15Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-107-WINDOWS
+  kind: artifact
+  subject: Windows 1.0.5 测试安装包
+  status: valid
+  command: ./pc/scripts/build-windows-installer.sh
+  result_ref: NSIS 编译成功；文件大小 31,045,854 字节；版本 1.0.5；SHA-256 7d4a3986a577389fe887e3fea421bc20e488753f8f28a47fc496016e5028f7d7
+  covers:
+    files:
+    - 发布版本/牧衡辅料称重防错系统-Windows-1.0.5-Setup.exe
+    requirements: []
+    tasks:
+    - TASK-107
+  version_binding:
+    git_commit: 8ff4c579286e614b43a1c07ded113903b4877c8c
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      发布版本/牧衡辅料称重防错系统-Windows-1.0.5-Setup.exe: 7d4a3986a577389fe887e3fea421bc20e488753f8f28a47fc496016e5028f7d7
+  recorded_at: '2026-09-15T14:19:21Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-107-ANDROID
+  kind: artifact
+  subject: Android 1.0.6 发布 APK 重建
+  status: valid
+  command: ./app/packaging/build-apk.sh
+  result_ref: versionCode=7/versionName=1.0.6；v2/v3 签名通过；SHA-256 ce4520e09a79563d34c16dba6fa75074e1fb15ea888d0dcc5a119b3e59a2267d
+  covers:
+    files:
+    - 发布版本/牧衡辅料称重防错系统-Android-1.0.6.apk
+    requirements: []
+    tasks:
+    - TASK-107
+  version_binding:
+    git_commit: 8ff4c579286e614b43a1c07ded113903b4877c8c
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      发布版本/牧衡辅料称重防错系统-Android-1.0.6.apk: ce4520e09a79563d34c16dba6fa75074e1fb15ea888d0dcc5a119b3e59a2267d
+  recorded_at: '2026-09-15T14:19:26Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-107-HASH
+  kind: command
+  subject: 发布版本 SHA-256 清单校验
+  status: valid
+  command: sha256sum -c 发布版本/SHA256SUMS.txt
+  result_ref: Windows 1.0.5 EXE 和 Android 1.0.6 APK 均校验成功
+  covers:
+    files:
+    - 发布版本/SHA256SUMS.txt
+    requirements: []
+    tasks:
+    - TASK-107
+  version_binding:
+    git_commit: 8ff4c579286e614b43a1c07ded113903b4877c8c
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      发布版本/SHA256SUMS.txt: 1d0d359776be36c5e709876215f416ee62776644b4872acb8ea31e0eed5ac5ff
+  recorded_at: '2026-09-15T14:19:31Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-108-FOCUSED
+  kind: test
+  subject: 扫码不一致诊断专项测试
+  status: valid
+  command: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q tests/test_evidence.py
+  result_ref: 10 passed
+  covers:
+    files:
+    - pc/server/tests/test_evidence.py
+    requirements: []
+    tasks:
+    - TASK-108
+  version_binding:
+    git_commit: 8ff4c579286e614b43a1c07ded113903b4877c8c
+    diff_hash: f36219844c6c09781634a6cd139e69205140d7b9c482f6647a6791c3f3d3f18d
+    file_hashes:
+      pc/server/tests/test_evidence.py: b406f6c8916610c39d4904b543ac3b824c977a32c3ab1501cc25b62ab5437c1d
+  recorded_at: '2026-09-15T15:01:12Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-108-PC-BUILD
+  kind: build
+  subject: PC 生产构建
+  status: valid
+  command: npm run build
+  result_ref: tsc and vite build passed
+  covers:
+    files:
+    - pc/src/components/Modals.tsx
+    requirements: []
+    tasks:
+    - TASK-108
+  version_binding:
+    git_commit: 8ff4c579286e614b43a1c07ded113903b4877c8c
+    diff_hash: ce357518e42e1019eefac927c51c537bb284d41390cb7641843c6da01258d909
+    file_hashes:
+      pc/src/components/Modals.tsx: fc54e71985b67e7c801c32ab09f7076e1d107746f18f9a151416349d65d3adc0
+  recorded_at: '2026-09-15T15:01:12Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-108-BACKEND
+  kind: test
+  subject: 后端完整回归
+  status: valid
+  command: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q
+  result_ref: full backend suite passed
+  covers:
+    files:
+    - pc/server/app/api/evidence.py
+    requirements: []
+    tasks:
+    - TASK-108
+  version_binding:
+    git_commit: 8ff4c579286e614b43a1c07ded113903b4877c8c
+    diff_hash: b8bd391c904276a4be77d39182c161a46ec2f179333d1a427d66dc80a897829d
+    file_hashes:
+      pc/server/app/api/evidence.py: cd48e933a8660526b3aa6a50a4fe2ef8101d63786cc65c4dfa4904a5b20238b6
+  recorded_at: '2026-09-15T15:01:12Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-108-ANDROID-COMPILE
+  kind: build
+  subject: Android Kotlin 编译
+  status: valid
+  command: JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew :app:compileDebugKotlin
+  result_ref: BUILD SUCCESSFUL
+  covers:
+    files:
+    - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+    requirements: []
+    tasks:
+    - TASK-108
+  version_binding:
+    git_commit: 8ff4c579286e614b43a1c07ded113903b4877c8c
+    diff_hash: d4b07d6025693ab8f08922718eb86dc2af3bdbae2bcf743d703a56a84627b9de
+    file_hashes:
+      app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt: edc905498e161fa2d36c11a1f4666ee2172cd65a89a4025706cdb6bbba05d9ad
+  recorded_at: '2026-09-15T15:01:12Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-108-DIFF
+  kind: static-check
+  subject: 差异格式检查
+  status: valid
+  command: git diff --check
+  result_ref: no whitespace errors
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-108
+  version_binding:
+    git_commit: 8ff4c579286e614b43a1c07ded113903b4877c8c
+    diff_hash: af4b77212c6e9042577ded93fd2c53282918e5f315ff0669951bcd33f9ac381c
+    file_hashes: {}
+  recorded_at: '2026-09-15T15:01:38Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-109-AUTH-TESTS
+  kind: test
+  subject: 注册专项认证测试
+  status: valid
+  command: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q tests/test_auth.py
+  result_ref: 10 passed；可选工号和重复工号测试通过
+  covers:
+    files:
+    - pc/server/app/api/auth.py
+    - pc/server/tests/test_auth.py
+    requirements: []
+    tasks:
+    - TASK-109
+  version_binding:
+    git_commit: 8ff4c579286e614b43a1c07ded113903b4877c8c
+    diff_hash: e29977c10310e7f35d000340a5e926657c77661eef475ee05de82511d7433c92
+    file_hashes:
+      pc/server/app/api/auth.py: 24c5f5f5c7328760d20063ca5ed40bbee917654264c66f36d5ec866d9eb8c632
+      pc/server/tests/test_auth.py: 86d68e645777f83f6a3720329a902f060fc823a6d427c8c721e2e54c82c4bb35
+  recorded_at: '2026-09-16T04:17:43Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-109-BACKEND
+  kind: test
+  subject: 后端完整回归
+  status: valid
+  command: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python
+    -m pytest -q
+  result_ref: 完整后端测试套件通过，无失败
+  covers:
+    files:
+    - pc/server/app/api/auth.py
+    - pc/server/tests/test_auth.py
+    requirements: []
+    tasks:
+    - TASK-109
+  version_binding:
+    git_commit: 8ff4c579286e614b43a1c07ded113903b4877c8c
+    diff_hash: e29977c10310e7f35d000340a5e926657c77661eef475ee05de82511d7433c92
+    file_hashes:
+      pc/server/app/api/auth.py: 24c5f5f5c7328760d20063ca5ed40bbee917654264c66f36d5ec866d9eb8c632
+      pc/server/tests/test_auth.py: 86d68e645777f83f6a3720329a902f060fc823a6d427c8c721e2e54c82c4bb35
+  recorded_at: '2026-09-16T04:17:48Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-109-ANDROID-BUILD-LINT
+  kind: build
+  subject: Android Kotlin 编译与 Lint
+  status: valid
+  command: JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew :app:compileDebugKotlin
+    :app:lintDebug
+  result_ref: BUILD SUCCESSFUL；Lint 0 errors
+  covers:
+    files:
+    - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+    - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
+    - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+    requirements: []
+    tasks:
+    - TASK-109
+  version_binding:
+    git_commit: 8ff4c579286e614b43a1c07ded113903b4877c8c
+    diff_hash: 4af26c4e7c954abf28102592f386bb426412c566c9c2951f3d572729125ebe31
+    file_hashes:
+      app/app/src/main/java/com/muheng/milkweigh/AppData.kt: 2184fca9ec5f7a6c8ccbac7ba8b64e14447089c279057c8db50d12a9e16b43ce
+      app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt: 3dcd40d89f7dce01ca145084b8c4208296a28330eaa56358de8ed84e795b7c47
+      app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt: d0a1bcdf46a64cbca9031cf360c0661b99e3f6acd00c01cdf89b76b84c7208e9
+  recorded_at: '2026-09-16T04:17:53Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-109-DIFF
+  kind: static-check
+  subject: 差异格式检查
+  status: valid
+  command: git diff --check
+  result_ref: no whitespace errors
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-109
+  version_binding:
+    git_commit: 8ff4c579286e614b43a1c07ded113903b4877c8c
+    diff_hash: 87b739b1558d576cbc4600a4b5efc03ff665c2ace689ff17a117caa2ef089af9
+    file_hashes: {}
+  recorded_at: '2026-09-16T04:17:59Z'
+  invalidated_at: null
+  invalidation_reason: null

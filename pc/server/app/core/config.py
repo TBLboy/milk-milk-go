@@ -9,7 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 class Settings(BaseSettings):
     app_name: str = "milk-weigh-api"
-    app_version: str = "1.0.4"
+    app_version: str = "1.0.5"
     data_dir: Path = PROJECT_ROOT / "data"
     frontend_dir: Path = PROJECT_ROOT / "dist"
     database_filename: str = "milk_weigh.sqlite3"
