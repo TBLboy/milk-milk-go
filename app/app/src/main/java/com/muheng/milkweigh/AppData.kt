@@ -135,6 +135,7 @@ interface MilkRepository {
     suspend fun refreshUser(): AppUser
     suspend fun uploadAvatar(uri: String): String
     suspend fun uploadImage(uri: String): String
+    suspend fun validateStepQr(orderNo: String, stepNo: Int, labelId: String, materialId: String)
     suspend fun submitBugReport(description: String, imageUris: List<String>)
     suspend fun updateProfile(displayName: String, phone: String, avatarFileId: String?): AppUser
     suspend fun changePassword(currentPassword: String, newPassword: String)
@@ -544,6 +545,14 @@ class MockMilkRepository : MilkRepository {
 
     override suspend fun uploadImage(uri: String): String = uri
 
+    override suspend fun validateStepQr(orderNo: String, stepNo: Int, labelId: String, materialId: String) {
+        val order = orderStore.firstOrNull { it.orderNo == orderNo } ?: error("工单不存在")
+        val step = order.steps.firstOrNull { it.stepNo == stepNo } ?: error("步骤不存在")
+        if (step.status == StepStatus.COMPLETED || step.status == StepStatus.WEIGHING) error("该辅料已完成类型确认")
+        if (labelId.isBlank()) error("二维码标签编号无效")
+        if (materialId.isBlank() || materialId.trim() != step.materialId) error("扫描到的辅料与当前步骤要求不一致")
+    }
+
     override suspend fun submitBugReport(description: String, imageUris: List<String>) {
         if (description.isBlank()) error("请填写问题描述")
         if (imageUris.size > 8) error("最多上传 8 张图片")
@@ -751,7 +760,6 @@ class MockMilkRepository : MilkRepository {
         val step = order.steps.firstOrNull { it.stepNo == stepNo } ?: error("步骤不存在")
         if (step.status != StepStatus.WEIGHING) error("请先完成辅料类型确认")
         if (weightKg <= 0) error("请输入正确的称重重量")
-        if (evidenceUri.isBlank()) error("请拍摄电子秤读数照片")
         val withinTolerance = weightKg >= step.requiredWeightKg - step.toleranceKg &&
             weightKg <= step.requiredWeightKg + step.toleranceKg
         if (!withinTolerance) {
@@ -761,6 +769,7 @@ class MockMilkRepository : MilkRepository {
                 order = order,
             )
         }
+        if (evidenceUri.isBlank()) error("请拍摄电子秤读数照片")
         val steps = order.steps.map { if (it.stepNo == stepNo) it.copy(status = StepStatus.COMPLETED) else it }
         val updated = order.copy(
             steps = steps,

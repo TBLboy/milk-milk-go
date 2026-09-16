@@ -1,14 +1,14 @@
 schema_version: 1
-run_id: RUN-20260916-041435-1a18cbc7
+run_id: RUN-20260916-074627-54941e7c
 goal_id: null
 phase: implementation
 clarification_domain: null
-task_id: TASK-109
+task_id: TASK-119
 status: handed-off
 next_action:
   kind: external-verification
-  subject: TASK-109
-  statement: 下一次统一打包时构建 Android APK，在真实平板确认注册页密码框为空且不会带入保存密码，并验证可选工号可提交、留空仍可注册、重复工号被拒绝。
+  subject: TASK-119
+  statement: 安装 Windows 1.0.6 EXE 和 Android 1.0.14 APK，确认安装、登录、主数据、工单、扫码和称重流程正常。
 counters:
   task_attempts: 0
   same_failure_count: 0
@@ -24,5 +24,5 @@ native_goal:
   thread_goal_id: null
   last_known_status: null
   last_synced_at: null
-last_event_id: LE-002009
-updated_at: '2026-09-16T04:18:46Z'
+last_event_id: LE-002089
+updated_at: '2026-09-16T07:48:10Z'

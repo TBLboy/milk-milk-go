@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Bug, CheckCircle2, CircleDashed, Clock3, Copy, ImagePlus, KeyRound, PackageCheck, PlayCircle, Send, UserRound, X, Plus, Trash2 } from 'lucide-react'
 import { api } from '../services/api'
 import { useAutoRefresh } from '../hooks/useAutoRefresh'
+import { SearchableSelect } from './SearchableSelect'
 
 export function Modal({ title, onClose, children, className = '' }: { title: string; onClose: () => void; children: React.ReactNode; className?: string }) {
   return (
@@ -221,11 +222,17 @@ export function CreateOrderModal({ onClose, onSuccess }: { onClose: () => void; 
         {error && <div className="modal-error">{error}</div>}
         <label>
           选择生产产品
-          <select value={productId} onChange={(e) => setProductId(Number(e.target.value))}>
-            {products.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
+          <SearchableSelect
+            value={productId}
+            options={products.map((p) => ({
+              value: String(p.id),
+              label: p.name,
+              keywords: `${p.name} ${p.id}`,
+            }))}
+            onChange={(nextValue) => setProductId(Number(nextValue))}
+            placeholder="输入产品名称搜索"
+            emptyMessage="没有匹配的产品"
+          />
         </label>
         <label>
           目标生产重量 (kg)
@@ -240,10 +247,20 @@ export function CreateOrderModal({ onClose, onSuccess }: { onClose: () => void; 
         </label>
         <label>
           操作员（可选，不选则创建后待指派）
-          <select value={operatorId} onChange={(e) => setOperatorId(e.target.value === '' ? '' : Number(e.target.value))}>
-            <option value="">暂不指派</option>
-            {users.map((user) => <option key={user.id} value={user.id}>{user.display_name} · {user.username}</option>)}
-          </select>
+          <SearchableSelect
+            value={operatorId}
+            options={[
+              { value: '', label: '暂不指派', keywords: '不选 待指派' },
+              ...users.map((user) => ({
+                value: String(user.id),
+                label: `${user.display_name} · ${user.username}`,
+                keywords: `${user.display_name} ${user.username} ${user.employee_no || ''}`,
+              })),
+            ]}
+            onChange={(nextValue) => setOperatorId(nextValue === '' ? '' : Number(nextValue))}
+            placeholder="输入姓名或账号搜索"
+            emptyMessage="没有匹配的操作员"
+          />
         </label>
         <p className="form-hint">系统将根据配方比例自动计算出辅料种类与应称重量。</p>
         <div className="modal-footer">
@@ -887,16 +904,17 @@ export function CreateProductModal({ onClose, onSuccess, product }: { onClose: (
         <div className="items-list">
           {items.map((item, idx) => (
             <div className="item-row" key={idx}>
-              <select
+              <SearchableSelect
                 value={item.material_id}
-                onChange={(e) => updateItem(idx, 'material_id', e.target.value)}
-              >
-                {materials.map((m) => (
-                  <option key={m.material_id} value={m.material_id}>
-                    {m.name_zh} ({m.material_code})
-                  </option>
-                ))}
-              </select>
+                options={materials.map((m) => ({
+                  value: m.material_id,
+                  label: `${m.name_zh} (${m.material_code})`,
+                  keywords: `${m.name_zh} ${m.material_code} ${m.name_en || ''} ${m.material_id}`,
+                }))}
+                onChange={(nextValue) => updateItem(idx, 'material_id', nextValue)}
+                placeholder="输入辅料名称或代号搜索"
+                emptyMessage="没有匹配的辅料"
+              />
               <input
                 type="number"
                 step="any"

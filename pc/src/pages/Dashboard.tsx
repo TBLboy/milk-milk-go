@@ -33,7 +33,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (page: string) => void 
     const textMatch = `${order.id}${order.product}`.toLowerCase().includes(query.toLowerCase())
     const statusMatch = statusFilter === '全部状态' || order.status === statusFilter
     return textMatch && statusMatch
-  })
+  }).slice(0, 5)
 
   return (
     <div className="page-wrap">

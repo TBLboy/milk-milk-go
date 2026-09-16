@@ -339,10 +339,50 @@ def _login_response(user: User) -> dict:
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 def register(body: RegisterRequest, db: Session = Depends(get_db)) -> dict:
-    if db.scalar(select(User).where(User.username == body.username)) is not None:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={"code": "USERNAME_EXISTS", "message": "账号已存在"})
     employee_no = _normalize_employee_no(body.employee_no)
-    _validate_employee_no_available(db, employee_no)
+    existing_user = db.scalar(select(User).where(User.username == body.username))
+    if existing_user is not None and existing_user.status != "rejected":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={"code": "USERNAME_EXISTS", "message": "账号已存在"})
+
+    _validate_employee_no_available(
+        db,
+        employee_no,
+        exclude_user_id=existing_user.id if existing_user is not None else None,
+    )
+    if existing_user is not None:
+        existing_user.display_name = body.display_name
+        existing_user.password_hash = hash_password(body.password)
+        existing_user.employee_no = employee_no
+        existing_user.status = "pending"
+        existing_user.is_active = False
+        existing_user.must_change_password = False
+        existing_user.auth_version = (existing_user.auth_version or 1) + 1
+        existing_user.created_at = datetime.now(timezone.utc)
+        write_audit(
+            db,
+            actor_id=None,
+            action="account.registration_resubmitted",
+            resource_type="user",
+            resource_id=existing_user.id,
+            detail={
+                "username": existing_user.username,
+                "display_name": existing_user.display_name,
+                "employee_no": existing_user.employee_no,
+            },
+        )
+        db.commit()
+        db.refresh(existing_user)
+        return {
+            "submitted": True,
+            "resubmitted": True,
+            "id": existing_user.id,
+            "username": existing_user.username,
+            "display_name": existing_user.display_name,
+            "employee_no": existing_user.employee_no or "",
+            "status": "pending",
+            "message": "注册申请已重新提交，等待管理员审批",
+        }
+
     user = User(
         username=body.username,
         display_name=body.display_name,
@@ -366,6 +406,7 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)) -> dict:
     db.refresh(user)
     return {
         "submitted": True,
+        "resubmitted": False,
         "id": user.id,
         "username": user.username,
         "display_name": user.display_name,

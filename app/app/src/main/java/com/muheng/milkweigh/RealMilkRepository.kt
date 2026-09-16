@@ -54,6 +54,16 @@ class RealMilkRepository(
 
     override suspend fun uploadImage(uri: String): String = uploadFile(uri)
 
+    override suspend fun validateStepQr(orderNo: String, stepNo: Int, labelId: String, materialId: String) {
+        jsonObjectRequest(
+            path = "evidence/work-orders/$orderNo/steps/$stepNo/qr/validate",
+            method = "POST",
+            body = JSONObject()
+                .put("label_id", labelId)
+                .put("material_id", materialId),
+        )
+    }
+
     override suspend fun submitBugReport(description: String, imageUris: List<String>) {
         if (description.isBlank()) error("请填写问题描述")
         if (imageUris.size > 8) error("最多上传 8 张图片")
@@ -284,6 +294,18 @@ class RealMilkRepository(
     }
 
     override suspend fun submitStepWeight(orderNo: String, stepNo: Int, weightKg: Double, evidenceUri: String): WeightSubmitResult {
+        val validation = jsonObjectRequest(
+            path = "evidence/work-orders/$orderNo/steps/$stepNo/weight/validate",
+            method = "POST",
+            body = JSONObject().put("weight_kg", weightKg),
+        )
+        if (validation.optString("status") != "passed") {
+            return WeightSubmitResult(
+                passed = false,
+                message = validation.optString("message", "重量未通过允差校验，请重新称重。"),
+                order = getWorkOrder(orderNo),
+            )
+        }
         val fileId = uploadImage(evidenceUri)
         val response = jsonObjectRequest(
             path = "evidence/work-orders/$orderNo/steps/$stepNo/weight",

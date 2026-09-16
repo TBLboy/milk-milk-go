@@ -62,6 +62,21 @@ def test_cancel_request_keeps_traceable_record(client):
     product_id = create_product(client)
     order = create_order(client, product_id)
 
+    denied_cancel = client.post(
+        f"/api/v1/work-orders/{order['order_no']}/requests",
+        headers=operator,
+        json={"request_type": "cancel", "reason": "不是执行人不能撤销"},
+    )
+    assert denied_cancel.status_code == 403
+    assert denied_cancel.json()["detail"]["code"] == "WORK_ORDER_OPERATOR_REQUIRED"
+
+    takeover = client.post(
+        f"/api/v1/work-orders/{order['order_no']}/requests",
+        headers=operator,
+        json={"request_type": "takeover", "reason": "接管后负责撤销"},
+    ).json()
+    assert client.post(f"/api/v1/work-orders/requests/{takeover['id']}/approve", headers=admin).status_code == 200
+
     cancel = client.post(
         f"/api/v1/work-orders/{order['order_no']}/requests",
         headers=operator,
@@ -133,6 +148,13 @@ def test_started_three_step_order_still_accepts_cancel_request(client):
     assert client.post(f"/api/v1/work-orders/{order['order_no']}/start", headers=admin).status_code == 200
     detail = client.get(f"/api/v1/work-orders/{order['order_no']}", headers=operator).json()
     assert detail["status"] == "in_progress"
+
+    takeover = client.post(
+        f"/api/v1/work-orders/{order['order_no']}/requests",
+        headers=operator,
+        json={"request_type": "takeover", "reason": "接管执行中的工单"},
+    ).json()
+    assert client.post(f"/api/v1/work-orders/requests/{takeover['id']}/approve", headers=admin).status_code == 200
 
     request = client.post(
         f"/api/v1/work-orders/{order['order_no']}/requests",

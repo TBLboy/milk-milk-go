@@ -1754,7 +1754,15 @@ tasks:
         - 浏览器验证使用项目开发后端和测试账号；测试账号保留在开发数据库中，正式发布数据不受影响。
     result:
       summary: PC 后台账号资料与审批闭环已在 Chrome 中验证。管理员可创建带头像、姓名、电话和唯一工号的普通账号；账号列表显示工号且不再出现身份证字段；随机密码弹窗只显示一次 10 位临时密码并可写入剪贴板；平板注册申请可批准或驳回，待审批和已驳回账号登录均被后端拒绝。
-      changed_files: []
+      changed_files:
+        - pc/server/app/api/evidence.py
+        - pc/server/tests/test_evidence.py
+        - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - app/app/build.gradle.kts
+        - app/packaging/build-apk.sh
+        - .project-log/specs/TASK-114.md
       deviations:
         - 验收契约原本仍引用已删除的身份证字段，执行前已按 DEC-041 更新为工号规则；产品代码无需修改。
       follow_ups: []
@@ -6714,26 +6722,666 @@ tasks:
         - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
         - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew :app:compileDebugKotlin
         - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew :app:lintDebug
+        - bash app/packaging/build-apk.sh
         - git diff --check
       evidence:
         - EV-TASK-109-AUTH-TESTS
         - EV-TASK-109-BACKEND
         - EV-TASK-109-ANDROID-BUILD-LINT
+        - EV-TASK-109-APK
         - EV-TASK-109-DIFF
       limitations:
         - Android 系统密码管理器的真实弹窗行为需要在最新 APK 安装到平板后人工复验。
-        - 尚未重新构建 Android APK。
+        - Android 1.0.7 APK 已构建并通过签名与哈希校验，但尚未安装到真实平板复验。
     result:
       summary: 注册密码已拆为独立状态并在注册模式排除 Android 自动填充；注册页新增可选工号，后端保存并校验唯一性。
       changed_files:
         - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
         - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
         - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - app/app/build.gradle.kts
+        - app/packaging/build-apk.sh
         - pc/server/app/api/auth.py
         - pc/server/tests/test_auth.py
         - .project-log/specs/TASK-109.md
       deviations: []
       follow_ups:
-        - 下一次统一打包时构建 Android APK，并在真实平板验证注册页密码框与可选工号字段。
+        - 在真实平板安装 Android 1.0.7，验证注册页密码框与可选工号字段。
     created_at: "2026-09-16T00:00:00Z"
     updated_at: "2026-09-16T00:00:00Z"
+  - id: TASK-110
+    title: 修复已驳回账号无法重新注册
+    kind: repair
+    parent_id: null
+    phase: implementation
+    goal: 允许已驳回的普通操作员账号使用原用户名重新提交注册申请，同时继续阻止待审批或已启用账号重复注册。
+    status: implemented-unverified
+    priority: high
+    risk: medium
+    authority: B
+    owner: agent
+    tags: [app, auth, registration, rejected, resubmit]
+    related_business_logic: [BL-AUTH-001]
+    acceptance_refs: []
+    related_decisions: [DEC-024, DEC-030]
+    depends_on: [TASK-109]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing, a-verification]
+    spec_ref: .project-log/specs/TASK-110.md
+    inputs:
+      - 驳回用户记录仍保留原用户名
+      - 注册接口把所有已存在用户名统一判定为重复账号
+      - 驳回状态无法在客户端修改，导致原用户名永久卡死
+    outputs:
+      - rejected 用户记录重新提交逻辑
+      - 重新提交审计记录
+      - 驳回后重新注册与重新审批测试
+    plan:
+      - 注册时区分 rejected 记录和其他已存在账号
+      - 复用原用户记录更新资料、密码、工号和 pending 状态
+      - 记录重新提交审计并提升 auth_version
+      - 增加回归测试并重启 8011 后端
+    done_when:
+      - rejected 用户名可以重新提交注册
+      - 重新提交后可由管理员再次审批
+      - 新密码在审批后生效
+      - pending 和 active 用户名仍不能重复注册
+      - 认证专项和完整后端测试通过
+    verification:
+      status: passed
+      commands:
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q tests/test_auth.py
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - git diff --check
+      evidence:
+        - EV-TASK-110-AUTH-TESTS
+        - EV-TASK-110-BACKEND
+        - EV-TASK-110-DIFF
+      limitations:
+        - 尚未在真实平板用被驳回账号执行一次人工重提验收。
+    result:
+      summary: 已被驳回的普通操作员账号现在可以使用原用户名重新提交，原记录重新进入待审批，资料、密码和工号会被更新，并保留重新提交审计。
+      changed_files:
+        - pc/server/app/api/auth.py
+        - pc/server/tests/test_auth.py
+        - .project-log/specs/TASK-110.md
+      deviations: []
+      follow_ups:
+        - 在真实平板使用一个已驳回账号复验重新提交与后台再次审批。
+    created_at: "2026-09-16T05:30:00Z"
+    updated_at: "2026-09-16T05:30:00Z"
+  - id: TASK-111
+    title: 修复注册历史账号串入与工单执行人越权
+    kind: repair
+    parent_id: null
+    phase: implementation
+    goal: 阻止登录保存账号进入注册账号栏，并确保只有管理员或当前工单执行人可以操作工单步骤和状态流转。
+    status: implemented-unverified
+    priority: critical
+    risk: high
+    authority: B
+    owner: agent
+    tags: [app, auth, registration, autofill, work-order, authorization]
+    related_business_logic: [BL-AUTH-001, BL-WO-001]
+    acceptance_refs: []
+    related_decisions: [DEC-024, DEC-026, DEC-030]
+    depends_on: [TASK-109, TASK-110]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing, a-verification]
+    spec_ref: .project-log/specs/TASK-111.md
+    inputs:
+      - 登录保存账号仍可能在注册模式复用账号输入框或保留 Android 自动填充浮层
+      - App 目前只按工单可见性展示操作按钮，没有核对当前执行人
+      - 后端部分步骤接口仍把工单创建人视为可操作人
+    outputs:
+      - 独立注册账号状态和模式切换时重建输入框、清除焦点
+      - App 按管理员或当前执行人控制工单操作按钮
+      - 后端开始、完成、证据和撤销申请统一执行人校验
+      - 非执行人操作和接管后原创建人失去权限的回归测试
+    plan:
+      - 拆分注册账号状态并清理注册模式登录账号下拉与焦点
+      - 引入 canOperate 并调整工单详情按钮、接管和撤销显示
+      - 收紧证据、开始、完成和撤销申请的操作人校验
+      - 运行后端专项、完整回归、Android 编译与 Lint、APK 构建和差异检查
+    done_when:
+      - 注册账号栏不再带入登录保存账号
+      - 非执行普通操作员无法操作工单步骤和状态
+      - 当前执行人和管理员保持合法操作能力
+      - 自动化验证和 Android 1.0.9 发布构建通过
+    verification:
+      status: partial
+      commands:
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q tests/test_work_orders.py tests/test_evidence.py tests/test_work_order_requests.py tests/test_auth.py
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /home/tbl/miniforge3/envs/milk/bin/python -m pytest -q
+        - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew :app:compileDebugKotlin :app:lintDebug
+        - bash app/packaging/build-apk.sh
+        - git diff --check
+      evidence:
+        - EV-TASK-111-BACKEND-FOCUSED
+        - EV-TASK-111-BACKEND-SUITE
+        - EV-TASK-111-ANDROID-BUILD-LINT
+        - EV-TASK-111-APK
+        - EV-TASK-111-RUNTIME
+        - EV-TASK-111-DIFF
+      limitations:
+        - 尚未在真实 Android 平板确认密码管理器不会弹出登录保存账号。
+        - 尚未用两个普通操作员账号完成最新 APK 的端到端越权复验。
+    result:
+      summary: 注册模式现在使用独立账号状态、重建输入框并清除焦点；工单端和后端均限制为管理员或当前执行人可操作，创建人不再自动获得执行权限。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - app/app/build.gradle.kts
+        - app/packaging/build-apk.sh
+        - pc/server/app/api/evidence.py
+        - pc/server/app/api/work_orders.py
+        - pc/server/app/api/work_order_requests.py
+        - pc/server/tests/test_evidence.py
+        - pc/server/tests/test_work_orders.py
+        - pc/server/tests/test_work_order_requests.py
+        - .project-log/specs/TASK-111.md
+      deviations: []
+      follow_ups:
+        - 在真实平板安装 Android 1.0.9，复验注册账号栏与密码管理器行为。
+        - 使用两个普通操作员账号验证非执行人只能申请接管，当前执行人可以继续完成工单。
+    created_at: "2026-09-16T06:10:00Z"
+    updated_at: "2026-09-16T06:10:00Z"
+  - id: TASK-112
+    title: 限制电脑端工作台最新工单为 5 条
+    kind: repair
+    parent_id: null
+    phase: implementation
+    goal: 将电脑端工作台最新工单表格限制为最多 5 条，避免工单数量增加后纵向高度无限增长。
+    status: done
+    priority: high
+    risk: low
+    authority: A
+    owner: agent
+    tags: [pc, dashboard, work-orders, layout]
+    related_business_logic: [BL-WO-001]
+    acceptance_refs: []
+    related_decisions: [DEC-028]
+    depends_on: [TASK-111]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing, a-verification]
+    spec_ref: .project-log/specs/TASK-112.md
+    inputs:
+      - 工作台当前直接渲染全部符合筛选条件的最新工单
+      - 工单增多后表格纵向持续拉长并挤压其他区域
+    outputs:
+      - 筛选结果最多展示 5 条的工作台最新工单表格
+    plan:
+      - 在筛选结果后截取前 5 条
+      - 运行 PC 生产构建
+      - 使用浏览器注入超过 5 个工单并核对实际渲染行数
+    done_when:
+      - 工作台最新工单最多渲染 5 行
+      - PC 构建和差异检查通过
+      - 浏览器验证 8 个输入工单只显示 5 行
+    verification:
+      status: passed
+      commands:
+        - npm run build
+        - Playwright dashboard row-count verification
+        - git diff --check
+      evidence:
+        - EV-TASK-112-PC-BUILD
+        - EV-TASK-112-UI
+        - EV-TASK-112-DIFF
+      limitations: []
+    result:
+      summary: 工作台最新工单筛选结果已限制为前 5 条，完整列表继续通过“查看全部”进入工单管理页查看。
+      changed_files:
+        - pc/src/pages/Dashboard.tsx
+        - .project-log/specs/TASK-112.md
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-16T06:20:00Z"
+    updated_at: "2026-09-16T06:20:00Z"
+  - id: TASK-113
+    title: 删除 APP 类型确认扫码自动缩放
+    kind: repair
+    parent_id: null
+    phase: implementation
+    goal: 移除类型确认扫码中的 ML Kit 自动缩放建议和 CameraX 自动变焦，保持镜头倍率稳定。
+    status: implemented-unverified
+    priority: high
+    risk: medium
+    authority: A
+    owner: agent
+    tags: [app, scanner, camera, qr, zoom]
+    related_business_logic: [BL-RECOG-001]
+    acceptance_refs: [AC-RECOG-001]
+    related_decisions: [DEC-017]
+    depends_on: [TASK-104, TASK-105, TASK-106]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing, a-verification]
+    spec_ref: .project-log/specs/TASK-113.md
+    inputs:
+      - 类型确认扫码使用 ML Kit ZoomSuggestionOptions
+      - 二维码检测回调通过 CameraX setZoomRatio 自动调整镜头
+      - 现场用户要求扫码时镜头保持固定倍率
+    outputs:
+      - 不启用自动缩放建议的二维码扫描器
+      - 无 CameraX 自动变焦调用的类型确认流程
+      - Android 1.0.10 签名 APK
+    plan:
+      - 删除 ZoomSuggestionOptions 和自动变焦状态
+      - 删除 CameraX setZoomRatio 调用并调整检测提示
+      - 运行 Android 编译与 Lint
+      - 重建签名 APK 并记录哈希
+    done_when:
+      - 源码不存在自动缩放或 setZoomRatio 调用
+      - Android 编译和 Lint 通过
+      - Android 1.0.10 APK 签名有效
+    verification:
+      status: partial
+      commands:
+        - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew :app:compileDebugKotlin :app:lintDebug
+        - rg ZoomSuggestionOptions|setZoomRatio app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - bash app/packaging/build-apk.sh
+        - git diff --check
+      evidence:
+        - EV-TASK-113-ANDROID-BUILD-LINT
+        - EV-TASK-113-NO-ZOOM
+        - EV-TASK-113-APK
+        - EV-TASK-113-DIFF
+      limitations:
+        - 尚未在真实 Android 平板执行扫码并确认镜头倍率保持不变。
+    result:
+      summary: 类型确认扫码已删除 ML Kit 自动缩放建议、自动变焦状态和 CameraX setZoomRatio 调用，识别提示改为保持镜头稳定。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - app/app/build.gradle.kts
+        - app/packaging/build-apk.sh
+        - .project-log/specs/TASK-113.md
+      deviations: []
+      follow_ups:
+        - 在真实平板安装 Android 1.0.10，回归扫码识别、无码申请和照片上传，确认镜头不再自动变焦。
+    created_at: "2026-09-16T06:35:00Z"
+    updated_at: "2026-09-16T06:35:00Z"
+  - id: TASK-114
+    title: 错误二维码不上传类型确认照片
+    kind: repair
+    parent_id: null
+    phase: implementation
+    goal: 类型确认二维码通过后端校验后才抓拍并上传照片，错误二维码不得产生证据文件。
+    status: implemented-unverified
+    priority: critical
+    risk: high
+    authority: A
+    owner: agent
+    tags: [app, backend, scanner, qr, evidence]
+    related_business_logic: [BL-RECOG-001, BL-EVID-001]
+    acceptance_refs: [AC-RECOG-001, AC-EVID-001]
+    related_decisions: [DEC-015, DEC-044]
+    depends_on: [TASK-104, TASK-105, TASK-106, TASK-108]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing, a-verification]
+    spec_ref: .project-log/specs/TASK-114.md
+    inputs:
+      - APP 自动扫码当前先抓拍上传，后调用正式确认接口
+      - 后端只在正式确认接口中校验标签和工单辅料匹配关系
+      - 用户要求错误二维码不得上传照片到后端
+    outputs:
+      - 二维码无照片预校验接口
+      - 预校验通过后才抓拍上传的 APP 扫码流程
+      - 预校验和正式确认共享的后端二维码校验逻辑
+    plan:
+      - 提取后端二维码校验并增加预校验接口
+      - Repository 增加预校验调用并调整扫码顺序
+      - 增加预校验成功、失败和无证据文件回归测试
+      - 运行后端测试、Android 编译与 Lint、差异检查
+    done_when:
+      - 错误二维码不抓拍、不上传、不创建证据文件
+      - 正确二维码校验通过后仍可完成类型确认
+      - 正式确认接口继续执行二次校验
+      - 后端和 Android 验证通过
+    verification:
+      status: passed
+      commands:
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 conda run -n milk python -m pytest tests/test_evidence.py -q
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 conda run -n milk python -m pytest -q
+        - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew :app:compileDebugKotlin :app:lintDebug
+        - perl -0777 -ne 'exit 1 unless /suspend fun captureAndProcess.*?repository\.validateStepQr.*?val sourceFile = captureStill/s' app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - bash app/packaging/build-apk.sh
+        - curl -sS http://127.0.0.1:8011/api/v1/health
+        - git diff --check
+      evidence:
+        - EV-TASK-114-BACKEND-FOCUSED
+        - EV-TASK-114-BACKEND-SUITE
+        - EV-TASK-114-ANDROID-BUILD-LINT
+        - EV-TASK-114-NO-PRECAPTURE
+        - EV-TASK-114-APK
+        - EV-TASK-114-RUNTIME
+        - EV-TASK-114-DIFF
+      limitations:
+        - 尚未在真实 Android 平板回归错误二维码、正确二维码和无码申请流程。
+    result:
+      summary: 类型确认已改为后端无照片预校验通过后才抓拍、上传并正式确认；错误二维码返回具体原因且不创建 EvidenceFile。
+      changed_files:
+        - pc/server/app/api/evidence.py
+        - pc/server/tests/test_evidence.py
+        - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - app/app/build.gradle.kts
+        - app/packaging/build-apk.sh
+        - .project-log/specs/TASK-114.md
+      deviations: []
+      follow_ups:
+        - 在真实 Android 平板安装 1.0.11，回归错误二维码不上传、正确二维码自动确认和无码拍照申请。
+    created_at: "2026-09-16T08:00:00Z"
+    updated_at: "2026-09-16T08:00:00Z"
+  - id: TASK-115
+    title: 超差重量不上传证据并禁止提交
+    kind: repair
+    parent_id: null
+    phase: implementation
+    goal: 重量确认通过允差预校验后才上传电子秤读数照片，超差不得创建证据或正式称重记录。
+    status: implemented-unverified
+    priority: critical
+    risk: high
+    authority: A
+    owner: agent
+    tags: [app, backend, weighing, evidence]
+    related_business_logic: [BL-WEIGH-003, BL-WEIGH-004, BL-EVID-001]
+    acceptance_refs: [AC-WEIGH-003, AC-WEIGH-004, AC-EVID-001]
+    related_decisions: [DEC-005, DEC-026]
+    depends_on: [TASK-104, TASK-114]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing, a-verification]
+    spec_ref: .project-log/specs/TASK-115.md
+    inputs:
+      - APP 重量提交当前先上传照片，后端随后判断重量
+      - 超差重量会创建 EvidenceFile 和 WeighingAttempt
+      - 用户要求只有确认成功才能上传信息
+    outputs:
+      - 重量无照片预校验接口
+      - 预校验通过后才上传的 APP 重量确认流程
+      - 正式提交仅保存通过允差记录的称重逻辑
+    plan:
+      - 提取后端重量允差校验并增加预校验接口
+      - 调整 APP Repository 的上传顺序
+      - 更新业务规则和架构描述
+      - 增加重量预校验和超差无证据回归测试
+      - 运行后端测试、Android 编译与 Lint、重建 APK 和差异检查
+    done_when:
+      - 超差重量不抓拍上传、不创建证据文件或称重尝试
+      - 正确重量预校验通过后可以上传并完成称重
+      - 正式提交接口执行二次校验
+      - 后端和 Android 验证通过
+    verification:
+      status: passed
+      commands:
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 conda run -n milk python -m pytest tests/test_evidence.py tests/test_audit.py -q
+        - PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 conda run -n milk python -m pytest -q
+        - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew clean :app:compileDebugKotlin :app:lintDebug --no-daemon
+        - perl -0777 -ne 'exit 1 unless /override suspend fun submitStepWeight.*?weight\/validate.*?val fileId = uploadImage/s' app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
+        - bash app/packaging/build-apk.sh
+        - curl -sS http://127.0.0.1:8011/api/v1/health
+        - git diff --check
+      evidence:
+        - EV-TASK-115-BACKEND-FOCUSED
+        - EV-TASK-115-BACKEND-SUITE
+        - EV-TASK-115-ANDROID-BUILD-LINT
+        - EV-TASK-115-NO-PREUPLOAD
+        - EV-TASK-115-APK
+        - EV-TASK-115-RUNTIME
+        - EV-TASK-115-DIFF
+      limitations:
+        - 尚未在真实 Android 平板回归超差重量、正确重量和重新称重流程。
+    result:
+      summary: 重量确认已改为允差预校验通过后才上传电子秤读数照片；超差返回 WEIGHT_OUT_OF_TOLERANCE，不创建 EvidenceFile 或 WeighingAttempt。
+      changed_files:
+        - pc/server/app/api/evidence.py
+        - pc/server/tests/test_evidence.py
+        - pc/server/tests/test_audit.py
+        - app/app/src/main/java/com/muheng/milkweigh/AppData.kt
+        - app/app/src/main/java/com/muheng/milkweigh/RealMilkRepository.kt
+        - app/app/build.gradle.kts
+        - app/packaging/build-apk.sh
+        - .project-log/specs/TASK-115.md
+        - .project-log/business-logic/atoms.yaml
+        - .project-log/requirements/baseline.yaml
+        - .project-log/architecture/architecture.yaml
+      deviations: []
+      follow_ups:
+        - 在真实 Android 平板安装 1.0.12，回归超差重量不上传、正确重量上传和重新称重流程。
+    created_at: "2026-09-16T08:45:00Z"
+    updated_at: "2026-09-16T08:45:00Z"
+  - id: TASK-116
+    title: 重量读数变化或提交失败后作废旧照片
+    kind: repair
+    parent_id: null
+    phase: implementation
+    goal: 保证电子秤读数照片始终对应当前输入重量，旧照片不得在新读数下复用。
+    status: implemented-unverified
+    priority: critical
+    risk: high
+    authority: A
+    owner: agent
+    tags: [app, weighing, evidence, camera]
+    related_business_logic: [BL-WEIGH-003, BL-WEIGH-004, BL-EVID-001]
+    acceptance_refs: [AC-WEIGH-003, AC-WEIGH-004]
+    related_decisions: [DEC-005, DEC-026]
+    depends_on: [TASK-115]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing, a-verification]
+    spec_ref: .project-log/specs/TASK-116.md
+    inputs:
+      - 重量提交失败后 photoUri 和 photoName 未清理
+      - 修改重量后仍可复用旧照片提交
+      - 处理后照片文件未记录文件引用，失败时无法清理缓存
+    outputs:
+      - 重量变化即失效照片的输入逻辑
+      - 提交失败即清除照片的交互逻辑
+      - 可删除本地处理后照片的缓存引用
+    plan:
+      - 为 ProcessedEvidence 增加文件引用
+      - 在 WeightDialog 中统一清理照片状态与缓存
+      - 重量输入变化和提交失败时调用清理
+      - 运行 Android 编译、Lint、静态检查并重建 APK
+    done_when:
+      - 重量输入变化后旧照片被清除
+      - 提交失败后旧照片被清除
+      - 新读数必须重新拍照才能提交
+      - Android 构建和 APK 验证通过
+    verification:
+      status: passed
+      commands:
+        - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew :app:compileDebugKotlin :app:lintDebug --no-daemon
+        - perl -0777 -ne 'exit 1 unless /var photoFile by remember \{ mutableStateOf<File\?>\(null\) \}.*?fun clearPhotoEvidence\(\).*?photoFile\?\.delete\(\).*?photoUri = null/s; exit 1 unless /onValueChange = \{ input ->.*?clearPhotoEvidence\(\).*?weightText = filtered/s; exit 1 unless /\.onSuccess \{ submitResult ->.*?clearPhotoEvidence\(\).*?if \(submitResult\.passed\)/s; exit 1 unless /\.onFailure \{\s*clearPhotoEvidence\(\)\s*error = it\.message/s' app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - bash app/packaging/build-apk.sh
+      evidence: [EV-TASK-116-ANDROID-BUILD-LINT, EV-TASK-116-STALE-PHOTO, EV-TASK-116-APK, EV-TASK-116-DIFF]
+      limitations:
+        - 真实 Android 平板需人工回归“旧照片失效”和“必须重新拍照”交互
+    result:
+      summary: 重量读数变化、提交失败、重新拍摄或关闭弹窗时会删除旧照片缓存并清空引用；新读数必须重新拍照才能提交。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - app/app/build.gradle.kts
+        - app/packaging/build-apk.sh
+      deviations: []
+      follow_ups:
+        - 在真实 Android 平板安装 1.0.13，回归重量超差后旧照片失效、修改读数后禁用提交和重新拍照流程。
+    created_at: "2026-09-16T09:20:00Z"
+    updated_at: "2026-09-16T09:20:00Z"
+  - id: TASK-117
+    title: 强化 APP 应称重量视觉警示
+    kind: repair
+    parent_id: null
+    phase: implementation
+    goal: 让现场操作员更容易识别每个辅料步骤的应称重量和 kg 单位。
+    status: implemented-unverified
+    priority: medium
+    risk: low
+    authority: A
+    owner: agent
+    tags: [app, weighing, ui]
+    related_business_logic: [BL-WEIGH-003]
+    acceptance_refs: [AC-WEIGH-003]
+    related_decisions: [DEC-005]
+    depends_on: [TASK-116]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing, a-verification]
+    spec_ref: .project-log/specs/TASK-117.md
+    inputs:
+      - APP 当前使用灰色文字展示应称重量
+      - 现场操作存在看错数值和单位的风险
+    outputs:
+      - 统一的应称重量红色高亮组件
+      - 工单步骤卡、类型确认和重量确认统一样式
+    plan:
+      - 新增应称重量文本组件
+      - 替换 APP 三处应称重量展示
+      - 运行 Android 编译、Lint、静态检查并重建 APK
+    done_when:
+      - 三处应称数值和 kg 单位均为红色加粗
+      - 允差说明仍为次要颜色
+      - Android 构建和 APK 验证通过
+    verification:
+      status: passed
+      commands:
+        - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew :app:compileDebugKotlin :app:lintDebug --no-daemon
+        - rg -n 'RequiredWeightText|RequiredWeightRed|append\("$requiredWeightKg kg"\)' app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - bash app/packaging/build-apk.sh
+      evidence: [EV-TASK-117-ANDROID-BUILD-LINT, EV-TASK-117-RED-WEIGHT, EV-TASK-117-APK, EV-TASK-117-DIFF]
+      limitations:
+        - 真实 Android 平板上的字体大小、换行和红色对比度需要人工查看
+    result:
+      summary: APP 中三处应称重量均改为深红色加粗，kg 单位随数值一同高亮，允差说明保持次要颜色。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - app/app/build.gradle.kts
+        - app/packaging/build-apk.sh
+      deviations: []
+      follow_ups:
+        - 在真实 Android 平板安装 1.0.14，查看工单步骤卡、类型确认和重量确认三处红色重量提示的辨识度。
+    created_at: "2026-09-16T07:24:00Z"
+    updated_at: "2026-09-16T07:24:00Z"
+  - id: TASK-118
+    title: 电脑端动态下拉框支持输入搜索
+    kind: task
+    parent_id: null
+    phase: implementation
+    goal: 让电脑端辅料、产品、操作员和审计筛选下拉框支持输入关键字筛选，提高数据较多时的选择效率。
+    status: done
+    priority: high
+    risk: medium
+    authority: A
+    owner: agent
+    tags: [pc, ui, dropdown, search]
+    related_business_logic: [BL-WO-001, BL-LABEL-001]
+    acceptance_refs: []
+    related_decisions: [DEC-028]
+    depends_on: [TASK-117]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing, a-verification]
+    spec_ref: .project-log/specs/TASK-118.md
+    inputs:
+      - 电脑端动态下拉框使用原生 select，数据增多后滚动选择困难
+      - 标签打印、新建工单、配方编辑和审计筛选需要更快的查找方式
+    outputs:
+      - 支持输入筛选、鼠标选择和键盘导航的复用下拉组件
+      - 动态数据下拉框统一切换到可搜索组件
+      - 电脑端生产构建产物
+    plan:
+      - 新增 SearchableSelect 组件和统一样式
+      - 替换标签、工单、配方和审计筛选中的动态 select
+      - 运行 TypeScript 与生产构建
+      - 使用 Chrome 验证筛选、选择、回填和菜单关闭
+    done_when:
+      - 动态下拉支持输入筛选和列表选择
+      - 产品、辅料和操作员选择均正确回填
+      - 生产构建和浏览器交互验证通过
+    verification:
+      status: passed
+      commands:
+        - cd pc && npm run build
+        - Playwright + Chrome label/create-order/recipe searchable-select checks
+        - "! rg -q '<select' pc/src --glob '*.tsx'"
+        - git diff --check
+      evidence: [EV-TASK-118-PC-BUILD, EV-TASK-118-BROWSER, EV-TASK-118-STATIC, EV-TASK-118-DIFF]
+      limitations:
+        - 当前浏览器验证使用 Chrome；正式交付前需确认客户浏览器版本
+    result:
+      summary: 电脑端动态下拉框已统一切换为可输入搜索组件，覆盖标签打印、新建工单、配方辅料和审计筛选。
+      changed_files:
+        - pc/src/components/SearchableSelect.tsx
+        - pc/src/components/Modals.tsx
+        - pc/src/pages/ManagementPages.tsx
+        - pc/src/styles/app.css
+        - pc/dist
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-16T07:38:00Z"
+    updated_at: "2026-09-16T07:38:00Z"
+  - id: TASK-119
+    title: 构建最新版 Windows 安装包和 Android APK
+    kind: milestone
+    parent_id: null
+    phase: implementation
+    goal: 冻结当前最新源码并生成可安装测试的 Windows 1.0.6 EXE 与 Android 1.0.14 APK。
+    status: done
+    priority: high
+    risk: medium
+    authority: A
+    owner: agent
+    tags: [release, windows, android, packaging]
+    related_business_logic: []
+    acceptance_refs: []
+    related_decisions: []
+    depends_on: [TASK-118]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing, a-verification]
+    spec_ref: .project-log/specs/TASK-119.md
+    inputs:
+      - PC 当前源码与生产构建产物
+      - Android 当前 versionCode 15 和 versionName 1.0.14
+      - Windows 和 Android 现有发布脚本
+    outputs:
+      - 发布版本/牧衡辅料称重防错系统-Windows-1.0.6-Setup.exe
+      - 发布版本/牧衡辅料称重防错系统-Android-1.0.14.apk
+      - 两个发布产物的 SHA-256 文件
+    plan:
+      - 将 PC 版本提升到 1.0.6
+      - 构建 Windows 安装包
+      - 构建并签名 Android APK
+      - 校验文件格式、版本、签名、哈希和差异格式
+    done_when:
+      - Windows EXE 构建成功并生成匹配哈希
+      - Android APK 构建成功且签名与版本校验通过
+      - 两个产物位于发布版本目录
+    verification:
+      status: passed
+      commands:
+        - bash pc/scripts/build-windows-installer.sh
+        - bash app/packaging/build-apk.sh
+        - file && sha256sum && aapt dump badging && apksigner verify --verbose
+        - git diff --check
+      evidence: [EV-TASK-119-WINDOWS, EV-TASK-119-ANDROID, EV-TASK-119-VERIFY, EV-TASK-119-DIFF]
+      limitations:
+        - 未在真实 Windows 11 客户机和 Android 平板执行安装与端到端业务验收
+    result:
+      summary: Windows 1.0.6 安装包和 Android 1.0.14 APK 均已构建，版本、签名、文件格式和 SHA-256 校验通过。
+      changed_files:
+        - pc/package.json
+        - pc/package-lock.json
+        - pc/scripts/build-windows-installer.sh
+        - pc/packaging/windows/installer.nsi
+        - 发布版本/牧衡辅料称重防错系统-Windows-1.0.6-Setup.exe
+        - 发布版本/牧衡辅料称重防错系统-Android-1.0.14.apk
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-16T08:05:00Z"
+    updated_at: "2026-09-16T07:47:20Z"

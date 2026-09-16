@@ -200,7 +200,7 @@ architectures:
       - name: 辅料类型确认
         description: 二维码扫码由 android-app 读取本系统标签，backend-api 比较 materialId；无码/标签异常时上传照片并进入审批，审批通过后继续。
       - name: 手动称重证据
-        description: 操作员先上传包含辅料和秤面读数的照片，再提交手动重量；domain-services 校验当前步骤已完成类型确认、重量为合法非负 kg、图片已上传且属于当前用户/工单，并按步骤快照允差判断。database 写入不可变称重尝试、照片文件关联、操作者和服务器时间；超差尝试保留但不完成步骤。
+        description: 操作员先提交手动重量，domain-services 校验当前步骤已完成类型确认、重量为合法非负 kg，并按步骤快照允差判断；只有重量达标后才上传包含辅料和秤面读数的照片并正式提交。database 对通过记录写入不可变称重尝试、照片文件关联、操作者和服务器时间；超差不创建证据文件和称重尝试。
       - name: Excel 导入导出
         description: web-admin 上传 Excel，backend-api 按模板校验后写入 database 并返回错误行；导出生成标准模板文件。
       - name: 标签打印

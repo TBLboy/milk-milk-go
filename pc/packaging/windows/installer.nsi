@@ -15,7 +15,7 @@ SetCompressorDictSize 32
   !define APP_ICON "${ROOT_DIR}/app.ico"
 !endif
 !ifndef APP_VERSION
-  !define APP_VERSION "1.0.5"
+  !define APP_VERSION "1.0.6"
 !endif
 
 !define PAYLOAD_DIR "${ROOT_DIR}/payload"
