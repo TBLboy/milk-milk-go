@@ -5072,7 +5072,7 @@ tasks:
     parent_id: null
     phase: verification
     goal: 在公司内部 WiFi 下完成 PC 后端、Windows 管理端和多台平板之间的真实工单闭环，并验证断网、服务重启、自动备份和恢复。
-    status: pending
+    status: in-progress
     priority: critical
     risk: high
     authority: B
@@ -5085,7 +5085,7 @@ tasks:
     blocked_by: []
     blocked_by_questions: []
     required_skills: []
-    spec_ref: null
+    spec_ref: .project-log/specs/TASK-122.md
     inputs: [Windows 1.0.1 环境, Android 1.0.1 平板, 内部 WiFi, 演示主数据]
     outputs: [真实工单闭环证据, 多平板并发结果, 故障恢复结果, 最终验收记录]
     plan:
@@ -7385,3 +7385,388 @@ tasks:
       follow_ups: []
     created_at: "2026-09-16T08:05:00Z"
     updated_at: "2026-09-16T07:47:20Z"
+  - id: TASK-120
+    title: Android APP 横屏适配手机和平板
+    kind: milestone
+    parent_id: null
+    phase: implementation
+    goal: 在保持强制横屏和功能完全一致的前提下，让 Android APP 在手机和平板上均可完整、稳定地使用。
+    status: ready
+    priority: high
+    risk: high
+    authority: A
+    owner: agent
+    tags: [app, android, responsive, phone, tablet]
+    related_business_logic: [BL-DEVICE-003]
+    acceptance_refs: [AC-DEVICE-003, AC-DEVICE-004]
+    related_decisions: [DEC-045]
+    depends_on: [TASK-119]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-spec, a-engineering-landing, a-verification]
+    spec_ref: null
+    inputs:
+      - APP 强制横屏
+      - 手机端和平板端功能完全相同
+      - 当前平板优先布局和手机横屏短高度问题
+    outputs:
+      - 手机和平板横屏均可完整使用的同一 APP
+      - 可复用的响应式布局基础和页面适配
+      - 多尺寸验证报告与发布 APK
+    plan:
+      - TASK-121 建立响应式布局基线、登录页和主框架
+      - TASK-122 适配工作台、工单列表与详情
+      - TASK-123 适配扫码、称重及现场操作弹窗
+      - TASK-124 适配账号资料、BUG 反馈及管理员主数据
+      - TASK-125 执行多尺寸、键盘和短高度专项验证
+      - TASK-126 构建 1.0.15 APK 并完成手机和平板验收
+    done_when:
+      - 手机和平板均可访问完全相同的功能和权限
+      - 手机横屏页面无不可恢复的重叠、截断或按钮不可点击
+      - 平板现有业务流程和视觉结构无业务倒退
+      - TASK-121 至 TASK-126 的完成条件均有验证证据
+      - Android 编译、Lint、APK 构建和多尺寸界面验证通过
+    verification:
+      status: not-run
+      commands: []
+      evidence: []
+      limitations: []
+    result:
+      summary: null
+      changed_files: []
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-21T03:34:40Z"
+    updated_at: "2026-09-21T06:26:55Z"
+  - id: TASK-121
+    title: 建立响应式布局基线并适配登录页与主框架
+    kind: task
+    parent_id: TASK-120
+    phase: implementation
+    goal: 建立可复用的手机/平板横屏布局判定，并让登录页、主框架和导航在两类设备上均可完整使用。
+    status: done
+    priority: high
+    risk: high
+    authority: A
+    owner: agent
+    tags: [app, android, responsive, navigation, foundation]
+    related_business_logic: [BL-DEVICE-003]
+    acceptance_refs: [AC-DEVICE-003, AC-DEVICE-004]
+    related_decisions: [DEC-045]
+    depends_on: [TASK-119]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-spec, a-engineering-landing]
+    spec_ref: .project-log/specs/TASK-121.md
+    inputs:
+      - APP 固定横屏
+      - 当前 MainShell 固定侧边栏和登录页固定卡片宽度
+      - 手机和平板可用宽高差异
+    outputs:
+      - 统一的响应式尺寸判定
+      - 手机/平板对应的登录页布局
+      - 手机/平板对应的主框架和导航布局
+    plan:
+      - 盘点登录页、Scaffold、侧边栏和导航的固定尺寸
+      - 定义基于可用宽度和高度的手机横屏、平板横屏模式
+      - 手机端使用紧凑导航，平板端保留宽屏侧边栏
+      - 登录页在手机端改为可滚动的紧凑布局，平板端保留现有结构
+      - 验证登录、导航、退出和角色入口在两端的可达性
+    done_when:
+      - 手机横屏登录页无输入框和按钮挤压
+      - 手机和平板均可访问相同导航和角色功能
+      - 主框架切换尺寸后不会出现不可恢复的错位
+      - Android 编译和 Lint 通过
+    verification:
+      status: passed
+      commands:
+        - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew :app:compileDebugKotlin :app:lintDebug :app:assembleDebug --no-daemon
+        - Pixel_10 与 Medium_Tablet 模拟器安装、登录、侧边栏展开/收起和截图验证
+        - python3 validate_project.py --root /home/tbl/Project/辅料称重防错系统
+        - python3 loopctl.py --root /home/tbl/Project/辅料称重防错系统 --json validate
+        - git diff --check
+      evidence:
+        - EV-TASK-121-ANDROID-BUILD-LINT
+        - EV-TASK-121-PHONE-LAYOUT
+        - EV-TASK-121-TABLET-LAYOUT
+        - EV-TASK-121-VALIDATION
+      limitations:
+        - 尚未在真实手机和真实平板设备上执行最终触摸与系统字体缩放验收
+    result:
+      summary: 已建立 COMPACT/EXPANDED 横屏布局基线；手机登录页使用紧凑可滚动布局，主框架默认收起侧边栏；平板保持展开式宽屏结构；两端管理员导航和业务入口保持一致。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+        - .project-log/specs/TASK-121.md
+      deviations: []
+      follow_ups:
+        - 在 TASK-122 至 TASK-124 中继续适配工作台、工单、扫码称重和管理员表单的内部布局
+        - 在 TASK-125 中执行真实手机和平板的多尺寸、键盘和短高度回归
+    created_at: "2026-09-21T03:46:06Z"
+    updated_at: "2026-09-21T06:16:41Z"
+  - id: TASK-122
+    title: 适配工作台、工单列表与工单详情
+    kind: task
+    parent_id: TASK-120
+    phase: implementation
+    goal: 让工作台、工单列表和工单详情在手机横屏下保持信息完整、操作可达，并保留平板多列布局。
+    status: done
+    priority: high
+    risk: high
+    authority: A
+    owner: agent
+    tags: [app, android, responsive, dashboard, work-order]
+    related_business_logic: [BL-DEVICE-003]
+    acceptance_refs: [AC-DEVICE-003, AC-DEVICE-004]
+    related_decisions: [DEC-045]
+    depends_on: [TASK-121]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing]
+    spec_ref: .project-log/specs/TASK-122.md
+    inputs:
+      - TASK-121 的响应式布局模式
+      - 当前工作台固定统计卡和固定最近工单视口
+      - 当前工单筛选、列表行和详情步骤布局
+    outputs:
+      - 手机横屏工作台布局
+      - 手机横屏工单列表和分页布局
+      - 手机横屏工单详情与步骤布局
+    plan:
+      - 适配页面标题、刷新和新建操作区域
+      - 将固定统计卡改为手机端可滚动或紧凑布局
+      - 适配最近工单视口和长文本省略
+      - 让筛选栏在窄宽度下横向滚动
+      - 适配工单行、状态标签、分页和详情步骤卡
+    done_when:
+      - 工作台、工单列表和详情在手机横屏无横向截断
+      - 状态、分页和步骤操作均可到达
+      - 平板端继续使用适合宽屏的多列布局
+      - Android 编译和 Lint 通过
+    verification:
+      status: passed
+      commands:
+        - JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew :app:compileDebugKotlin :app:lintDebug :app:assembleDebug --no-daemon
+        - adb -s emulator-5554 install -r app-debug.apk && adb -s emulator-5554 shell input tap/swipe
+        - adb -s emulator-5556 install -r app-debug.apk && adb -s emulator-5556 shell input tap
+        - git diff --check
+      evidence:
+        - EV-TASK-122-ANDROID-BUILD-LINT
+        - EV-TASK-122-PHONE-LAYOUT
+        - EV-TASK-122-TABLET-LAYOUT
+        - EV-TASK-122-VALIDATION
+      limitations:
+        - 真实手机和平板的触摸、系统字体缩放和厂商相机界面留到 TASK-125 验收。
+    result:
+      summary: 工作台、工单列表和工单详情已按 COMPACT/EXPANDED 模式适配；手机横屏无横向截断，筛选、分页、详情步骤和按钮可达；平板继续保留宽屏多列布局。
+      changed_files:
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+      deviations: []
+      follow_ups:
+        - 在 TASK-123 继续适配扫码、称重和现场操作弹窗。
+        - 在 TASK-125 执行真实手机和平板的多尺寸、键盘和短高度回归。
+    created_at: "2026-09-21T03:46:06Z"
+    updated_at: "2026-09-21T07:55:00Z"
+  - id: TASK-123
+    title: 适配扫码、称重及现场操作弹窗
+    kind: task
+    parent_id: TASK-120
+    phase: implementation
+    goal: 让类型确认、实时扫码、重量确认、申请和创建工单弹窗在手机短高度横屏下完整可操作。
+    status: pending
+    priority: high
+    risk: high
+    authority: A
+    owner: agent
+    tags: [app, android, responsive, scanner, weighing, dialog]
+    related_business_logic: [BL-DEVICE-003, BL-RECOG-001, BL-WEIGH-006]
+    acceptance_refs: [AC-DEVICE-003, AC-DEVICE-004]
+    related_decisions: [DEC-044, DEC-045]
+    depends_on: [TASK-122]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing]
+    spec_ref: null
+    inputs:
+      - TASK-121 的响应式布局模式
+      - 当前 CameraX/ML Kit 扫码界面
+      - 当前重量确认、申请和创建工单弹窗
+    outputs:
+      - 手机和平板可用的扫码与重量确认布局
+      - 受屏幕高度约束且可滚动的操作弹窗
+      - 键盘弹出时保持关键按钮可达
+    plan:
+      - 适配扫码预览、识别提示和无码申请入口
+      - 限制弹窗最大宽高并让内容独立滚动
+      - 适配重量输入、目标重量、照片和提交按钮
+      - 处理键盘弹出后的内容滚动和按钮可达性
+      - 回归错误二维码、超差和重新拍照流程
+    done_when:
+      - 手机横屏可完成类型确认、扫码、称重和申请操作
+      - 弹窗内容和底部按钮不会被屏幕或键盘遮挡
+      - 错误二维码和超差结果仍不会上传或推进
+      - 平板现有扫码和称重流程无业务倒退
+    verification:
+      status: not-run
+      commands: []
+      evidence: []
+      limitations: []
+    result:
+      summary: null
+      changed_files: []
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-21T03:46:06Z"
+    updated_at: "2026-09-21T03:46:06Z"
+  - id: TASK-124
+    title: 适配账号资料与管理员主数据表单
+    kind: task
+    parent_id: TASK-120
+    phase: implementation
+    goal: 让账号资料、密码、BUG 反馈、辅料、配方和图片管理表单在手机与平板横屏下均完整可用。
+    status: pending
+    priority: high
+    risk: high
+    authority: A
+    owner: agent
+    tags: [app, android, responsive, profile, admin, master-data]
+    related_business_logic: [BL-DEVICE-003, BL-DATA-003, BL-DATA-004]
+    acceptance_refs: [AC-DEVICE-003, AC-DEVICE-004]
+    related_decisions: [DEC-045]
+    depends_on: [TASK-123]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing]
+    spec_ref: null
+    inputs:
+      - TASK-121 的响应式布局模式
+      - 当前账号资料、密码、BUG 反馈弹窗
+      - 当前辅料、配方、图片和历史版本表单
+    outputs:
+      - 手机横屏可用的资料与反馈表单
+      - 手机横屏可用的管理员主数据表单
+      - 平板端保持一致的功能与视觉
+    plan:
+      - 适配头像、图片条和账号资料编辑布局
+      - 适配密码、BUG 反馈和图片预览弹窗
+      - 适配辅料新增、编辑、图片查看和删除
+      - 适配配方新增、编辑、辅料选择和用量输入
+      - 适配配方历史记录和长列表滚动
+    done_when:
+      - 手机端可完成与平板端相同的资料和管理员操作
+      - 长表单、图片和多辅料配方均可滚动操作
+      - 弹窗在短高度下仍可关闭、保存或取消
+      - 平板端现有管理流程无业务倒退
+    verification:
+      status: not-run
+      commands: []
+      evidence: []
+      limitations: []
+    result:
+      summary: null
+      changed_files: []
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-21T03:46:06Z"
+    updated_at: "2026-09-21T03:46:06Z"
+  - id: TASK-125
+    title: 执行手机和平板横屏多尺寸回归验证
+    kind: task
+    parent_id: TASK-120
+    phase: verification
+    goal: 通过模拟器和测试工具验证手机短高度、平板宽屏、键盘、弹窗和完整业务流程没有布局阻塞。
+    status: pending
+    priority: high
+    risk: high
+    authority: A
+    owner: agent
+    tags: [app, android, verification, responsive, emulator]
+    related_business_logic: [BL-DEVICE-003]
+    acceptance_refs: [AC-DEVICE-003, AC-DEVICE-004]
+    related_decisions: [DEC-045]
+    depends_on: [TASK-121, TASK-122, TASK-123, TASK-124]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-verification]
+    spec_ref: null
+    inputs:
+      - 已完成响应式改造的 APP
+      - Pixel 手机横屏模拟器
+      - Medium Tablet 平板模拟器
+    outputs:
+      - 多尺寸界面截图或测试记录
+      - 布局缺陷清单和回归结果
+      - 手机与平板功能一致性证据
+    plan:
+      - 在手机横屏覆盖登录、工作台、工单、详情和全部弹窗
+      - 在平板横屏回归相同业务流程
+      - 验证软键盘、短高度、长文本和多图片场景
+      - 检查角色权限、扫码、称重、资料和管理员功能一致性
+      - 记录失败项并回退到对应实现任务修复
+    done_when:
+      - 手机横屏和常见平板横屏均无阻塞性布局问题
+      - 两端功能集合、权限和业务结果一致
+      - 键盘、弹窗和滚动专项测试通过
+      - 平板端没有明显视觉或流程回归
+    verification:
+      status: not-run
+      commands: []
+      evidence: []
+      limitations:
+        - 最终仍需真实 Android 手机和平板补充人工验收
+    result:
+      summary: null
+      changed_files: []
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-21T03:46:06Z"
+    updated_at: "2026-09-21T03:46:06Z"
+  - id: TASK-126
+    title: 构建 1.0.15 APK 并完成手机和平板横屏验收
+    kind: milestone
+    parent_id: TASK-120
+    phase: verification
+    goal: 冻结手机和平板横屏适配版本，构建发布签名 APK，并在模拟器和真实设备上完成安装与核心流程验收。
+    status: pending
+    priority: high
+    risk: medium
+    authority: A
+    owner: agent
+    tags: [app, android, release, apk, verification]
+    related_business_logic: [BL-DEVICE-003]
+    acceptance_refs: [AC-DEVICE-003, AC-DEVICE-004]
+    related_decisions: [DEC-045]
+    depends_on: [TASK-125]
+    blocked_by: []
+    blocked_by_questions: []
+    required_skills: [a-engineering-landing, a-verification]
+    spec_ref: null
+    inputs:
+      - 通过多尺寸回归的响应式 APP
+      - 当前 Android 发布签名和构建脚本
+    outputs:
+      - Android 1.0.15 APK
+      - APK 签名和 SHA-256 校验
+      - 手机与平板安装验收记录
+    plan:
+      - 将 Android versionCode 和 versionName 提升到下一发布版本
+      - 运行 Android 编译、Lint 和发布构建
+      - 在手机和平板模拟器覆盖安装并执行核心流程
+      - 在真实手机和平板执行最终人工验收
+      - 记录版本、签名、哈希和残余问题
+    done_when:
+      - 1.0.15 APK 构建、签名和哈希校验通过
+      - 手机和平板均能覆盖安装并完成登录、工单、扫码和称重主流程
+      - 管理员主数据和资料功能在两端均可用
+      - 发布产物和验收证据归档
+    verification:
+      status: not-run
+      commands: []
+      evidence: []
+      limitations: []
+    result:
+      summary: null
+      changed_files: []
+      deviations: []
+      follow_ups: []
+    created_at: "2026-09-21T03:46:06Z"
+    updated_at: "2026-09-21T03:46:06Z"

@@ -53,6 +53,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
@@ -94,6 +95,7 @@ import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -136,6 +138,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
@@ -144,6 +147,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -180,6 +184,64 @@ private data class CameraOutput(
     val uri: Uri,
     val file: File,
 )
+
+private enum class AppLayoutMode {
+    COMPACT,
+    EXPANDED,
+}
+
+private data class AppLayoutSpec(
+    val mode: AppLayoutMode,
+    val loginOuterPadding: Dp,
+    val loginHeroEndPadding: Dp,
+    val loginCardWidth: Dp,
+    val loginCardPadding: Dp,
+    val loginCardSpacing: Dp,
+    val sidebarExpandedWidth: Dp,
+    val sidebarCollapsedWidth: Dp,
+    val sidebarVerticalPadding: Dp,
+) {
+    val isCompact: Boolean
+        get() = mode == AppLayoutMode.COMPACT
+}
+
+private fun appLayoutSpec(widthDp: Int, heightDp: Int): AppLayoutSpec {
+    val compact = heightDp <= 480 || widthDp < 600
+    return if (compact) {
+        AppLayoutSpec(
+            mode = AppLayoutMode.COMPACT,
+            loginOuterPadding = 18.dp,
+            loginHeroEndPadding = 24.dp,
+            loginCardWidth = 380.dp,
+            loginCardPadding = 20.dp,
+            loginCardSpacing = 11.dp,
+            sidebarExpandedWidth = 190.dp,
+            sidebarCollapsedWidth = 64.dp,
+            sidebarVerticalPadding = 8.dp,
+        )
+    } else {
+        AppLayoutSpec(
+            mode = AppLayoutMode.EXPANDED,
+            loginOuterPadding = 48.dp,
+            loginHeroEndPadding = 72.dp,
+            loginCardWidth = 420.dp,
+            loginCardPadding = 30.dp,
+            loginCardSpacing = 16.dp,
+            sidebarExpandedWidth = 230.dp,
+            sidebarCollapsedWidth = 76.dp,
+            sidebarVerticalPadding = 14.dp,
+        )
+    }
+}
+
+@Composable
+private fun rememberAppLayoutSpec(): AppLayoutSpec {
+    val configuration = LocalConfiguration.current
+    return appLayoutSpec(
+        widthDp = configuration.screenWidthDp,
+        heightDp = configuration.screenHeightDp,
+    )
+}
 
 private fun createCameraOutput(context: Context): CameraOutput {
     val directory = File(context.cacheDir, "evidence").apply { mkdirs() }
@@ -562,6 +624,7 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
     var showAgreementDialog by remember { mutableStateOf(false) }
     var showServerDialog by remember { mutableStateOf(false) }
     var registerSubmitted by remember { mutableStateOf<String?>(null) }
+    val layout = rememberAppLayoutSpec()
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val view = LocalView.current
@@ -587,19 +650,26 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
             contentScale = ContentScale.Crop,
         )
         Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.58f)))
-        Row(modifier = Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(48.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f).padding(end = 72.dp)) {
-                Text("牧衡", color = Green, fontSize = 34.sp, fontWeight = FontWeight.Bold)
-                Text("辅料称重防错系统", color = Ink, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(16.dp))
-                Text("让每一次辅料称量都有依据、有记录、可追溯。", color = Muted, fontSize = 18.sp)
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(layout.loginOuterPadding),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f).padding(end = layout.loginHeroEndPadding)) {
+                Text("牧衡", color = Green, fontSize = if (layout.isCompact) 28.sp else 34.sp, fontWeight = FontWeight.Bold)
+                Text("辅料称重防错系统", color = Ink, fontSize = if (layout.isCompact) 22.sp else 28.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(if (layout.isCompact) 8.dp else 16.dp))
+                Text("让每一次辅料称量都有依据、有记录、可追溯。", color = Muted, fontSize = if (layout.isCompact) 14.sp else 18.sp)
             }
-            Card(modifier = Modifier.width(420.dp), colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(12.dp)) {
-                Column(modifier = Modifier.padding(30.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Card(modifier = Modifier.width(layout.loginCardWidth), colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(12.dp)) {
+                Column(modifier = Modifier.padding(layout.loginCardPadding), verticalArrangement = Arrangement.spacedBy(layout.loginCardSpacing)) {
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(if (registerMode) "注册普通账号" else "登录工作台", color = Ink, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                            Text(if (registerMode) "创建现场操作员账号" else "使用现场账号进入称量任务", color = Muted, fontSize = 15.sp)
+                            Text(if (registerMode) "注册普通账号" else "登录工作台", color = Ink, fontSize = if (layout.isCompact) 21.sp else 24.sp, fontWeight = FontWeight.Bold)
+                            Text(if (registerMode) "创建现场操作员账号" else "使用现场账号进入称量任务", color = Muted, fontSize = if (layout.isCompact) 13.sp else 15.sp)
                         }
                         IconButton(onClick = {
                             val parts = parseIpParts(sessionStore.serverUrl())
@@ -1375,8 +1445,9 @@ private fun MainShell(
     onUserUpdated: (AppUser) -> Unit,
     onLogout: () -> Unit,
 ) {
+    val layout = rememberAppLayoutSpec()
     var selected by remember { mutableStateOf("工作台") }
-    var sidebarExpanded by rememberSaveable { mutableStateOf(true) }
+    var sidebarExpanded by rememberSaveable { mutableStateOf(!layout.isCompact) }
     var selectedOrderNo by remember { mutableStateOf<String?>(null) }
     var orders by remember { mutableStateOf<List<WorkOrder>>(emptyList()) }
     var products by remember { mutableStateOf<List<Product>>(emptyList()) }
@@ -1392,8 +1463,8 @@ private fun MainShell(
         targetValue = if (sidebarTogglePressed) Color(0xFFEAF6F0) else Color(0xFFF4F7F6),
         label = "sidebarToggleBackground",
     )
-    val sidebarExpandedWidth = 230.dp
-    val sidebarCollapsedWidth = 76.dp
+    val sidebarExpandedWidth = layout.sidebarExpandedWidth
+    val sidebarCollapsedWidth = layout.sidebarCollapsedWidth
     val expandedSidebarPadding = 14.dp
     val collapsedSidebarPadding = 8.dp
     val sidebarAnimationSpec = tween<Dp>(durationMillis = 220)
@@ -1438,13 +1509,22 @@ private fun MainShell(
     androidx.compose.runtime.LaunchedEffect(Unit) {
         runCatching { refreshData() }
     }
+    androidx.compose.runtime.LaunchedEffect(layout.isCompact) {
+        if (layout.isCompact) sidebarExpanded = false
+    }
     androidx.compose.runtime.LaunchedEffect(currentUser.mustChangePassword) {
         if (currentUser.mustChangePassword) showChangePasswordDialog = true
     }
     Scaffold(topBar = {
         Column(modifier = Modifier.fillMaxWidth().background(Color.White)) {
             TopAppBar(
-                title = { Text("牧衡辅料称重", fontWeight = FontWeight.Bold) },
+                title = {
+                    Text(
+                        "牧衡辅料称重",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = if (layout.isCompact) 18.sp else 20.sp,
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
                 actions = {
                     UserMenu(
@@ -1474,7 +1554,7 @@ private fun MainShell(
                     .fillMaxSize()
                     .background(Color.White)
                     .clipToBounds()
-                    .padding(horizontal = sidebarHorizontalPadding, vertical = 14.dp)
+                    .padding(horizontal = sidebarHorizontalPadding, vertical = layout.sidebarVerticalPadding)
                     .animateContentSize(),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
@@ -1885,6 +1965,7 @@ private fun DashboardScreen(
     openOrders: () -> Unit,
     openOrder: (WorkOrder) -> Unit,
 ) {
+    val layout = rememberAppLayoutSpec()
     val recentOrders = orders.filter { it.status != WorkOrderStatus.CANCELLED && it.status != WorkOrderStatus.DELETED }
     PullToRefreshBox(
         isRefreshing = isRefreshing,
@@ -1892,27 +1973,110 @@ private fun DashboardScreen(
         modifier = Modifier.fillMaxSize(),
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(30.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(
+                    start = if (layout.isCompact) 16.dp else 30.dp,
+                    top = if (layout.isCompact) 16.dp else 30.dp,
+                    end = 88.dp,
+                    bottom = if (layout.isCompact) 88.dp else 30.dp,
+                ),
+            verticalArrangement = Arrangement.spacedBy(if (layout.isCompact) 14.dp else 20.dp),
         ) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Column { Text("工作台", color = Ink, fontSize = 28.sp, fontWeight = FontWeight.Bold); Text("今天的称量任务概览", color = Muted, fontSize = 15.sp) }; Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { Button(onClick = onCreate) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(6.dp)); Text("新建工单") }; OutlinedButton(onClick = onRefresh, enabled = !isRefreshing) { Text(if (isRefreshing) "刷新中" else "刷新") } } }
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) { StatCard("今日工单", orders.count { it.status != WorkOrderStatus.CANCELLED && it.status != WorkOrderStatus.DELETED }.toString(), "生产称量任务"); StatCard("执行中", orders.count { it.status == WorkOrderStatus.IN_PROGRESS }.toString(), "现场正在称重"); StatCard("待审批", orders.count { it.status == WorkOrderStatus.PENDING_APPROVAL }.toString(), "需要及时处理") }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "工作台",
+                        color = Ink,
+                        fontSize = if (layout.isCompact) 24.sp else 28.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text("今天的称量任务概览", color = Muted, fontSize = if (layout.isCompact) 13.sp else 15.sp)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(if (layout.isCompact) 8.dp else 10.dp)) {
+                    Button(
+                        onClick = onCreate,
+                        contentPadding = if (layout.isCompact) {
+                            PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        } else {
+                            ButtonDefaults.ContentPadding
+                        },
+                    ) {
+                        Icon(Icons.Default.Add, null, modifier = Modifier.size(if (layout.isCompact) 18.dp else 24.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("新建工单")
+                    }
+                    OutlinedButton(
+                        onClick = onRefresh,
+                        enabled = !isRefreshing,
+                        contentPadding = if (layout.isCompact) {
+                            PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        } else {
+                            ButtonDefaults.ContentPadding
+                        },
+                    ) {
+                        Text(if (isRefreshing) "刷新中" else "刷新")
+                    }
+                }
+            }
+            if (layout.isCompact) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    StatCard(
+                        "今日工单",
+                        orders.count { it.status != WorkOrderStatus.CANCELLED && it.status != WorkOrderStatus.DELETED }.toString(),
+                        "生产称量任务",
+                        modifier = Modifier.weight(1f),
+                        compact = true,
+                    )
+                    StatCard(
+                        "执行中",
+                        orders.count { it.status == WorkOrderStatus.IN_PROGRESS }.toString(),
+                        "现场正在称重",
+                        modifier = Modifier.weight(1f),
+                        compact = true,
+                    )
+                    StatCard(
+                        "待审批",
+                        orders.count { it.status == WorkOrderStatus.PENDING_APPROVAL }.toString(),
+                        "需要及时处理",
+                        modifier = Modifier.weight(1f),
+                        compact = true,
+                    )
+                }
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    StatCard("今日工单", orders.count { it.status != WorkOrderStatus.CANCELLED && it.status != WorkOrderStatus.DELETED }.toString(), "生产称量任务")
+                    StatCard("执行中", orders.count { it.status == WorkOrderStatus.IN_PROGRESS }.toString(), "现场正在称重")
+                    StatCard("待审批", orders.count { it.status == WorkOrderStatus.PENDING_APPROVAL }.toString(), "需要及时处理")
+                }
+            }
             Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-                Column(modifier = Modifier.fillMaxWidth().padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(if (layout.isCompact) 16.dp else 22.dp),
+                    verticalArrangement = Arrangement.spacedBy(if (layout.isCompact) 10.dp else 12.dp),
+                ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("最近工单", color = Ink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        Text("最近工单", color = Ink, fontSize = if (layout.isCompact) 18.sp else 20.sp, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.weight(1f))
                         Text("查看全部", color = Green, modifier = Modifier.clickable(onClick = openOrders))
                     }
                     LazyColumn(
-                        modifier = Modifier.fillMaxWidth().height(264.dp),
+                        modifier = Modifier.fillMaxWidth().height(if (layout.isCompact) 180.dp else 264.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         if (recentOrders.isEmpty()) {
                             item { Text("暂无工单", color = Muted, fontSize = 14.sp) }
                         } else {
                             items(recentOrders, key = { it.orderNo }) { order ->
-                                RecentOrderRow(order) { openOrder(order) }
+                                RecentOrderRow(order, compact = layout.isCompact) { openOrder(order) }
                             }
                         }
                     }
@@ -1922,45 +2086,71 @@ private fun DashboardScreen(
     }
 }
 
-@Composable private fun StatCard(title: String, value: String, detail: String) { Card(modifier = Modifier.width(220.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) { Column(Modifier.padding(18.dp)) { Text(title, color = Muted); Text(value, color = Ink, fontSize = 30.sp, fontWeight = FontWeight.Bold); Text(detail, color = Green, fontSize = 13.sp) } } }
+@Composable
+private fun StatCard(
+    title: String,
+    value: String,
+    detail: String,
+    modifier: Modifier = Modifier,
+    compact: Boolean = false,
+) {
+    Card(
+        modifier = if (compact) modifier else modifier.width(220.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+    ) {
+        Column(Modifier.padding(if (compact) 12.dp else 18.dp)) {
+            Text(title, color = Muted, fontSize = if (compact) 12.sp else 14.sp)
+            Text(value, color = Ink, fontSize = if (compact) 24.sp else 30.sp, fontWeight = FontWeight.Bold)
+            Text(
+                detail,
+                color = Green,
+                fontSize = if (compact) 11.sp else 13.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
 
 @Composable
-private fun RecentOrderRow(order: WorkOrder, onClick: () -> Unit) {
+private fun RecentOrderRow(order: WorkOrder, compact: Boolean = false, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth().height(48.dp).clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth().height(if (compact) 52.dp else 48.dp).clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAF9)),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = if (compact) 10.dp else 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
-                modifier = Modifier.size(32.dp).background(Color(0xFFEAF6F0), RoundedCornerShape(8.dp)),
+                modifier = Modifier.size(if (compact) 28.dp else 32.dp).background(Color(0xFFEAF6F0), RoundedCornerShape(8.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Default.Assignment, null, tint = Green, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Assignment, null, tint = Green, modifier = Modifier.size(if (compact) 16.dp else 18.dp))
             }
-            Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
+            Column(modifier = Modifier.padding(start = if (compact) 9.dp else 12.dp).weight(1f)) {
                 Text(
                     "${order.productName} · ${order.operatorName}",
                     color = Ink,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
+                    fontSize = if (compact) 14.sp else 15.sp,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     "${order.orderNo} · 进度 ${order.completedSteps}/${order.totalSteps} · ${order.updatedAt}",
                     color = Muted,
-                    fontSize = 12.sp,
+                    fontSize = if (compact) 11.sp else 12.sp,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
-            StatusPill(order.status)
+            StatusPill(order.status, compact = compact)
             Icon(
                 Icons.Default.ArrowForward,
                 null,
                 tint = Muted,
-                modifier = Modifier.padding(start = 10.dp).size(18.dp),
+                modifier = Modifier.padding(start = if (compact) 7.dp else 10.dp).size(if (compact) 16.dp else 18.dp),
             )
         }
     }
@@ -1975,6 +2165,7 @@ private fun OrderListScreen(
     onCreate: () -> Unit,
     openDetail: (WorkOrder) -> Unit,
 ) {
+    val layout = rememberAppLayoutSpec()
     var filter by remember { mutableStateOf<String?>(null) }
     var page by remember { mutableStateOf(1) }
     val pageSize = 8
@@ -1994,22 +2185,51 @@ private fun OrderListScreen(
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(30.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(
+                start = if (layout.isCompact) 16.dp else 30.dp,
+                top = if (layout.isCompact) 16.dp else 30.dp,
+                end = 88.dp,
+                bottom = if (layout.isCompact) 88.dp else 30.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(if (layout.isCompact) 10.dp else 12.dp),
         ) {
             item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Column {
-                        Text("工单管理", color = Ink, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-                        Text("查看和继续现场称量任务", color = Muted, modifier = Modifier.padding(top = 6.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "工单管理",
+                            color = Ink,
+                            fontSize = if (layout.isCompact) 24.sp else 28.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            "查看和继续现场称量任务",
+                            color = Muted,
+                            fontSize = if (layout.isCompact) 13.sp else 15.sp,
+                            modifier = Modifier.padding(top = if (layout.isCompact) 3.dp else 6.dp),
+                        )
                     }
-                    Button(onClick = onCreate) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(6.dp)); Text("新建工单") }
+                    Button(
+                        onClick = onCreate,
+                        contentPadding = if (layout.isCompact) {
+                            PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        } else {
+                            ButtonDefaults.ContentPadding
+                        },
+                    ) {
+                        Icon(Icons.Default.Add, null, modifier = Modifier.size(if (layout.isCompact) 18.dp else 24.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("新建工单")
+                    }
                 }
             }
             item {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(top = 6.dp, bottom = 6.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(top = 4.dp, bottom = 4.dp),
                 ) {
                     filterOptions.forEach { option ->
                         val selected = (filter ?: "全部") == option
@@ -2033,7 +2253,7 @@ private fun OrderListScreen(
                 item { Text("暂无工单", color = Muted, fontSize = 14.sp) }
             } else {
                 items(pagedOrders, key = { it.orderNo }) { order ->
-                    OrderRow(order) { openDetail(order) }
+                    OrderRow(order, compact = layout.isCompact) { openDetail(order) }
                 }
             }
             item {
@@ -2053,8 +2273,8 @@ private fun OrderListScreen(
                     Text(
                         "第 $safePage / $totalPages 页 · 共 ${filteredOrders.size} 条",
                         color = Muted,
-                        fontSize = 13.sp,
-                        modifier = Modifier.padding(horizontal = 16.dp),
+                        fontSize = if (layout.isCompact) 12.sp else 13.sp,
+                        modifier = Modifier.padding(horizontal = if (layout.isCompact) 8.dp else 16.dp),
                     )
                     OutlinedButton(
                         onClick = { page = safePage + 1 },
@@ -2071,9 +2291,81 @@ private fun OrderListScreen(
 }
 
 @Composable
-private fun OrderRow(order: WorkOrder, onClick: () -> Unit = {}) { Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick), colors = CardDefaults.cardColors(containerColor = Color.White)) { Row(modifier = Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(42.dp).background(Color(0xFFEAF6F0), RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Default.Assignment, null, tint = Green) }; Column(Modifier.padding(start = 14.dp).weight(1f)) { Text(order.productName, color = Ink, fontWeight = FontWeight.Bold, fontSize = 16.sp); Text("${order.orderNo} · ${order.targetWeightKg.toInt()} kg · ${order.operatorName}", color = Muted, fontSize = 13.sp); Text("进度 ${order.completedSteps}/${order.totalSteps} · ${order.updatedAt}", color = Muted, fontSize = 13.sp) }; StatusPill(order.status); Icon(Icons.Default.ArrowForward, null, tint = Muted, modifier = Modifier.padding(start = 12.dp)) } } }
+private fun OrderRow(order: WorkOrder, compact: Boolean = false, onClick: () -> Unit = {}) {
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(if (compact) 12.dp else 18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(if (compact) 36.dp else 42.dp)
+                    .background(Color(0xFFEAF6F0), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Default.Assignment,
+                    null,
+                    tint = Green,
+                    modifier = Modifier.size(if (compact) 20.dp else 24.dp),
+                )
+            }
+            Column(Modifier.padding(start = if (compact) 10.dp else 14.dp).weight(1f)) {
+                Text(
+                    order.productName,
+                    color = Ink,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = if (compact) 15.sp else 16.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    "${order.orderNo} · ${order.targetWeightKg.toInt()} kg · ${order.operatorName}",
+                    color = Muted,
+                    fontSize = if (compact) 12.sp else 13.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    "进度 ${order.completedSteps}/${order.totalSteps} · ${order.updatedAt}",
+                    color = Muted,
+                    fontSize = if (compact) 12.sp else 13.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            StatusPill(order.status, compact = compact)
+            Icon(
+                Icons.Default.ArrowForward,
+                null,
+                tint = Muted,
+                modifier = Modifier.padding(start = if (compact) 8.dp else 12.dp).size(if (compact) 18.dp else 24.dp),
+            )
+        }
+    }
+}
 
-@Composable private fun StatusPill(status: WorkOrderStatus) { val color = when (status) { WorkOrderStatus.IN_PROGRESS -> Color(0xFFC9854C); WorkOrderStatus.COMPLETED -> Green; WorkOrderStatus.CANCELLED, WorkOrderStatus.DELETED -> Color(0xFFC7473C); else -> Color(0xFF68808E) }; Text(status.label, color = color, fontWeight = FontWeight.Bold, modifier = Modifier.background(color.copy(alpha = .1f), RoundedCornerShape(50)).padding(horizontal = 12.dp, vertical = 7.dp)) }
+@Composable
+private fun StatusPill(status: WorkOrderStatus, compact: Boolean = false) {
+    val color = when (status) {
+        WorkOrderStatus.IN_PROGRESS -> Color(0xFFC9854C)
+        WorkOrderStatus.COMPLETED -> Green
+        WorkOrderStatus.CANCELLED, WorkOrderStatus.DELETED -> Color(0xFFC7473C)
+        else -> Color(0xFF68808E)
+    }
+    Text(
+        status.label,
+        color = color,
+        fontSize = if (compact) 12.sp else 14.sp,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier
+            .background(color.copy(alpha = .1f), RoundedCornerShape(50))
+            .padding(horizontal = if (compact) 8.dp else 12.dp, vertical = if (compact) 5.dp else 7.dp),
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -2088,6 +2380,7 @@ private fun OrderDetailScreen(
     onBack: () -> Unit,
     onUpdated: (WorkOrder) -> Unit,
 ) {
+    val layout = rememberAppLayoutSpec()
     val scope = rememberCoroutineScope()
     var error by remember { mutableStateOf<String?>(null) }
     var working by remember { mutableStateOf(false) }
@@ -2102,12 +2395,29 @@ private fun OrderDetailScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(30.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(
+                    start = if (layout.isCompact) 16.dp else 30.dp,
+                    top = if (layout.isCompact) 16.dp else 30.dp,
+                    end = 88.dp,
+                    bottom = if (layout.isCompact) 88.dp else 30.dp,
+                ),
+            verticalArrangement = Arrangement.spacedBy(if (layout.isCompact) 12.dp else 16.dp),
         ) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("工单详情", color = Ink, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-                OutlinedButton(onClick = onBack) { Text("返回工单") }
+                Text(
+                    "工单详情",
+                    color = Ink,
+                    fontSize = if (layout.isCompact) 24.sp else 28.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                OutlinedButton(
+                    onClick = onBack,
+                    contentPadding = if (layout.isCompact) {
+                        PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    } else {
+                        ButtonDefaults.ContentPadding
+                    },
+                ) { Text("返回工单") }
             }
             if (order == null) {
                 Text("暂无工单", color = Muted)
@@ -2116,10 +2426,22 @@ private fun OrderDetailScreen(
                 val canOperate = canApprove || isAssignedOperator
                 val currentStepNo = order.steps.firstOrNull { it.status != StepStatus.COMPLETED }?.stepNo ?: order.totalSteps + 1
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-                    Column(modifier = Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(if (layout.isCompact) 16.dp else 20.dp),
+                        verticalArrangement = Arrangement.spacedBy(if (layout.isCompact) 9.dp else 12.dp),
+                    ) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Text(order.productName, color = Ink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                            StatusPill(order.status)
+                            Text(
+                                order.productName,
+                                color = Ink,
+                                fontSize = if (layout.isCompact) 18.sp else 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            StatusPill(order.status, compact = layout.isCompact)
                         }
                         Text("目标重量 ${order.targetWeightKg.toInt()} kg · 执行人 ${order.operatorName}", color = Muted)
                         Text("进度 ${order.completedSteps}/${order.totalSteps}", color = Green, fontWeight = FontWeight.Bold)
@@ -2134,6 +2456,7 @@ private fun OrderDetailScreen(
                         currentStepNo = currentStepNo,
                         canApprove = canApprove,
                         canOperate = canOperate,
+                        compact = layout.isCompact,
                         onAction = { actionStepNo = step.stepNo },
                     )
                 }
@@ -2234,10 +2557,14 @@ private fun StepCard(
     currentStepNo: Int,
     canApprove: Boolean,
     canOperate: Boolean,
+    compact: Boolean = false,
     onAction: () -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-        Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.padding(if (compact) 13.dp else 18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Icon(
                 when (step.status) {
                     StepStatus.COMPLETED -> Icons.Default.CheckCircle
@@ -2247,30 +2574,50 @@ private fun StepCard(
                 },
                 null,
                 tint = if (step.status == StepStatus.COMPLETED) Green else Muted,
-                modifier = Modifier.size(30.dp),
+                modifier = Modifier.size(if (compact) 26.dp else 30.dp),
             )
-            Column(Modifier.padding(start = 14.dp).weight(1f)) {
-                Text("步骤 ${step.stepNo} · ${step.materialCode} ${step.materialName}", color = Ink, fontWeight = FontWeight.Bold)
+            Column(Modifier.padding(start = if (compact) 10.dp else 14.dp).weight(1f)) {
+                Text(
+                    "步骤 ${step.stepNo} · ${step.materialCode} ${step.materialName}",
+                    color = Ink,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = if (compact) 14.sp else 16.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 RequiredWeightText(
                     requiredWeightKg = step.requiredWeightKg,
                     toleranceKg = step.toleranceKg,
                     compact = true,
                 )
-                Text(step.status.label, color = if (step.status == StepStatus.COMPLETED) Green else Muted, fontSize = 13.sp)
+                Text(
+                    step.status.label,
+                    color = if (step.status == StepStatus.COMPLETED) Green else Muted,
+                    fontSize = if (compact) 12.sp else 13.sp,
+                )
             }
             if (canOperate && orderStatus == WorkOrderStatus.IN_PROGRESS && step.stepNo == currentStepNo && step.status != StepStatus.COMPLETED) {
                 when (step.status) {
-                    StepStatus.PENDING -> Button(onClick = onAction) { Text("类型确认") }
+                    StepStatus.PENDING -> Button(
+                        onClick = onAction,
+                        contentPadding = if (compact) PaddingValues(horizontal = 12.dp, vertical = 6.dp) else ButtonDefaults.ContentPadding,
+                    ) { Text("类型确认") }
                     StepStatus.TYPE_CONFIRMATION -> if (canApprove) {
-                        Button(onClick = onAction) { Text("审批通过") }
+                        Button(
+                            onClick = onAction,
+                            contentPadding = if (compact) PaddingValues(horizontal = 12.dp, vertical = 6.dp) else ButtonDefaults.ContentPadding,
+                        ) { Text("审批通过") }
                     } else {
                         Text("等待后台审批", color = Muted)
                     }
-                    StepStatus.WEIGHING -> Button(onClick = onAction) { Text("填写称重") }
+                    StepStatus.WEIGHING -> Button(
+                        onClick = onAction,
+                        contentPadding = if (compact) PaddingValues(horizontal = 12.dp, vertical = 6.dp) else ButtonDefaults.ContentPadding,
+                    ) { Text("填写称重") }
                     StepStatus.COMPLETED -> {}
                 }
             } else if (orderStatus == WorkOrderStatus.IN_PROGRESS && step.stepNo == currentStepNo && step.status != StepStatus.COMPLETED) {
-                Text("仅当前执行人可操作", color = Muted, fontSize = 13.sp)
+                Text("仅当前执行人可操作", color = Muted, fontSize = if (compact) 12.sp else 13.sp)
             }
         }
     }

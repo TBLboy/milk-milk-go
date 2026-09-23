@@ -4998,3 +4998,254 @@ evidence:
   recorded_at: '2026-09-16T07:47:20Z'
   invalidated_at: null
   invalidation_reason: null
+- id: EV-TASK-120-BUSINESS-LOG
+  kind: documentation
+  subject: 手机与平板横屏适配业务逻辑记录与一致性校验
+  status: valid
+  command: python3 validate_project.py --root /home/tbl/Project/辅料称重防错系统 && python3
+    loopctl.py --root /home/tbl/Project/辅料称重防错系统 --json validate && git diff --check
+  result_ref: BL-DEVICE-003、AC-DEVICE-003、AC-DEVICE-004、DEC-045、REQ-001 v19、ALIGN-026
+    和 TASK-120 已记录；项目日志、Loop 状态和差异格式校验通过
+  covers:
+    files:
+    - .project-log/business-logic/atoms.yaml
+    - .project-log/business-logic/clarification.yaml
+    - .project-log/requirements/baseline.yaml
+    - .project-log/decisions/decision-log.yaml
+    - .project-log/tasks/task-list.yaml
+    requirements: []
+    tasks:
+    - TASK-120
+  version_binding:
+    git_commit: 9f1042db7ad0b815de2bedd82511cec5ee018c52
+    diff_hash: 9505d8dfe270629528bcd59498da079ce6211636ca893158cf095cdd0c885604
+    file_hashes:
+      .project-log/business-logic/atoms.yaml: 1594fc8be425c1f4b6474f2184a2ac5317b78341c52473a95f2c5852eb67610f
+      .project-log/business-logic/clarification.yaml: eb0c438aa63b8f9d22d1adee13cfa0be5f82b4b493b18d3eda1b641d5505740e
+      .project-log/requirements/baseline.yaml: f0e95d7f461e9efdf587a36a37a78001f7ec2a9691c1347214b445f097315b2c
+      .project-log/decisions/decision-log.yaml: d85c0514a8be28ad4eeae6688f1522f8908df9e059ae21df388a2351de9a411b
+      .project-log/tasks/task-list.yaml: 5902315c757412db1de081b7500b9a7ff66b96e37b68fe2d60665f81d1a6cad5
+  recorded_at: '2026-09-21T03:38:44Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-120-DECOMPOSITION
+  kind: documentation
+  subject: 手机和平板横屏适配任务拆解与依赖校验
+  status: valid
+  command: python3 validate_project.py --root /home/tbl/Project/辅料称重防错系统 && python3
+    loopctl.py --root /home/tbl/Project/辅料称重防错系统 --json validate && git diff --check
+  result_ref: TASK-120 已拆分为 TASK-121 至 TASK-126；TASK-121 为下一项就绪任务；依赖、业务原子、验收条件、决策和
+    Loop 校验通过
+  covers:
+    files:
+    - .project-log/tasks/task-list.yaml
+    - .project-log/tasks/task-list.md
+    - .project-log/current-session.md
+    - .project-log/progress.md
+    requirements: []
+    tasks:
+    - TASK-120
+  version_binding:
+    git_commit: 9f1042db7ad0b815de2bedd82511cec5ee018c52
+    diff_hash: 358b0a264b90d8d80e0a7c64969c08e3386d781fbfb95027275e1d00ff0a56e7
+    file_hashes:
+      .project-log/tasks/task-list.yaml: 4cd39d9232e1a25343d529ec02c0a2439dfd7ed60b5262c4e54856559aa93157
+      .project-log/tasks/task-list.md: 2889130d5526e2c25f37d03c381ed90633b006c8b6389572e0fc3e90c92afff1
+      .project-log/current-session.md: a2443b55fa84f94b40e621a5b91bfc287156be076dfa692b545e817ada700526
+      .project-log/progress.md: 5670b63153eaa1ba8cff6c964c4d2393742c2fbc073a94507a4df1c20b5967f9
+  recorded_at: '2026-09-21T03:47:48Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-121-ANDROID-BUILD-LINT
+  kind: android-build
+  subject: TASK-121 Android 编译、Lint 与 Debug APK 构建
+  status: valid
+  command: JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew :app:compileDebugKotlin
+    :app:lintDebug :app:assembleDebug --no-daemon
+  result_ref: BUILD SUCCESSFUL；compileDebugKotlin、lintDebug 和 assembleDebug 均通过，仅保留既有
+    deprecated icon 警告
+  covers:
+    files: []
+    requirements:
+    - AC-DEVICE-003
+    tasks:
+    - TASK-121
+  version_binding:
+    git_commit: 9f1042db7ad0b815de2bedd82511cec5ee018c52
+    diff_hash: 63dd200f0361ea57d8d885bcf1a1fcfc481bf5ebcbb44bd71ef7639e013d69cd
+    file_hashes: {}
+  recorded_at: '2026-09-21T06:14:56Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-121-PHONE-LAYOUT
+  kind: ui-verification
+  subject: Pixel_10 手机横屏登录页、主框架和侧边栏验证
+  status: valid
+  command: adb install -r app-debug.apk && adb shell am start -W -n com.muheng.milkweigh/.MainActivity
+    && adb exec-out screencap -p
+  result_ref: 2424x1080；登录页输入框、按钮和协议完整；默认收起侧边栏；展开后工作台、工单、辅料与配方三项导航均可达；证据截图 phone-login-breakpoint.png、phone-main-shell.png、phone-sidebar-expanded.png
+  covers:
+    files:
+    - .build/task-121/phone-main-shell.png
+    requirements:
+    - AC-DEVICE-003
+    tasks:
+    - TASK-121
+  version_binding:
+    git_commit: 9f1042db7ad0b815de2bedd82511cec5ee018c52
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      .build/task-121/phone-main-shell.png: d018d7daa0c56431f316e1df78694e7ebc749055cd4fd87cde517df2fdb8aa2d
+  recorded_at: '2026-09-21T06:15:34Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-121-TABLET-LAYOUT
+  kind: ui-verification
+  subject: Medium_Tablet 平板横屏登录页、主框架和侧边栏验证
+  status: valid
+  command: adb install -r app-debug.apk && adb shell am start -W -n com.muheng.milkweigh/.MainActivity
+    && adb exec-out screencap -p
+  result_ref: 2560x1600；登录页保持展开式宽屏结构；主框架默认展开侧边栏；收起后导航图标仍可达；管理员可见工作台、工单、辅料与配方；证据截图
+    tablet-login-breakpoint.png、tablet-main-shell.png、tablet-sidebar-collapsed.png
+  covers:
+    files:
+    - .build/task-121/tablet-main-shell.png
+    requirements:
+    - AC-DEVICE-004
+    tasks:
+    - TASK-121
+  version_binding:
+    git_commit: 9f1042db7ad0b815de2bedd82511cec5ee018c52
+    diff_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    file_hashes:
+      .build/task-121/tablet-main-shell.png: 2d34c0a9553666af0896a342c99c529c89a48cf8a42bde96fa6726d11d558a6b
+  recorded_at: '2026-09-21T06:16:05Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-121-VALIDATION
+  kind: static-check
+  subject: TASK-121 项目日志、Loop 状态和差异格式校验
+  status: valid
+  command: python3 validate_project.py --root /home/tbl/Project/辅料称重防错系统 && python3
+    loopctl.py --root /home/tbl/Project/辅料称重防错系统 --json validate && git diff --check
+  result_ref: 项目日志 schema、引用、澄清门禁和 Loop 状态一致；git diff --check 无空白错误
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-121
+  version_binding:
+    git_commit: 9f1042db7ad0b815de2bedd82511cec5ee018c52
+    diff_hash: 2640fec74ca3975b8afe253fe601476e6fcdb32b31c7ac1f1587494cd8b95bc0
+    file_hashes: {}
+  recorded_at: '2026-09-21T06:16:41Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-122-ANDROID-BUILD-LINT
+  kind: build
+  subject: TASK-122 Android 编译、Lint 与 Debug APK 构建
+  status: valid
+  command: cd app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew :app:compileDebugKotlin
+    :app:lintDebug :app:assembleDebug --no-daemon
+  result_ref: BUILD SUCCESSFUL；仅保留既有 deprecated icon 警告；Debug APK 已生成
+  covers:
+    files:
+    - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+    requirements:
+    - AC-DEVICE-003
+    tasks:
+    - TASK-122
+  version_binding:
+    git_commit: 9f1042db7ad0b815de2bedd82511cec5ee018c52
+    diff_hash: 626edc26074002e5aa047ff7e6aa94c6f258679e93587e754f9cd8d7a361edf0
+    file_hashes:
+      app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt: 5e259b6c9ccc4bc4a9bc8f6dd79a3a3429d676ba654df67a6a1a2561a794dde4
+  recorded_at: '2026-09-21T07:54:25Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-122-PHONE-LAYOUT
+  kind: ui
+  subject: Pixel_10 手机横屏工作台、工单列表与详情布局
+  status: valid
+  command: adb -s emulator-5554 install -r app-debug.apk; adb -s emulator-5554 shell
+    input tap/swipe; adb -s emulator-5554 exec-out screencap -p
+  result_ref: 工作台统计卡和最近工单无横向溢出；筛选栏与工单行完整；详情标题、状态、步骤与类型确认按钮可达，向下滚动后底部步骤仍可操作；BUG 浮动按钮未遮挡主要内容
+  covers:
+    files: []
+    requirements:
+    - AC-DEVICE-003
+    tasks:
+    - TASK-122
+  version_binding:
+    git_commit: 9f1042db7ad0b815de2bedd82511cec5ee018c52
+    diff_hash: 507c76f1db02b9550a1f9714e5a2a4ff808ca1264b72c5db7cb6870455da236f
+    file_hashes: {}
+  recorded_at: '2026-09-21T07:54:40Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-122-TABLET-LAYOUT
+  kind: ui
+  subject: Medium_Tablet 平板横屏工作台、工单列表与详情布局回归
+  status: valid
+  command: adb -s emulator-5556 install -r app-debug.apk; adb -s emulator-5556 shell
+    input tap; adb -s emulator-5556 exec-out screencap -p
+  result_ref: 平板工作台保持三列统计卡、固定五项最近工单；工单列表完整显示状态与进入箭头；详情保持宽屏步骤布局，未因手机适配产生横向截断或操作遮挡
+  covers:
+    files: []
+    requirements:
+    - AC-DEVICE-004
+    tasks:
+    - TASK-122
+  version_binding:
+    git_commit: 9f1042db7ad0b815de2bedd82511cec5ee018c52
+    diff_hash: 91622e735d06f31505c74179117d70c27186c4fb33fdd45c340a0e18a1fef1e7
+    file_hashes: {}
+  recorded_at: '2026-09-21T07:54:57Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-122-VALIDATION
+  kind: validation
+  subject: TASK-122 项目日志、Loop 状态与差异格式校验
+  status: valid
+  command: git diff --check; python3 /home/tbl/.codex/vibe-workflow/scripts/validate_project.py
+    --root /home/tbl/Project/辅料称重防错系统; python3 /home/tbl/.codex/vibe-workflow/scripts/loopctl.py
+    --root /home/tbl/Project/辅料称重防错系统 --json validate
+  result_ref: git diff --check 无输出；validate_project 通过；loopctl validate passed=true，无错误
+  covers:
+    files: []
+    requirements: []
+    tasks:
+    - TASK-122
+  version_binding:
+    git_commit: 9f1042db7ad0b815de2bedd82511cec5ee018c52
+    diff_hash: 7551947b535461307c9d144cced30095e492d4a2957a5942244cad5fd1b5fdbc
+    file_hashes: {}
+  recorded_at: '2026-09-21T07:58:08Z'
+  invalidated_at: null
+  invalidation_reason: null
+- id: EV-TASK-122-RESPONSIVE-APK
+  kind: release-artifact
+  subject: Android 1.0.14 响应式测试 APK
+  status: valid
+  command: cd app && JAVA_HOME=/home/tbl/android-studio/jbr ./gradlew clean assembleRelease
+    -x lintVitalAnalyzeRelease -x lintVitalReportRelease -x lintVitalRelease --no-daemon;
+    zipalign -f 4; apksigner sign; apksigner verify; aapt dump badging; sha256sum
+    -c
+  result_ref: 发布版本/牧衡辅料称重防错系统-Android-1.0.14-responsive.apk；versionCode=15；versionName=1.0.14；包名
+    com.muheng.milkweigh；v2/v3 签名通过；与历史 1.0.14 发布包证书 SHA-256 一致；zipalign 和 SHA-256
+    校验通过；SHA-256=7a7b3579217ca1ad44c94a71ba159e4a074c33ea0c15dd9b8026a3cedf785117
+  covers:
+    files:
+    - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt
+    requirements:
+    - AC-DEVICE-003
+    tasks:
+    - TASK-122
+  version_binding:
+    git_commit: 9f1042db7ad0b815de2bedd82511cec5ee018c52
+    diff_hash: 626edc26074002e5aa047ff7e6aa94c6f258679e93587e754f9cd8d7a361edf0
+    file_hashes:
+      app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt: 5e259b6c9ccc4bc4a9bc8f6dd79a3a3429d676ba654df67a6a1a2561a794dde4
+  recorded_at: '2026-09-21T08:11:02Z'
+  invalidated_at: null
+  invalidation_reason: null

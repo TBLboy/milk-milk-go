@@ -10,6 +10,8 @@ functional_business_logic:
     - "[user-confirmed] 平板端普通操作员账号：创建和操作工单，不能进入后台管理"
     - "[user-confirmed] 电脑后台管理员/标签打印人员：生成和打印自制二维码标签"
     - "[user-confirmed] 平板端管理员：可录入/维护辅料和产品配方，并可执行后台管理员授权的管理操作"
+    - "[user-confirmed] 手机端普通操作员：功能和平板端普通操作员完全一致，仅界面布局按设备尺寸适配"
+    - "[user-confirmed] 手机端管理员：功能和平板端管理员完全一致，可执行相同的辅料、配方和账号相关管理操作"
   scenarios:
     - "[user-confirmed] 生产人员选择产品名称并输入目标生产重量，系统自动计算需要称取的辅料类型和重量。"
     - "[user-confirmed] 称重人员扫描二维码或拍摄辅料包装图片，确认辅料类型正确后在电子秤上称量重量。"
@@ -32,6 +34,7 @@ functional_business_logic:
     - "[user-confirmed] 管理员可在平板端直接拍摄或从相册选择多张辅料包装图片，录入辅料信息；普通操作员看不到辅料管理入口。"
     - "[user-confirmed] 管理员在电脑端或平板端创建产品配方时，只能从现有辅料库选择辅料并填写每吨用量，不涉及图片。"
     - "[user-confirmed] 后端服务和数据库部署在现场可用电脑上，平板通过现场 WiFi 与后端同一局域网访问，系统不依赖互联网。"
+    - "[user-confirmed] 用户在手机或平板横屏设备上使用同一 APP，业务流程、功能入口和权限保持一致，系统按可用宽高切换自适应布局。"
   rules:
     - "[user-confirmed] 每个产品对应配方；按配方和实际生产重量计算需要称取的辅料类型及重量。"
     - "[user-confirmed] 辅料通常有二维码，但可能存在无二维码辅料。"
@@ -65,6 +68,8 @@ functional_business_logic:
     - "[user-confirmed] 辅料和产品配方录入均支持电脑和平板端，但仅管理员可操作；APP 根据账号角色区分普通操作员和管理员，管理功能只对管理员开放。"
     - "[user-confirmed] 辅料信息包含中文名称、选填英文名称、公司内部代号、默认保质期和多张包装图片；materialCode、中文名称和默认保质期必填，英文名称选填；电脑端选择本地图片，平板端从相册选择或直接拍摄。"
     - "[user-confirmed] 产品配方只能从现有辅料库选择辅料并录入每吨用量；缺少的辅料先补录辅料，再创建产品配方。"
+    - "[user-confirmed] Android APP 固定横屏；手机端和平板端功能完全相同，不提供手机精简版或平板独占功能。"
+    - "[user-confirmed] 手机横屏适配以短高度场景为重点，所有内容必须可滚动到达，弹窗和键盘不得遮挡关键操作；平板保持适合宽屏的多列布局。"
   state_transitions:
     - "[draft] 待称重 -> 类型已确认 -> 重量已确认 -> 完成"
     - "[draft] 类型或重量不匹配 -> 阻止通过并要求处理"
@@ -96,6 +101,8 @@ functional_business_logic:
     - "[user-confirmed] 配方录入使用每吨辅料用量作为标准"
     - "[user-confirmed-first-version] 第一版采用自制二维码为主；供应商原二维码/条码不作为核心身份"
     - "[user-confirmed] 辅料和产品配方管理仅管理员账号可操作；普通操作员不显示或不开放相关管理入口"
+    - "[user-confirmed] 手机横屏和平板横屏均属于支持范围；竖屏不属于本 APP 支持范围"
+    - "[user-confirmed] 手机端与平板端功能集合完全一致；仅布局可以不同，业务权限、接口、数据和审批流程必须一致"
 technical_business_logic:
   current_implementation_facts:
     - "[user-confirmed] 公司已有电子秤，但接口和读数协议未确认"
@@ -112,6 +119,8 @@ technical_business_logic:
     - "[user-confirmed] 平板端操作用户可创建工单；电脑后台用户可审批和分配工单"
     - "[user-confirmed] 平板端账号由注册产生且为普通账号；后台管理员账号为预置账号，可创建和管理普通账号"
     - "[user-confirmed-first-version] 第一版以公司自制二维码作为主识别方案；二维码字段具体结构、打印权限和复核流程仍待确认"
+    - "[evidence-derived] 当前 AndroidManifest 固定 activity 为 landscape，符合强制横屏要求"
+    - "[evidence-derived] 当前登录页、主侧边栏、工作台统计卡和部分操作行使用固定宽度或横向并排结构，尚未形成针对手机短高度横屏的自适应布局模式"
   interface_contracts:
     - "[user-confirmed] 本系统不连接金蝶，无金蝶接口依赖"
     - "[evidence-candidate] 映拓计价秤有公开对接参数：通讯秤、默认 COM2、约 50ms 取重间隔、映拓主动通讯协议"
@@ -122,6 +131,7 @@ technical_business_logic:
     - "[unknown] 平板 App 形态（PWA/原生）及局域网摄像头访问方案待技术选型"
     - "[unknown] 后端电脑是否就是直连电子秤串口的主机；若不是，需要串口桥接方案"
     - "[user-confirmed] 同一工单绑定一个账号，只有该账号可操作；多台平板可并发处理不同工单"
+    - "[user-confirmed] 手机端和平板端共用同一套业务逻辑与后端接口，不因设备类型产生不同数据或权限结果"
   data_and_state_rules:
     - "[user-confirmed] 产品、配方、辅料主数据由用户维护；允差等称重参数可在设置界面调整"
     - "[user-confirmed] 产品、配方和辅料主数据支持后台手工录入和 Excel 模板导入/导出，字段保持一致"
@@ -142,9 +152,11 @@ technical_business_logic:
     - "[user-confirmed] 系统形态应独立、简单、好上手"
     - "[user-confirmed] 后端电脑提供数据库和服务，平板在同一局域网访问"
     - "[user-confirmed] 现场已有可用后端电脑和可用 WiFi，部署不依赖互联网"
+    - "[user-confirmed] Android APP 仅支持横屏，需同时覆盖手机和平板两类横屏设备"
     - "[unknown] 现场是否已有标签打印设备、设备型号和接入方式待 Q-021 确认"
   compatibility_constraints:
     - "[user-confirmed] 无需兼容金蝶现有业务流程和账号体系"
+    - "[user-confirmed] APP 需兼容 Android 手机和平板的横屏尺寸；同一账号在两端的可用功能和角色权限必须一致"
 alignment:
   confirmed_matches:
     - id: ALIGN-001
@@ -305,6 +317,15 @@ alignment:
       evidence:
         - .project-log/business-logic/open-questions.yaml#Q-022
         - .project-log/decisions/decision-log.yaml#DEC-022
+    - id: ALIGN-026
+      type: missing-implementation
+      summary: 已确认 APP 强制横屏且手机端和平板端功能完全一致；当前 Manifest 已固定横屏，但界面仍按平板宽屏设计，存在固定宽度和横向并排结构，手机横屏尚未完成自适应实现
+      status: open
+      authority: C
+      evidence:
+        - .project-log/business-logic/atoms.yaml#BL-DEVICE-003
+        - app/app/src/main/AndroidManifest.xml#activity
+        - app/app/src/main/java/com/muheng/milkweigh/MainActivity.kt#MainShell
   conflicts: []
   unknowns:
     - id: ALIGN-002
@@ -334,5 +355,5 @@ gate:
   status: passed
   blocking_unknowns:
     []
-  notes: REQ-001 v1 已整理为需求基线草稿并完成校验；Q-004 电子秤串口能力、标签打印机型号、平板系统和真实生产放行策略均为非阻塞未决项，暂不阻塞需求基线；待用户批准 REQ-001 后进入技术方案研究。
-updated_at: "2026-09-09T05:10:00Z"
+  notes: REQ-001 v19 已确认手机与平板横屏适配规则；当前实现缺少手机短高度自适应，已记录为 ALIGN-026 并进入 TASK-120，不阻塞后续业务澄清。
+updated_at: "2026-09-21T03:34:40Z"

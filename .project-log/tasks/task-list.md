@@ -115,6 +115,13 @@ Active goal: -
 | TASK-117 | implemented-unverified | repair | medium | 强化 APP 应称重量视觉警示 |
 | TASK-118 | done | task | high | 电脑端动态下拉框支持输入搜索 |
 | TASK-119 | done | milestone | high | 构建最新版 Windows 安装包和 Android APK |
+| TASK-120 | ready | milestone | high | Android APP 横屏适配手机和平板 |
+| TASK-121 | done | task | high | 建立响应式布局基线并适配登录页与主框架 |
+| TASK-122 | done | task | high | 适配工作台、工单列表与工单详情 |
+| TASK-123 | pending | task | high | 适配扫码、称重及现场操作弹窗 |
+| TASK-124 | pending | task | high | 适配账号资料与管理员主数据表单 |
+| TASK-125 | pending | task | high | 执行手机和平板横屏多尺寸回归验证 |
+| TASK-126 | pending | milestone | high | 构建 1.0.15 APK 并完成手机和平板横屏验收 |
 
 ## verification
 

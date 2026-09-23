@@ -1,14 +1,14 @@
 schema_version: 1
-run_id: RUN-20260916-074627-54941e7c
+run_id: RUN-20260921-062655-6575e7e3
 goal_id: null
 phase: implementation
 clarification_domain: null
-task_id: TASK-119
+task_id: TASK-122
 status: handed-off
 next_action:
-  kind: external-verification
-  subject: TASK-119
-  statement: 安装 Windows 1.0.6 EXE 和 Android 1.0.14 APK，确认安装、登录、主数据、工单、扫码和称重流程正常。
+  kind: implementation
+  subject: TASK-123
+  statement: 适配扫码、称重及现场操作弹窗，使类型确认、实时扫码、重量确认、申请和创建工单弹窗在手机短高度横屏下完整可操作。
 counters:
   task_attempts: 0
   same_failure_count: 0
@@ -24,5 +24,5 @@ native_goal:
   thread_goal_id: null
   last_known_status: null
   last_synced_at: null
-last_event_id: LE-002089
-updated_at: '2026-09-16T07:48:10Z'
+last_event_id: LE-002111
+updated_at: '2026-09-21T08:11:02Z'
