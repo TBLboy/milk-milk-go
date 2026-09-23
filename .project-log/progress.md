@@ -9,10 +9,10 @@
 
 ## 当前状态
 
-  - 当前阶段：implementation / TASK-119 构建最新版 Windows 安装包和 Android APK
-  - 当前任务：TASK-119 已完成 Windows 1.0.6 EXE 与 Android 1.0.14 APK 构建和产物校验
-  - 当前状态：Windows PE 安装器、Android v2/v3 签名、版本清单和 SHA-256 校验均通过
-  - 下一步：在 Windows 11 客户机和 Android 平板安装本轮产物，执行真实场景回归
+  - 当前阶段：implementation / TASK-122 工作台与工单响应式适配
+  - 当前任务：TASK-122 已完成；TASK-123 为下一项就绪任务
+  - 当前状态：工作台、工单列表和工单详情已按手机/平板模式适配并通过双模拟器验证
+  - 下一步：开始 TASK-123，适配扫码、称重及现场操作弹窗
 - 当前状态补记：已核查 GPT 意见；真实标签打印机接入推迟到第一版 Demo 验收后，当前 Demo 只保留标签生成、二维码预览和记录
 - 上一轮状态：TASK-068 功能审查稿和图标提示词已完成；APP 用户协议 V1.0 已完成
 - 当前状态补记：SMTP 安装配置调研完成；推荐安装向导首次录入并测试、DPAPI 加密保存、后台提供替换授权码和失败重试
@@ -35,6 +35,43 @@
   - 在真实 Windows 11 执行全新安装和覆盖安装验证
   - 在真实 Android 平板安装发布签名 APK 并回归关键流程
   - 补充安装后 SMTP 非阻塞测试和自动备份调度
+
+## 2026-09-21 TASK-121 响应式布局基线
+
+- 新增统一的 `COMPACT/EXPANDED` 布局模式和响应式尺寸配置
+- 断点采用 `heightDp <= 480 || widthDp < 600`，手机横屏进入紧凑模式，平板保持宽屏模式
+- 手机登录页、主框架和侧边栏完成紧凑布局适配；平板保留原有宽屏侧边栏
+- Pixel_10 与 Medium_Tablet 双模拟器验证通过，管理员三项导航在两端均可达
+- Android 编译、Lint、Debug APK 构建、项目日志校验和差异格式检查通过
+- 证据：EV-TASK-121-ANDROID-BUILD-LINT、EV-TASK-121-PHONE-LAYOUT、EV-TASK-121-TABLET-LAYOUT、EV-TASK-121-VALIDATION
+
+## 2026-09-21 TASK-122 工作台、工单列表与工单详情响应式适配
+
+- 工作台、工单列表和工单详情接入 `COMPACT/EXPANDED` 响应式布局
+- 手机横屏压缩页面边距、标题、统计卡、最近工单、筛选栏、工单行和步骤卡；筛选栏支持横向滚动
+- 工单详情保留滚动和下拉刷新，步骤操作可达且 BUG 浮动按钮不遮挡主要内容
+- 平板端保持三列统计卡、固定五项最近工单和宽屏详情布局
+- Android 编译、Lint、Debug APK 构建和双模拟器验证通过
+- 证据：EV-TASK-122-ANDROID-BUILD-LINT、EV-TASK-122-PHONE-LAYOUT、EV-TASK-122-TABLET-LAYOUT、EV-TASK-122-VALIDATION
+- 已生成响应式测试发布包 `牧衡辅料称重防错系统-Android-1.0.14-responsive.apk`，versionCode 15，v2/v3 签名与 SHA-256 校验通过
+
+## 2026-09-21 手机与平板横屏适配业务逻辑
+
+- APP 确认固定横屏，手机端和平板端功能、权限和业务流程完全一致
+- 手机横屏适配重点为短高度滚动、弹窗可达性、键盘避让和组件换行；平板保留宽屏多列布局
+- 新增 `BL-DEVICE-003`、`AC-DEVICE-003`、`AC-DEVICE-004` 和 `DEC-045`
+- REQ-001 更新到 v19；当前缺少手机响应式实现，记录为 `ALIGN-026 missing-implementation`
+- 新增待实施任务 `TASK-120`；本轮只记录业务逻辑，未修改代码
+
+## 2026-09-21 TASK-120 手机和平板横屏适配任务拆解
+
+- TASK-121：建立响应式布局基线并适配登录页与主框架
+- TASK-122：适配工作台、工单列表与工单详情
+- TASK-123：适配扫码、称重及现场操作弹窗
+- TASK-124：适配账号资料与管理员主数据表单
+- TASK-125：执行手机和平板横屏多尺寸回归验证
+- TASK-126：构建 Android 1.0.15 APK 并完成手机和平板验收
+- TASK-121 为下一项就绪任务；其余任务按依赖串行推进
 
 ## 2026-09-16 TASK-119 构建最新版 Windows 安装包和 Android APK
 

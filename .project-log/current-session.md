@@ -9,11 +9,12 @@
 
 ## 当前状态
 
-  - 当前阶段：implementation / TASK-119 构建最新版 Windows 安装包和 Android APK
+  - 当前阶段：implementation / TASK-122 工作台与工单响应式适配
   - 当前目标：完成剩余生产级可本地实现缺口，并在真实 Android 平板、Windows 11 和公司内部 WiFi 完成独立验收
-  - 当前任务：TASK-119 已完成 Windows 1.0.6 EXE 与 Android 1.0.14 APK 构建和产物校验
-  - 当前状态：Windows PE 安装器、Android v2/v3 签名、版本清单和 SHA-256 校验均通过
-  - 下一步：在 Windows 11 客户机和 Android 平板安装本轮产物，执行真实场景回归
+  - 当前任务：TASK-122 已完成；TASK-123 为下一项就绪任务
+  - 当前状态：工作台、工单列表和工单详情已按手机/平板模式适配并通过双模拟器验证
+  - 下一步：开始 TASK-123，适配扫码、称重及现场操作弹窗
+  - 当前状态补记：TASK-121 采用 `heightDp <= 480 || widthDp < 600` 判定 COMPACT；Pixel_10 手机横屏进入紧凑布局，Medium_Tablet 平板横屏保持展开式宽屏布局
   - 当前状态补记：TASK-103 已收口；PC 标签页选择辅料即显示 preview 预览且不落库，点击“打印”才创建正式标签记录并显示真实 `labelId`
   - 当前状态补记：用户反馈浏览器可扫码但 APP 长时间无法识别；已提高分析分辨率并接入 ML Kit 自动缩放，修复版本为 Android `1.0.5`
   - 当前状态补记：用户反馈正确二维码偶尔提示非本系统标签且镜头反复缩放；已区分 `preview=true` 的预览码，并限制自动缩放抖动，修复版本为 Android `1.0.6`
@@ -89,6 +90,51 @@
 2. 覆盖安装一次，确认 `%ProgramData%\MilkWeigh\data` 中数据库和证据文件保留
 3. 在真实 Android 平板安装发布签名 APK，回归登录、扫码、称重证据和 BUG 反馈
 4. 补充安装后 SMTP 非阻塞测试、自动备份调度和 Windows 实机升级验证
+
+## 2026-09-21 TASK-121 响应式布局基线
+
+- `MainActivity.kt` 新增 `COMPACT/EXPANDED` 布局模式和统一的 `AppLayoutSpec`
+- 断点修正为 `heightDp <= 480 || widthDp < 600`，避免 `800x500dp` 横屏平板误判为手机布局
+- 手机登录页使用紧凑外边距、卡片宽度和字号，保留键盘避让与滚动
+- 手机主框架默认收起侧边栏，用户可展开；平板保留展开式宽屏侧边栏
+- Pixel_10 与 Medium_Tablet 均完成登录、主框架、侧边栏展开/收起和管理员导航验证
+- Android 编译、Lint、Debug APK 构建、项目日志校验和 `git diff --check` 通过
+- 证据：EV-TASK-121-ANDROID-BUILD-LINT、EV-TASK-121-PHONE-LAYOUT、EV-TASK-121-TABLET-LAYOUT、EV-TASK-121-VALIDATION
+- 限制：真实手机和平板的最终触摸及系统字体缩放验收留到 TASK-125
+
+## 2026-09-21 TASK-122 工作台、工单列表与工单详情响应式适配
+
+- 工作台、工单列表和工单详情接入 TASK-121 的 `COMPACT/EXPANDED` 布局模式
+- 手机横屏下压缩页面边距、标题、统计卡、最近工单视口、筛选栏、工单行和步骤卡，并保留 BUG 浮动按钮安全间距
+- 工单筛选栏在窄宽度下可横向滚动；长产品名使用单行省略；详情步骤和操作按钮保持可达
+- 平板端保留三列统计卡、固定五项最近工单和宽屏详情布局
+- Pixel_10 与 Medium_Tablet 双模拟器完成工作台、工单列表、工单详情及滚动验证
+- Android 编译、Lint、Debug APK 构建、项目日志校验和 `git diff --check` 通过
+- 证据：EV-TASK-122-ANDROID-BUILD-LINT、EV-TASK-122-PHONE-LAYOUT、EV-TASK-122-TABLET-LAYOUT、EV-TASK-122-VALIDATION
+- 已生成响应式测试发布包 `发布版本/牧衡辅料称重防错系统-Android-1.0.14-responsive.apk`；versionCode 15、v2/v3 签名、zipalign、SHA-256 和历史正式发布证书一致性均通过
+- 限制：真实手机和平板的触摸、系统字体缩放和厂商相机界面留到 TASK-125
+
+## 2026-09-21 手机与平板横屏适配业务逻辑
+
+- 用户确认 APP 强制横屏符合产品定位，不需要竖屏模式
+- 手机端和平板端必须提供完全相同的业务功能、角色权限和业务流程
+- 适配只改变布局，不裁剪功能、不改变接口、数据或审批规则
+- 手机横屏重点解决短高度滚动、弹窗高度、键盘遮挡和按钮可达性；平板保持宽屏多列布局
+- 新增业务原子 `BL-DEVICE-003` 和验收条件 `AC-DEVICE-003`、`AC-DEVICE-004`
+- 新增决策 `DEC-045`，REQ-001 更新到 v19
+- 当前实现缺少手机横屏响应式布局，记录为 `ALIGN-026 missing-implementation`
+- 新增待实施任务 `TASK-120`，本轮只记录业务逻辑，未修改客户端代码
+
+## 2026-09-21 TASK-120 手机和平板横屏适配任务拆解
+
+- `TASK-121` 建立响应式布局基线并适配登录页与主框架，当前为下一项就绪任务
+- `TASK-122` 适配工作台、工单列表与工单详情
+- `TASK-123` 适配扫码、称重及现场操作弹窗
+- `TASK-124` 适配账号资料与管理员主数据表单
+- `TASK-125` 执行手机和平板横屏多尺寸、键盘和短高度回归验证
+- `TASK-126` 构建 Android 1.0.15 APK 并完成手机和平板验收
+- 任务依赖按串行代码修改边界排列，避免多个任务并行修改 `MainActivity.kt`
+- 项目日志、任务引用、Loop 状态和差异格式校验通过
 
 ## 2026-09-16 TASK-119 构建最新版 Windows 安装包和 Android APK
 

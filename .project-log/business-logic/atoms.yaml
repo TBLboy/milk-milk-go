@@ -1784,6 +1784,79 @@ atoms:
     created_at: "2026-09-09T04:10:00Z"
     updated_at: "2026-09-09T04:10:00Z"
     last_verified_at: null
+  - id: BL-DEVICE-003
+    title: Android APP 横屏同时适配手机和平板
+    kind: constraint
+    domain: device
+    status: active
+    priority: high
+    risk: medium
+    authority: user-confirmed
+    source:
+      type: user-statement
+      reference: "2026-09-21 手机与平板横屏适配需求确认"
+    description: APP 固定使用横屏，在手机和平板上提供完全相同的业务功能；系统根据设备可用宽高自动调整导航、内容列数、间距、表单和弹窗布局，不因设备尺寸裁剪功能或改变业务权限。
+    actors:
+      - 手机端普通操作员
+      - 手机端管理员
+      - 平板端普通操作员
+      - 平板端管理员
+    trigger: 用户在手机或平板横屏设备上安装并使用 APP
+    preconditions:
+      - 设备运行受支持的 Android 版本
+      - APP 已安装并完成登录
+    inputs:
+      - 设备可用宽度和高度
+      - 系统栏、安全区域和软键盘占用的空间
+    rule:
+      statement: APP 始终采用横屏；手机端和平板端功能集合、角色权限和业务流程完全一致。布局必须依据可用宽高自适应：手机横屏优先保证短高度下的完整可操作性和滚动可达性，平板继续使用适合宽屏的多列布局；不得通过隐藏业务功能来适配手机。
+    outputs:
+      - 可在手机和平板横屏下完整使用的自适应界面
+    side_effects: []
+    exceptions:
+      - 手机横屏可用高度较小时页面内容可能超出一屏
+      - 软键盘弹出后进一步压缩可用高度
+      - 长名称、状态标签或多操作按钮可能导致横向空间不足
+    failure_handling:
+      - 内容超出时提供纵向滚动或受控的局部滚动
+      - 横排内容空间不足时自动换行、压缩为图标或切换为纵向布局
+      - 弹窗高度受可用屏幕限制，操作按钮保持可到达
+      - 键盘弹出时允许滚动到当前输入控件
+    invariants:
+      - APP 固定横屏，不提供竖屏布局
+      - 手机端与平板端业务功能完全一致
+      - 同一账号在手机和平板上具有相同角色权限
+      - 所有页面、菜单、表单、按钮和弹窗在支持尺寸内均可到达和操作
+      - 自适应仅改变布局，不改变业务规则、接口、数据或审批流程
+    acceptance:
+      - id: AC-DEVICE-003
+        given: 用户在一台典型手机横屏尺寸的 Android 设备上安装 APP
+        when: 用户依次使用工作台、工单、扫码、称重、账号资料及管理员辅料配方功能
+        then: 所有功能均可到达，页面无不可恢复的重叠、截断或按钮不可点击问题，超出内容可以滚动查看
+        method: null
+        evidence: null
+        status: not-verified
+      - id: AC-DEVICE-004
+        given: 同一账号分别在一台手机和一台平板上登录 APP
+        when: 用户访问同一业务功能
+        then: 两端功能集合、角色权限和业务结果一致，仅界面布局根据设备尺寸不同
+        method: null
+        evidence: null
+        status: not-verified
+    dependencies:
+      - BL-DEVICE-001
+      - BL-AUTH-001
+    baseline_refs:
+      - REQ-001
+    decision_refs:
+      - DEC-045
+    implementation_refs: []
+    test_refs: []
+    supersedes: []
+    notes: 用户确认强制横屏没有问题，并要求手机端和平板端功能完全相同；手机端不是精简版，平板端也不保留独占业务功能。
+    created_at: "2026-09-21T03:34:40Z"
+    updated_at: "2026-09-21T03:34:40Z"
+    last_verified_at: null
   - id: BL-SUPPORT-001
     title: 应用内 BUG 反馈通过邮件发送到固定维护邮箱
     kind: flow
