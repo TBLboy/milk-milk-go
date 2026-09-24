@@ -1474,6 +1474,17 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
     }
   }
 
+  const handleSelectBackupPath = async () => {
+    try {
+      const { path } = await api.selectDirectory()
+      if (!path) return
+      await api.updateSettings({ backup_path: path })
+      loadSettings()
+    } catch (e: any) {
+      window.alert(e.message)
+    }
+  }
+
   const pagedUsers = users.slice((accountPage - 1) * pageSize, accountPage * pageSize)
   const pagedBackups = backups.slice((backupPage - 1) * pageSize, backupPage * pageSize)
   const pagedRestoreCandidates = restoreCandidates.slice((restorePage - 1) * restorePageSize, restorePage * restorePageSize)
@@ -1572,7 +1583,7 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
             <Setting title="自动备份时间" description="多个时间点用逗号分隔，后端按本机时间执行" value={settings.backup_time ?? '12:00,20:00'} onClick={() => handleEditSetting('backup_time', settings.backup_time ?? '12:00,20:00', '自动备份时间（HH:MM，多个用逗号分隔）')} />
             <Setting title="备份保留年限" description="备份只包含最近 N 个月的工单数据，0 表示永久保留" value={formatRetentionYears(settings.backup_retention_years)} onClick={() => handleEditSetting('backup_retention_years', settings.backup_retention_years ?? '12', '备份保留年限（月，0 表示永久）')} />
             <Setting title="备份保留数量" description="超过数量时自动删除最旧的备份" value={`${settings.backup_keep_count ?? '60'} 个`} onClick={() => handleEditSetting('backup_keep_count', settings.backup_keep_count ?? '60', '备份保留数量（10-365）')} />
-            <Setting title="备份路径" description="备份文件存放目录，必须是本地已存在的文件夹" value={settings.backup_path ?? '默认（数据目录/backups）'} onClick={() => handleEditSetting('backup_path', settings.backup_path ?? '', '备份路径（留空使用默认）')} />
+            <Setting title="备份路径" description="备份文件存放目录，点击选择本地已存在的文件夹" value={settings.backup_path ?? '默认（数据目录/backups）'} onClick={handleSelectBackupPath} />
             <Setting title="标签尺寸" description="标签预览和导出使用的宽 × 高（毫米）" value={formatLabelSize(settings.label_size_mm)} onClick={() => handleEditSetting('label_size_mm', settings.label_size_mm ?? '60x40', '标签尺寸（宽x高，毫米）')} />
             <Setting title="服务端口" description="局域网访问端口" value={settings.server_port ?? '8011'} onClick={() => handleEditSetting('server_port', settings.server_port ?? '8011', '服务端口')} />
           </div>

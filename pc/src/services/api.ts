@@ -492,6 +492,10 @@ export const api = {
     })
   },
 
+  async selectDirectory(): Promise<{ path: string | null }> {
+    return request('/operations/select-directory', { method: 'POST' })
+  },
+
   async exportLabelsPdf(materialIds: string[], mode: 'merged' | 'split'): Promise<{ blob: Blob; filename: string }> {
     const response = await fetch(`${API_BASE}/labels/export-pdf`, {
       method: 'POST',
