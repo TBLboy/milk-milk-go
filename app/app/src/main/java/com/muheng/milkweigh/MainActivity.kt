@@ -147,6 +147,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
@@ -1301,11 +1302,20 @@ private fun UserProfileDialog(
                         onClick = { showAvatarPreview = true },
                         size = 46.dp,
                     )
-                    OutlinedButton(onClick = { photoPicker.launch("image/*") }, modifier = Modifier.weight(1f)) { Text("相册头像") }
+                    OutlinedButton(
+                        onClick = { photoPicker.launch("image/*") },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                    ) {
+                        Text("相册头像", maxLines = 1, softWrap = false, textAlign = TextAlign.Center)
+                    }
                     OutlinedButton(
                         onClick = launchCamera,
                         modifier = Modifier.weight(1f),
-                    ) { Text("拍照头像") }
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                    ) {
+                        Text("拍照头像", maxLines = 1, softWrap = false, textAlign = TextAlign.Center)
+                    }
                 }
                 OutlinedTextField(displayName, { displayName = it }, modifier = Modifier.fillMaxWidth(), label = { Text("姓名") }, singleLine = true)
                 OutlinedTextField(phone, { phone = it.filter { char -> char.isDigit() || char == '-' } }, modifier = Modifier.fillMaxWidth(), label = { Text("电话") }, singleLine = true)
