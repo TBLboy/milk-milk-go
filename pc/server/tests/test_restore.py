@@ -374,3 +374,20 @@ def test_restore_api_restores_backup(client, tmp_path):
     # 恢复后数据库回到备份快照，但恢复前的自动备份文件应存在于备份目录
     pre_restore_files = list((tmp_path / "backups").glob("milk-weigh-backup-*.zip"))
     assert len(pre_restore_files) >= 2
+
+
+def test_restore_api_records_audit_in_restored_database(client, tmp_path):
+    headers = admin_headers(client)
+    archive, order_no, qr_file, scale_file = create_source_backup(client)
+
+    response = client.post(
+        "/api/v1/operations/restore",
+        headers=headers,
+        json={"file_name": archive.name},
+    )
+    assert response.status_code == 200
+
+    logs = client.get("/api/v1/operations/audit-logs", headers=headers).json()
+    items = logs["items"] if isinstance(logs, dict) else logs
+    actions = {item["action"] for item in items}
+    assert "backup.restore.completed" in actions

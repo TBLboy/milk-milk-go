@@ -190,12 +190,13 @@ def list_restore_candidates(_: User = Depends(require_admin), db: Session = Depe
     for archive in sorted(backup_dir.glob("milk-weigh-backup-*.zip"), reverse=True):
         try:
             package = inspect_backup_archive(archive)
-        except RestoreError:
+            size_bytes = archive.stat().st_size
+        except (RestoreError, OSError):
             continue
         candidates.append(
             {
                 "file_name": archive.name,
-                "size_bytes": archive.stat().st_size,
+                "size_bytes": size_bytes,
                 "created_at": package.manifest.get("created_at"),
                 "trigger": package.manifest.get("trigger"),
                 "app_version": package.manifest.get("app_version"),
@@ -214,7 +215,7 @@ def restore_backup(body: RestoreInput, admin: User = Depends(require_admin), db:
         raise HTTPException(status_code=404, detail={"code": "BACKUP_NOT_FOUND", "message": "备份文件不存在"})
     try:
         result = restore_complete_backup(archive_path, settings)
-    except RestoreError as exc:
+    except (RestoreError, BackupError) as exc:
         write_audit(
             db,
             actor_id=admin.id,
