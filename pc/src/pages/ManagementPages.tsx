@@ -1414,6 +1414,7 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
       setRestoreTarget(null)
     } catch (e: any) {
       setRestoreMessage(`恢复失败：${e.message}`)
+      setRestoreTarget(null)
     } finally {
       setRestoring(false)
     }
