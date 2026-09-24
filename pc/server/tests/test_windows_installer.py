@@ -71,3 +71,16 @@ def test_windows_installer_packages_demo_master_data_assets():
     )
     assert 'MILK_DEMO_ASSETS_DIR' in seed_installer
     assert build_script.count('"FILE-') == 10
+
+
+def test_windows_installer_offers_backup_path_page():
+    pc_root = Path(__file__).resolve().parents[2]
+    installer = (pc_root / "packaging" / "windows" / "installer.nsi").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'Page custom BackupPathPageCreate BackupPathPageLeave' in installer
+    assert 'nsDialogs::SelectFolderDialog' in installer
+    assert 'backup_path.conf' in installer
+    assert '!include "nsDialogs.nsh"' in installer
+    assert '!include "LogicLib.nsh"' in installer

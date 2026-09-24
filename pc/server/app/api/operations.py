@@ -1,7 +1,9 @@
 import json
 from datetime import datetime, timezone
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -10,9 +12,14 @@ from app.core.config import get_settings
 from app.db.models import AuditLog, BackupRecord, SystemSetting, User
 from app.db.session import get_db
 from app.services.audit import sanitize_audit_detail, write_audit
-from app.services.backup import BackupError, create_complete_backup
+from app.services.backup import BackupError, create_complete_backup, resolve_backup_dir
+from app.services.restore import RestoreError, inspect_backup_archive, restore_complete_backup
 
 router = APIRouter(prefix="/operations", tags=["operations"])
+
+
+class RestoreInput(BaseModel):
+    file_name: str
 
 
 def _as_utc(value: datetime | None) -> datetime | None:
@@ -170,3 +177,73 @@ def list_backups(_: User = Depends(require_admin), db: Session = Depends(get_db)
         }
         for item in db.scalars(select(BackupRecord).order_by(BackupRecord.created_at.desc()).limit(100)).all()
     ]
+
+
+@router.get("/restore/candidates")
+def list_restore_candidates(_: User = Depends(require_admin), db: Session = Depends(get_db)) -> list[dict]:
+    settings = get_settings()
+    values = {item.key: item.value for item in db.scalars(select(SystemSetting)).all()}
+    backup_dir = resolve_backup_dir(settings, values)
+    if not backup_dir.is_dir():
+        return []
+    candidates = []
+    for archive in sorted(backup_dir.glob("milk-weigh-backup-*.zip"), reverse=True):
+        try:
+            package = inspect_backup_archive(archive)
+        except RestoreError:
+            continue
+        candidates.append(
+            {
+                "file_name": archive.name,
+                "size_bytes": archive.stat().st_size,
+                "created_at": package.manifest.get("created_at"),
+                "trigger": package.manifest.get("trigger"),
+                "app_version": package.manifest.get("app_version"),
+            }
+        )
+    return candidates
+
+
+@router.post("/restore")
+def restore_backup(body: RestoreInput, admin: User = Depends(require_admin), db: Session = Depends(get_db)) -> dict:
+    settings = get_settings()
+    values = {item.key: item.value for item in db.scalars(select(SystemSetting)).all()}
+    backup_dir = resolve_backup_dir(settings, values)
+    archive_path = (backup_dir / body.file_name).resolve()
+    if archive_path.parent != backup_dir.resolve() or not archive_path.is_file():
+        raise HTTPException(status_code=404, detail={"code": "BACKUP_NOT_FOUND", "message": "备份文件不存在"})
+    try:
+        result = restore_complete_backup(archive_path, settings)
+    except RestoreError as exc:
+        write_audit(
+            db,
+            actor_id=admin.id,
+            action="backup.restore.failed",
+            resource_type="backup",
+            result="failure",
+            detail={"file_name": body.file_name, "error": str(exc)[:500]},
+        )
+        db.commit()
+        raise HTTPException(status_code=503, detail={"code": "RESTORE_FAILED", "message": f"恢复失败：{exc}"}) from exc
+    write_audit(
+        db,
+        actor_id=admin.id,
+        action="backup.restore.completed",
+        resource_type="backup",
+        detail={
+            "file_name": body.file_name,
+            "users": result.users,
+            "work_orders": result.work_orders,
+            "evidence_files": result.evidence_files,
+        },
+    )
+    db.commit()
+    return {
+        "status": "success",
+        "file_name": body.file_name,
+        "users": result.users,
+        "work_orders": result.work_orders,
+        "evidence_files": result.evidence_files,
+        "restored_at": result.restored_at.isoformat(),
+        "restart_required": True,
+    }

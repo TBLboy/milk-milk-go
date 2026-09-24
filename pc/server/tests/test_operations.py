@@ -121,12 +121,17 @@ def test_scheduler_runs_once_for_due_schedule(client, monkeypatch):
     from app.services import backup as backup_service
 
     headers = admin_headers(client)
+    client.put(
+        "/api/v1/settings",
+        headers=headers,
+        json={"values": {"backup_time": "12:00,20:00"}},
+    )
     expected = backup_service.BackupResult(
         file_path=Path("scheduled-backup.zip"),
         file_name="scheduled-backup.zip",
         size_bytes=123,
         checksum_sha256="a" * 64,
-        created_at=datetime(2026, 9, 13, 2, 0),
+        created_at=datetime(2026, 9, 13, 12, 0),
         trigger="scheduled",
     )
     monkeypatch.setattr(
@@ -135,12 +140,13 @@ def test_scheduler_runs_once_for_due_schedule(client, monkeypatch):
         lambda *_args, **_kwargs: expected,
     )
 
-    assert backup_service.backup_scheduler.run_once(now=datetime(2026, 9, 13, 2, 0)) is True
-    assert backup_service.backup_scheduler.run_once(now=datetime(2026, 9, 13, 2, 1)) is False
+    assert backup_service.backup_scheduler.run_once(now=datetime(2026, 9, 13, 12, 0)) is True
+    assert backup_service.backup_scheduler.run_once(now=datetime(2026, 9, 13, 12, 1)) is False
+    assert backup_service.backup_scheduler.run_once(now=datetime(2026, 9, 13, 20, 0)) is True
 
     records = client.get("/api/v1/operations/backups", headers=headers).json()
     assert records[0]["trigger"] == "scheduled"
-    assert records[0]["schedule_key"] == "2026-09-13"
+    assert records[0]["schedule_key"] == "2026-09-13#20:00"
     assert records[0]["checksum_sha256"] == "a" * 64
 
 

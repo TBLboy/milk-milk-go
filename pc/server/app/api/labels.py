@@ -1,6 +1,7 @@
 import json
 from io import BytesIO
 import secrets
+import zipfile
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
@@ -15,6 +16,13 @@ from app.db.models import Label, Material, PrintBatch, SystemSetting, User
 from app.db.session import get_db
 from app.services.audit import write_audit
 from app.services.idempotency import execute_idempotent
+from app.services.label_pdf import (
+    LabelPdfError,
+    LabelPdfRequest,
+    parse_label_size,
+    render_label_pdf,
+    render_labels_pdf,
+)
 
 router = APIRouter(prefix="/labels", tags=["labels"])
 MATERIAL_EXCEL_HEADERS = ("material_code", "name_zh", "name_en", "shelf_life_months")
@@ -23,6 +31,12 @@ MATERIAL_EXCEL_HEADERS = ("material_code", "name_zh", "name_en", "shelf_life_mon
 class PrintRequest(BaseModel):
     material_id: str = Field(min_length=1, max_length=32)
     quantity: int = Field(gt=0, le=10000)
+
+
+class LabelExportRequest(BaseModel):
+    material_ids: list[str] = Field(min_length=1, max_length=500)
+    mode: str = Field(default="merged", pattern="^(merged|split)$")
+    quantity: int = Field(default=1, gt=0, le=10000)
 
 
 def _now() -> datetime:
@@ -95,6 +109,82 @@ def create_print_batch(
         payload={"material_id": body.material_id, "quantity": body.quantity},
         operation=operation,
         status_code=201,
+    )
+
+
+@router.post("/export-pdf")
+def export_labels_pdf(
+    body: LabelExportRequest,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    materials = {
+        item.material_id: item
+        for item in db.scalars(select(Material).where(Material.material_id.in_(body.material_ids))).all()
+    }
+    missing = [mid for mid in body.material_ids if mid not in materials]
+    if missing:
+        raise HTTPException(status_code=422, detail={"code": "MATERIAL_NOT_FOUND", "message": f"辅料不存在：{', '.join(missing)}"})
+    label_size = db.scalar(select(SystemSetting.value).where(SystemSetting.key == "label_size_mm")) or "60x40"
+    width_mm, height_mm = parse_label_size(label_size)
+    printed_at = _now()
+
+    requests: list[LabelPdfRequest] = []
+    for material_id in body.material_ids:
+        material = materials[material_id]
+        for _ in range(body.quantity):
+            label_id = f"LBL-{printed_at.strftime('%Y%m%d')}-{secrets.token_hex(5)}"
+            requests.append(
+                LabelPdfRequest(
+                    label_id=label_id,
+                    material_name=material.name_zh,
+                    material_code=material.material_code,
+                    printed_at=printed_at,
+                    width_mm=width_mm,
+                    height_mm=height_mm,
+                )
+            )
+
+    try:
+        if body.mode == "merged":
+            payload = render_labels_pdf(requests)
+            file_name = f"辅料标签-{printed_at.strftime('%Y%m%d%H%M%S')}.pdf"
+            media_type = "application/pdf"
+        else:
+            buffer = BytesIO()
+            with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+                for material_id in body.material_ids:
+                    material = materials[material_id]
+                    material_requests = [item for item in requests if item.material_code == material.material_code]
+                    archive.writestr(
+                        f"{material.name_zh}.pdf",
+                        render_label_pdf(material_requests[0]),
+                    )
+            payload = buffer.getvalue()
+            file_name = f"辅料标签-{printed_at.strftime('%Y%m%d%H%M%S')}.zip"
+            media_type = "application/zip"
+    except LabelPdfError as exc:
+        raise HTTPException(status_code=503, detail={"code": "LABEL_PDF_FAILED", "message": str(exc)}) from exc
+
+    write_audit(
+        db,
+        actor_id=user.id,
+        action="label.pdf_exported",
+        resource_type="label",
+        detail={
+            "material_ids": body.material_ids,
+            "mode": body.mode,
+            "quantity": body.quantity,
+            "label_count": len(requests),
+        },
+    )
+    db.commit()
+    from urllib.parse import quote
+
+    return StreamingResponse(
+        BytesIO(payload),
+        media_type=media_type,
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(file_name)}"},
     )
 
 
