@@ -548,6 +548,9 @@ export function LabelsPage() {
   const [previewOpen, setPreviewOpen] = useState(false)
   const [largeQrSrc, setLargeQrSrc] = useState<string | null>(null)
   const [batchPage, setBatchPage] = useState(1)
+  const [exporting, setExporting] = useState(false)
+  const [batchSelection, setBatchSelection] = useState<string[]>([])
+  const [batchMode, setBatchMode] = useState<'merged' | 'split'>('merged')
   const batchPageSize = 10
 
   const loadBatches = async () => {
@@ -678,6 +681,59 @@ export function LabelsPage() {
     }
   }
 
+  const saveBlobToDirectory = async (blob: Blob, filename: string): Promise<boolean> => {
+    const picker = (window as any).showDirectoryPicker
+    if (typeof picker === 'function') {
+      try {
+        const directory = await picker({ mode: 'readwrite' })
+        const handle = await directory.getFileHandle(filename, { create: true })
+        const writable = await handle.createWritable()
+        await writable.write(blob)
+        await writable.close()
+        return true
+      } catch (e: any) {
+        if (e?.name === 'AbortError') return false
+      }
+    }
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    link.click()
+    URL.revokeObjectURL(url)
+    return true
+  }
+
+  const handleExportPdf = async (materialIds: string[], mode: 'merged' | 'split', quantity: number) => {
+    if (!materialIds.length) return
+    setExporting(true)
+    try {
+      const { blob, filename } = await api.exportLabelsPdf(materialIds, mode, quantity)
+      const saved = await saveBlobToDirectory(blob, filename)
+      if (saved) setSuccessNotice(`已导出标签：${filename}`)
+    } catch (e: any) {
+      alert(`导出失败: ${e.message}`)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const handleExportSingle = () => {
+    if (!selectedMat) return
+    handleExportPdf([selectedMat.material_id], 'merged', commitQuantity())
+  }
+
+  const handleExportBatch = () => {
+    if (!batchSelection.length) return
+    handleExportPdf(batchSelection, batchMode, 1)
+  }
+
+  const toggleBatchSelection = (materialId: string) => {
+    setBatchSelection((current) => current.includes(materialId)
+      ? current.filter((item) => item !== materialId)
+      : [...current, materialId])
+  }
+
   const labelPreviewMetrics = getLabelPreviewMetrics(labelSize)
   const largeLabelPreviewMetrics = getLabelPreviewMetrics(labelSize, true)
 
@@ -737,12 +793,18 @@ export function LabelsPage() {
           </div>
           <div className="info-note">
             <CircleAlert size={16} />
-            <span>选择辅料后右侧立即显示预览，不会写入标签记录；点击“打印”才会生成正式记录。当前 Demo 尚未连接打印机，不发送真实打印任务。</span>
+            <span>选择辅料后右侧立即显示预览，不会写入标签记录；点击“生成记录”会生成正式标签记录，点击“导出 PDF”按标签尺寸导出文件。</span>
           </div>
-          <button type="button" className="primary-button print-button" disabled={isSubmitting || !selectedMat} onClick={handlePrint}>
-            <Printer size={16} />
-            {isSubmitting ? '正在生成记录...' : '打印'}
-          </button>
+          <div className="settings-actions">
+            <button type="button" className="primary-button print-button" disabled={isSubmitting || !selectedMat} onClick={handlePrint}>
+              <Printer size={16} />
+              {isSubmitting ? '正在生成记录...' : '生成记录'}
+            </button>
+            <button type="button" className="outline-button" disabled={exporting || !selectedMat} onClick={handleExportSingle}>
+              <Download size={16} />
+              {exporting ? '正在导出...' : '导出 PDF'}
+            </button>
+          </div>
         </section>
 
         <section className="panel preview-panel">
@@ -766,6 +828,49 @@ export function LabelsPage() {
             <span className="preview-code">{previewLabel?.printedAt ? new Date(previewLabel.printedAt).toLocaleString('zh-CN', { hour12: false }) : '预览标签 · 点击打印后生成正式记录'}</span>
           </div>
         </section>
+      </div>
+
+      <div className="section-label">
+        <span>批量导出标签</span>
+        <i />
+      </div>
+      <div className="panel full-panel">
+        <div className="panel-head">
+          <div>
+            <h2>批量导出 PDF</h2>
+            <p>勾选多个辅料，选择合并为一个 PDF 或拆分为多个文件</p>
+          </div>
+          <Download size={20} className="panel-head-icon" />
+        </div>
+        <div className="batch-export-toolbar">
+          <label className="batch-mode">
+            导出方式
+            <select value={batchMode} onChange={(e) => setBatchMode(e.target.value as 'merged' | 'split')}>
+              <option value="merged">合并为一个 PDF</option>
+              <option value="split">拆分为多个 PDF（zip）</option>
+            </select>
+          </label>
+          <button type="button" className="outline-button" onClick={() => setBatchSelection(materials.map((m) => m.material_id))}>全选</button>
+          <button type="button" className="outline-button" onClick={() => setBatchSelection([])}>清空</button>
+          <button type="button" className="primary-button" disabled={exporting || !batchSelection.length} onClick={handleExportBatch}>
+            <Download size={16} />
+            {exporting ? '正在导出...' : `导出所选（${batchSelection.length}）`}
+          </button>
+        </div>
+        <div className="batch-export-grid">
+          {materials.length === 0 ? (
+            <p className="muted">暂无辅料</p>
+          ) : materials.map((material) => (
+            <label key={material.material_id} className="batch-export-item">
+              <input
+                type="checkbox"
+                checked={batchSelection.includes(material.material_id)}
+                onChange={() => toggleBatchSelection(material.material_id)}
+              />
+              <span>{material.name_zh} · {material.material_code}</span>
+            </label>
+          ))}
+        </div>
       </div>
 
       <div className="section-label">
@@ -1142,6 +1247,26 @@ function formatLabelSize(value: string | undefined) {
   return `${size.width} × ${size.height} mm`
 }
 
+function formatRetentionYears(value: string | undefined) {
+  const months = Number(value ?? '12')
+  if (!Number.isFinite(months) || months <= 0) return '永久保留'
+  if (months % 12 === 0) return `${months / 12} 年`
+  return `${months} 个月`
+}
+
+function formatBytes(value: number | undefined) {
+  const bytes = Number(value ?? 0)
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  let size = bytes
+  let index = 0
+  while (size >= 1024 && index < units.length - 1) {
+    size /= 1024
+    index += 1
+  }
+  return `${size.toFixed(index === 0 ? 0 : 1)} ${units[index]}`
+}
+
 function getLabelPreviewMetrics(value: string | undefined, large = false) {
   const size = parseLabelSize(value)
   const width = large
@@ -1242,6 +1367,10 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
   const [retryingBugReportId, setRetryingBugReportId] = useState<number | null>(null)
   const [accountPage, setAccountPage] = useState(1)
   const [backupPage, setBackupPage] = useState(1)
+  const [restoreCandidates, setRestoreCandidates] = useState<any[]>([])
+  const [restoreTarget, setRestoreTarget] = useState<any | null>(null)
+  const [restoring, setRestoring] = useState(false)
+  const [restoreMessage, setRestoreMessage] = useState<string | null>(null)
   const pageSize = 10
 
   const loadUsers = () => {
@@ -1252,6 +1381,7 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
     api.getSettings().then(setSettings).catch(() => setSettings({}))
     api.getBackups().then(setBackups).catch(() => setBackups([]))
     api.getBugReports().then(setBugReports).catch(() => setBugReports([]))
+    api.getRestoreCandidates().then(setRestoreCandidates).catch(() => setRestoreCandidates([]))
   }
 
   useEffect(() => {
@@ -1268,8 +1398,24 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
       const result = await api.createBackup()
       setBackupMessage(`完整备份成功：${result.file_name}`)
       api.getBackups().then(setBackups).catch(() => setBackups([]))
+      api.getRestoreCandidates().then(setRestoreCandidates).catch(() => setRestoreCandidates([]))
     } catch (e: any) {
       setBackupMessage(`备份失败：${e.message}`)
+    }
+  }
+
+  const handleRestore = async () => {
+    if (!restoreTarget) return
+    setRestoring(true)
+    setRestoreMessage(null)
+    try {
+      const result = await api.restoreBackup(restoreTarget.file_name)
+      setRestoreMessage(`恢复成功：${result.work_orders} 个工单、${result.evidence_files} 个证据文件。请手动重启后端服务以生效。`)
+      setRestoreTarget(null)
+    } catch (e: any) {
+      setRestoreMessage(`恢复失败：${e.message}`)
+    } finally {
+      setRestoring(false)
     }
   }
 
@@ -1530,7 +1676,10 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
             <Setting title="默认称重允差" description="目标重量的相对比例" value={`${settings.default_tolerance_percent ?? '1.0'} %`} onClick={() => handleEditSetting('default_tolerance_percent', settings.default_tolerance_percent ?? '1.0', '默认称重允差（%）')} />
             <Setting title="最小绝对允差" description="低于此重量时使用的下限" value={`${settings.min_absolute_tolerance_grams ?? '5'} g`} onClick={() => handleEditSetting('min_absolute_tolerance_grams', settings.min_absolute_tolerance_grams ?? '5', '最小绝对允差（克）')} />
             <Setting title="自动备份" description="每天自动备份数据库、证据和配置" value={settings.backup_enabled === 'true' ? '已启用' : '已停用'} onClick={() => handleEditSetting('backup_enabled', settings.backup_enabled ?? 'true', '自动备份（true/false）')} />
-            <Setting title="自动备份时间" description="后端按本机时间执行每日备份" value={settings.backup_time ?? '02:00'} onClick={() => handleEditSetting('backup_time', settings.backup_time ?? '02:00', '自动备份时间（HH:MM）')} />
+            <Setting title="自动备份时间" description="多个时间点用逗号分隔，后端按本机时间执行" value={settings.backup_time ?? '12:00,20:00'} onClick={() => handleEditSetting('backup_time', settings.backup_time ?? '12:00,20:00', '自动备份时间（HH:MM，多个用逗号分隔）')} />
+            <Setting title="备份保留年限" description="备份只包含最近 N 个月的工单数据，0 表示永久保留" value={formatRetentionYears(settings.backup_retention_years)} onClick={() => handleEditSetting('backup_retention_years', settings.backup_retention_years ?? '12', '备份保留年限（月，0 表示永久）')} />
+            <Setting title="备份保留数量" description="超过数量时自动删除最旧的备份" value={`${settings.backup_keep_count ?? '60'} 个`} onClick={() => handleEditSetting('backup_keep_count', settings.backup_keep_count ?? '60', '备份保留数量（10-365）')} />
+            <Setting title="备份路径" description="备份文件存放目录，必须是本地已存在的文件夹" value={settings.backup_path ?? '默认（数据目录/backups）'} onClick={() => handleEditSetting('backup_path', settings.backup_path ?? '', '备份路径（留空使用默认）')} />
             <Setting title="标签尺寸" description="标签预览和后续打印使用的宽 × 高（毫米）" value={formatLabelSize(settings.label_size_mm)} onClick={() => handleEditSetting('label_size_mm', settings.label_size_mm ?? '60x40', '标签尺寸（宽x高，毫米）')} />
             <Setting title="服务端口" description="局域网访问端口" value={settings.server_port ?? '8011'} onClick={() => handleEditSetting('server_port', settings.server_port ?? '8011', '服务端口')} />
           </div>
@@ -1541,6 +1690,50 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
             <button className="outline-button" disabled={detectingIp} onClick={handleDetectIp}>
               <Network size={16} />{detectingIp ? '正在检测...' : '检测本机 IP'}
             </button>
+          </div>
+          {restoreMessage && <div className="info-note" style={{ margin: '0 0 18px' }}>{restoreMessage}</div>}
+          <div className="section-label">
+            <span>数据恢复</span>
+            <i />
+          </div>
+          <div className="panel full-panel">
+            <div className="panel-head">
+              <div>
+                <h2>从备份恢复</h2>
+                <p>恢复前会自动备份当前数据；恢复完成后需手动重启后端服务</p>
+              </div>
+              <RotateCcw size={20} className="panel-head-icon" />
+            </div>
+            {restoreCandidates.length === 0 ? (
+              <p className="muted">备份目录中没有可恢复的备份</p>
+            ) : (
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>备份文件</th>
+                      <th>类型</th>
+                      <th>大小</th>
+                      <th>创建时间</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {restoreCandidates.map((item) => (
+                      <tr key={item.file_name}>
+                        <td className="order-id">{item.file_name}</td>
+                        <td>{item.trigger === 'scheduled' ? '自动备份' : item.trigger === 'pre_restore' ? '恢复前备份' : '手动备份'}</td>
+                        <td>{formatBytes(item.size_bytes)}</td>
+                        <td>{item.created_at ? new Date(item.created_at).toLocaleString('zh-CN', { hour12: false }) : '-'}</td>
+                        <td>
+                          <button type="button" className="outline-button" onClick={() => setRestoreTarget(item)}>恢复</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
           {networkError && <div className="network-message error"><CircleAlert size={16} />{networkError}</div>}
           {networkInfo && (
@@ -1835,6 +2028,32 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
             </p>
             <div className="modal-footer">
               <button className="primary-button" onClick={() => setResetResult(null)}>我已复制并关闭</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+      {restoreTarget && (
+        <Modal title="确认恢复数据" onClose={() => setRestoreTarget(null)}>
+          <div className="modal-form">
+            <div className="info-note" style={{ color: '#b45309', borderColor: '#fde68a', background: '#fffbeb' }}>
+              <CircleAlert size={16} />
+              <span>恢复会覆盖当前数据库和证据文件。系统会在恢复前自动备份当前数据，恢复完成后需要手动重启后端服务。</span>
+            </div>
+            <label>
+              备份文件
+              <strong className="reset-password-field">{restoreTarget.file_name}</strong>
+            </label>
+            <label>
+              创建时间
+              <strong className="reset-password-field">
+                {restoreTarget.created_at ? new Date(restoreTarget.created_at).toLocaleString('zh-CN', { hour12: false }) : '-'}
+              </strong>
+            </label>
+            <div className="modal-footer">
+              <button className="outline-button" onClick={() => setRestoreTarget(null)}>取消</button>
+              <button className="primary-button" disabled={restoring} onClick={handleRestore}>
+                {restoring ? '正在恢复...' : '确认恢复'}
+              </button>
             </div>
           </div>
         </Modal>

@@ -480,4 +480,36 @@ export const api = {
   async getBackups(): Promise<any[]> {
     return request('/operations/backups')
   },
+
+  async getRestoreCandidates(): Promise<any[]> {
+    return request('/operations/restore/candidates')
+  },
+
+  async restoreBackup(fileName: string): Promise<any> {
+    return request('/operations/restore', {
+      method: 'POST',
+      body: JSON.stringify({ file_name: fileName }),
+    })
+  },
+
+  async exportLabelsPdf(materialIds: string[], mode: 'merged' | 'split', quantity = 1): Promise<{ blob: Blob; filename: string }> {
+    const response = await fetch(`${API_BASE}/labels/export-pdf`, {
+      method: 'POST',
+      headers: { ...getAuthHeader(), 'Content-Type': 'application/json', 'X-Request-ID': createRequestId() },
+      body: JSON.stringify({ material_ids: materialIds, mode, quantity }),
+    })
+    if (!response.ok) {
+      let body: any
+      try {
+        body = await response.json()
+      } catch {
+        body = null
+      }
+      throw new Error(parseError(body) || '标签导出失败')
+    }
+    const disposition = response.headers.get('Content-Disposition') || ''
+    const match = disposition.match(/filename\*=UTF-8''([^;]+)/)
+    const filename = match ? decodeURIComponent(match[1]) : `辅料标签.${mode === 'merged' ? 'pdf' : 'zip'}`
+    return { blob: await response.blob(), filename }
+  },
 }

@@ -4,6 +4,8 @@ SetCompressor /SOLID lzma
 SetCompressorDictSize 32
 
 !include "MUI2.nsh"
+!include "nsDialogs.nsh"
+!include "LogicLib.nsh"
 
 !ifndef ROOT_DIR
   !define ROOT_DIR "."
@@ -47,12 +49,50 @@ VIAddVersionKey /LANG=2052 "ProductVersion" "${APP_VERSION}"
 
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
+Page custom BackupPathPageCreate BackupPathPageLeave
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
 
 !insertmacro MUI_LANGUAGE "SimpChinese"
+
+Var BackupPathInput
+Var BackupPathBrowseButton
+
+Function BackupPathPageCreate
+  !insertmacro MUI_HEADER_TEXT "数据备份路径" "选择备份文件存放目录，可跳过使用默认路径。"
+  nsDialogs::Create 1018
+  Pop $0
+  ${If} $0 == error
+    Abort
+  ${EndIf}
+
+  ${NSD_CreateLabel} 0 0 100% 24u "备份文件将存放在此目录。留空则使用默认路径（数据目录下的 backups 文件夹）。"
+  Pop $0
+
+  ${NSD_CreateDirRequest} 0 30u 75% 13u "$BackupPathInput"
+  Pop $BackupPathInput
+
+  ${NSD_CreateBrowseButton} 77% 30u 23% 13u "浏览..."
+  Pop $BackupPathBrowseButton
+  ${NSD_OnClick} $BackupPathBrowseButton BackupPathBrowse
+
+  nsDialogs::Show
+FunctionEnd
+
+Function BackupPathBrowse
+  nsDialogs::SelectFolderDialog "选择备份文件存放目录" "$BackupPathInput"
+  Pop $0
+  ${If} $0 != error
+    ${NSD_SetText} $BackupPathInput "$0"
+  ${EndIf}
+FunctionEnd
+
+Function BackupPathPageLeave
+  ${NSD_GetText} $BackupPathInput $0
+  StrCpy $BackupPathInput $0
+FunctionEnd
 
 Function OpenAdminUi
   ExecShell "open" "http://127.0.0.1:8011/"
@@ -83,6 +123,13 @@ Section "Install"
   SetOverwrite on
   CreateDirectory "$COMMONPROGRAMDATA\MilkWeigh\data"
   CreateDirectory "$COMMONPROGRAMDATA\MilkWeigh\logs"
+
+  ${If} $BackupPathInput != ""
+    CreateDirectory "$BackupPathInput"
+    FileOpen $0 "$COMMONPROGRAMDATA\MilkWeigh\data\backup_path.conf" w
+    FileWrite $0 "$BackupPathInput$\r$\n"
+    FileClose $0
+  ${EndIf}
 
   nsExec::ExecToLog 'icacls "$COMMONPROGRAMDATA\MilkWeigh" /inheritance:r /grant:r SYSTEM:(OI)(CI)F Administrators:(OI)(CI)F'
   nsExec::ExecToLog '"$INSTDIR\python\python.exe" "$INSTDIR\server\seed_install.py"'

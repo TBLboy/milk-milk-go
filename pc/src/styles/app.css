@@ -1860,3 +1860,61 @@ button.preview-tag:hover {
     gap: 4px;
   }
 }
+
+.batch-export-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 0 24px 16px;
+}
+
+.batch-export-toolbar .batch-mode {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #687681;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.batch-export-toolbar .batch-mode select {
+  padding: 8px 10px;
+  color: #65737e;
+  font-size: 15px;
+  background: #fafbfb;
+  border: 1px solid #e3e8ea;
+  border-radius: 4px;
+  outline: 0;
+}
+
+.batch-export-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 0 24px 20px;
+}
+
+.batch-export-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  color: #42515c;
+  font-size: 15px;
+  background: #fff;
+  border: 1px solid #e7ebee;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.batch-export-item:hover {
+  border-color: #b9dccb;
+  background: #f6fbf8;
+}
+
+.batch-export-item input {
+  accent-color: #258b66;
+}

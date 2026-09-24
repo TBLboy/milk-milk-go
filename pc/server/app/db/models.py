@@ -286,7 +286,7 @@ class BackupRecord(Base):
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     size_bytes: Mapped[int | None] = mapped_column(Integer)
     trigger: Mapped[str] = mapped_column(String(32), nullable=False, default="manual")
-    schedule_key: Mapped[str | None] = mapped_column(String(16))
+    schedule_key: Mapped[str | None] = mapped_column(String(32))
     checksum_sha256: Mapped[str | None] = mapped_column(String(64))
     app_version: Mapped[str | None] = mapped_column(String(32))
     error_message: Mapped[str | None] = mapped_column(String(1000))
@@ -337,7 +337,9 @@ def initialize_database() -> None:
             "default_tolerance_percent": "1.0",
             "min_absolute_tolerance_grams": "5",
             "backup_enabled": "true",
-            "backup_time": "02:00",
+            "backup_time": "12:00,20:00",
+            "backup_retention_years": "12",
+            "backup_keep_count": "60",
             "server_port": "8011",
             "label_size_mm": "60x40",
         }

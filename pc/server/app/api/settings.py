@@ -10,7 +10,7 @@ from app.core.network import detect_local_ipv4_addresses
 from app.db.models import SystemSetting, User
 from app.db.session import get_db
 from app.services.audit import write_audit
-from app.services.backup import parse_backup_time
+from app.services.backup import parse_backup_time, parse_keep_count, parse_retention_years, validate_backup_path
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 LABEL_SIZE_PATTERN = re.compile(r"^(\d{1,3})\s*[xX×]\s*(\d{1,3})$")
@@ -55,6 +55,36 @@ def update_settings(body: SettingsInput, user: User = Depends(require_admin), db
             raise HTTPException(status_code=422, detail={"code": "BACKUP_TIME_INVALID", "message": "自动备份时间必须使用 HH:MM 格式"})
         if key == "backup_enabled" and value.strip().lower() not in {"true", "false"}:
             raise HTTPException(status_code=422, detail={"code": "BACKUP_ENABLED_INVALID", "message": "自动备份开关必须为 true 或 false"})
+        if key == "backup_retention_years":
+            months = parse_retention_years(value)
+            if months is None or months > 120:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "code": "BACKUP_RETENTION_INVALID",
+                        "message": "备份保留年限必须为 0（永久）或 1-120 个月",
+                    },
+                )
+            value = str(months)
+        if key == "backup_keep_count":
+            count = parse_keep_count(value)
+            if count is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "code": "BACKUP_KEEP_COUNT_INVALID",
+                        "message": "备份保留数量必须为 10-365 之间的整数",
+                    },
+                )
+            value = str(count)
+        if key == "backup_path":
+            path_error = validate_backup_path(value)
+            if path_error is not None:
+                raise HTTPException(
+                    status_code=422,
+                    detail={"code": "BACKUP_PATH_INVALID", "message": path_error},
+                )
+            value = value.strip()
         if key == "label_size_mm":
             normalized_label_size = _normalize_label_size(value)
             if normalized_label_size is None:
@@ -82,4 +112,18 @@ def update_settings(body: SettingsInput, user: User = Depends(require_admin), db
         detail={"changes": changes},
     )
     db.commit()
+    if "backup_path" in changes:
+        _write_backup_path_conf(changes["backup_path"]["after"])
     return _settings_dict(db)
+
+
+def _write_backup_path_conf(value: str) -> None:
+    """Mirror the backup path into a config file so restores keep the setting."""
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    conf_path = settings.data_dir / "backup_path.conf"
+    try:
+        conf_path.write_text(value.strip() + "\n", encoding="utf-8")
+    except OSError:
+        pass
