@@ -319,3 +319,58 @@ def test_interrupted_restore_journal_restores_original_on_startup(tmp_path):
     assert recover_interrupted_restore(data_dir) is True
     assert target_marker(data_dir) == "original-state"
     assert not (data_dir / JOURNAL_NAME).exists()
+
+
+def test_restore_candidates_lists_backups(client):
+    headers = admin_headers(client)
+    archive, order_no, qr_file, scale_file = create_source_backup(client)
+
+    response = client.get("/api/v1/operations/restore/candidates", headers=headers)
+    assert response.status_code == 200
+    candidates = response.json()
+    assert len(candidates) >= 1
+    assert candidates[0]["file_name"] == archive.name
+    assert candidates[0]["trigger"] == "manual"
+    assert candidates[0]["size_bytes"] > 0
+
+
+def test_restore_api_rejects_unknown_backup(client):
+    headers = admin_headers(client)
+    response = client.post(
+        "/api/v1/operations/restore",
+        headers=headers,
+        json={"file_name": "milk-weigh-backup-nonexistent.zip"},
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"]["code"] == "BACKUP_NOT_FOUND"
+
+
+def test_restore_api_rejects_path_traversal(client):
+    headers = admin_headers(client)
+    response = client.post(
+        "/api/v1/operations/restore",
+        headers=headers,
+        json={"file_name": "../../etc/passwd"},
+    )
+    assert response.status_code == 404
+
+
+def test_restore_api_restores_backup(client, tmp_path):
+    headers = admin_headers(client)
+    archive, order_no, qr_file, scale_file = create_source_backup(client)
+
+    response = client.post(
+        "/api/v1/operations/restore",
+        headers=headers,
+        json={"file_name": archive.name},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "success"
+    assert body["restart_required"] is True
+    assert body["work_orders"] >= 1
+    assert body["evidence_files"] >= 2
+
+    # 恢复后数据库回到备份快照，但恢复前的自动备份文件应存在于备份目录
+    pre_restore_files = list((tmp_path / "backups").glob("milk-weigh-backup-*.zip"))
+    assert len(pre_restore_files) >= 2
