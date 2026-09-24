@@ -1,7 +1,7 @@
 """TASK-129: 备份按年限过滤业务数据并保留数量清理。"""
 import json
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -201,3 +201,76 @@ def test_backup_keeps_fresh_evidence_uploads(client, tmp_path):
     snapshot = tmp_path / "extracted" / "database" / "milk_weigh.sqlite3"
     with sqlite3.connect(snapshot) as connection:
         assert connection.execute("SELECT COUNT(*) FROM evidence_files").fetchone()[0] == 1
+
+
+def _setup_order_with_scale_photo(client):
+    headers = admin_headers(client)
+    material = client.post("/api/v1/master-data/materials", headers=headers, json={"material_code": "A1", "name_zh": "蔗糖", "shelf_life_months": 24}).json()
+    label = client.post("/api/v1/labels/print-batches", headers=headers, json={"material_id": material["material_id"], "quantity": 1}).json()["labels"][0]
+    product = client.post("/api/v1/master-data/products", headers=headers, json={"name": "高钙奶", "items": [{"material_id": material["material_id"], "quantity_per_ton_kg": 10}]}).json()
+    order = client.post("/api/v1/work-orders", headers=headers, json={"product_id": product["id"], "target_weight_kg": 1000}).json()
+    order_no = order["order_no"]
+    client.post(
+        f"/api/v1/evidence/work-orders/{order_no}/steps/1/qr/validate",
+        headers=headers,
+        json={"label_id": label, "material_id": material["material_id"]},
+    )
+    qr_file_id = client.post("/api/v1/evidence/files", headers=headers, files={"file": ("qr.jpg", b"qr-image", "image/jpeg")}).json()["file_id"]
+    client.post(
+        f"/api/v1/evidence/work-orders/{order_no}/steps/1/qr",
+        headers=headers,
+        json={"label_id": label, "material_id": material["material_id"], "evidence_file_id": qr_file_id},
+    )
+    client.post(f"/api/v1/evidence/work-orders/{order_no}/steps/1/weight/validate", headers=headers, json={"weight_kg": 10})
+    photo_file_id = client.post("/api/v1/evidence/files", headers=headers, files={"file": ("scale.jpg", b"scale-image", "image/jpeg")}).json()["file_id"]
+    client.post(
+        f"/api/v1/evidence/work-orders/{order_no}/steps/1/weight",
+        headers=headers,
+        json={"weight_kg": 10, "scale_photo_file_id": photo_file_id},
+    )
+    return headers, order_no, photo_file_id
+
+
+def test_backup_prunes_expired_scale_photo_uploads(client, tmp_path):
+    headers, order_no, photo_file_id = _setup_order_with_scale_photo(client)
+    _age_work_order(tmp_path, order_no, days=400)
+
+    response = client.post("/api/v1/operations/backups", headers=headers)
+    assert response.status_code == 200
+
+    backup = client.get("/api/v1/operations/backups", headers=headers).json()[0]
+    with ZipFile(Path(backup["file_path"])) as archive:
+        manifest = json.loads(archive.read("manifest.json"))
+        assert photo_file_id in manifest["retention"]["expired_file_ids"]
+        upload_names = [name for name in archive.namelist() if name.startswith("uploads/")]
+        assert all(photo_file_id not in name for name in upload_names)
+
+
+def test_retention_cutoff_uses_utc(client, tmp_path):
+    """A work order just inside the window must survive; one just outside must be filtered."""
+    headers = admin_headers(client)
+    product_id = create_product(client, headers)
+    inside = client.post("/api/v1/work-orders", headers=headers, json={"product_id": product_id, "target_weight_kg": 2000}).json()
+    outside = client.post("/api/v1/work-orders", headers=headers, json={"product_id": product_id, "target_weight_kg": 1000}).json()
+
+    database = tmp_path / "milk_weigh.sqlite3"
+    now_utc = datetime.now(timezone.utc)
+    inside_stamp = (now_utc - timedelta(days=360)).strftime("%Y-%m-%d %H:%M:%S")
+    outside_stamp = (now_utc - timedelta(days=370)).strftime("%Y-%m-%d %H:%M:%S")
+    with sqlite3.connect(database) as connection:
+        connection.execute("UPDATE work_orders SET created_at = ? WHERE order_no = ?", (inside_stamp, inside["order_no"]))
+        connection.execute("UPDATE work_orders SET created_at = ? WHERE order_no = ?", (outside_stamp, outside["order_no"]))
+        connection.commit()
+
+    response = client.post("/api/v1/operations/backups", headers=headers)
+    assert response.status_code == 200
+
+    backup = client.get("/api/v1/operations/backups", headers=headers).json()[0]
+    with ZipFile(Path(backup["file_path"])) as archive:
+        archive.extract("database/milk_weigh.sqlite3", tmp_path / "extracted")
+
+    snapshot = tmp_path / "extracted" / "database" / "milk_weigh.sqlite3"
+    with sqlite3.connect(snapshot) as connection:
+        order_nos = {row[0] for row in connection.execute("SELECT order_no FROM work_orders").fetchall()}
+        assert inside["order_no"] in order_nos
+        assert outside["order_no"] not in order_nos
