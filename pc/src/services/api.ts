@@ -492,11 +492,11 @@ export const api = {
     })
   },
 
-  async exportLabelsPdf(materialIds: string[], mode: 'merged' | 'split', quantity = 1): Promise<{ blob: Blob; filename: string }> {
+  async exportLabelsPdf(materialIds: string[], mode: 'merged' | 'split'): Promise<{ blob: Blob; filename: string }> {
     const response = await fetch(`${API_BASE}/labels/export-pdf`, {
       method: 'POST',
       headers: { ...getAuthHeader(), 'Content-Type': 'application/json', 'X-Request-ID': createRequestId() },
-      body: JSON.stringify({ material_ids: materialIds, mode, quantity }),
+      body: JSON.stringify({ material_ids: materialIds, mode }),
     })
     if (!response.ok) {
       let body: any

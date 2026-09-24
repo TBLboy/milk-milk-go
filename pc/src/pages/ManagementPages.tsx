@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronRight, CircleAlert, Copy, Download, Edit, Eye, FileSpreadsheet, Image, Mail, Network, Plus, Printer, QrCode, RotateCcw, Search, Settings2, ShieldCheck, Trash2, X } from 'lucide-react'
+import { Check, ChevronRight, CircleAlert, Copy, Download, Edit, Eye, FileSpreadsheet, Image, Mail, Network, Plus, QrCode, RotateCcw, Search, Settings2, ShieldCheck, Trash2, X } from 'lucide-react'
 import QRCode from 'qrcode'
 import { StatusBadge } from '../components/StatusBadge'
 import { api } from '../services/api'
@@ -536,26 +536,16 @@ export function MaterialsPage({ recipesPage = false }: { recipesPage?: boolean }
 
 export function LabelsPage() {
   const [materials, setMaterials] = useState<any[]>([])
-  const [batches, setBatches] = useState<any[]>([])
   const [selectedMat, setSelectedMat] = useState<any>(null)
-  const [quantity, setQuantity] = useState(10)
-  const [quantityText, setQuantityText] = useState('10')
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const [successNotice, setSuccessNotice] = useState<string | null>(null)
   const [previewLabel, setPreviewLabel] = useState<any>(null)
   const [labelSize, setLabelSize] = useState('60x40')
   const [qrSrc, setQrSrc] = useState<string | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [largeQrSrc, setLargeQrSrc] = useState<string | null>(null)
-  const [batchPage, setBatchPage] = useState(1)
   const [exporting, setExporting] = useState(false)
   const [batchSelection, setBatchSelection] = useState<string[]>([])
   const [batchMode, setBatchMode] = useState<'merged' | 'split'>('merged')
-  const batchPageSize = 10
-
-  const loadBatches = async () => {
-    setBatches(await api.getPrintBatches() || [])
-  }
 
   const loadMaterials = async () => {
     const list = await api.getMaterials() || []
@@ -572,7 +562,7 @@ export function LabelsPage() {
   }
 
   const loadData = async () => {
-    await Promise.all([loadMaterials(), loadBatches(), loadSettings()])
+    await Promise.all([loadMaterials(), loadSettings()])
   }
 
   const buildPreviewLabel = (material: any, size: string) => ({
@@ -634,53 +624,6 @@ export function LabelsPage() {
     setPreviewOpen(true)
   }
 
-  const clampQuantity = (value: number) => Math.min(10000, Math.max(1, Math.trunc(value)))
-
-  const updateQuantityText = (value: string) => {
-    const digits = value.replace(/\D/g, '').slice(0, 5)
-    if (!digits) {
-      setQuantityText('')
-      return
-    }
-    const next = clampQuantity(Number(digits))
-    setQuantity(next)
-    setQuantityText(String(next))
-  }
-
-  const commitQuantity = () => {
-    const parsed = Number(quantityText)
-    const next = Number.isFinite(parsed) && parsed > 0 ? clampQuantity(parsed) : 1
-    setQuantity(next)
-    setQuantityText(String(next))
-    return next
-  }
-
-  const adjustQuantity = (delta: number) => {
-    const parsed = Number(quantityText)
-    const current = Number.isFinite(parsed) && parsed > 0 ? parsed : quantity
-    const next = clampQuantity(current + delta)
-    setQuantity(next)
-    setQuantityText(String(next))
-  }
-
-  const handlePrint = async () => {
-    if (!selectedMat) return
-    const generateQuantity = commitQuantity()
-    setIsSubmitting(true)
-    try {
-      const batch = await api.createPrintBatch(selectedMat.material_id, generateQuantity)
-      const firstLabel = batch.label_payloads?.[0]
-      if (!firstLabel?.labelId) throw new Error('后端未返回可扫描的真实标签编号')
-      setPreviewLabel(firstLabel)
-      setSuccessNotice(`已按打印张数生成批次 ${batch.batch_id}，共 ${batch.quantity} 张正式标签记录。当前版本尚未连接打印机，未发送真实打印任务。`)
-      loadBatches()
-    } catch (e: any) {
-      alert(`生成失败: ${e.message}`)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
   const saveBlobToDirectory = async (blob: Blob, filename: string): Promise<boolean> => {
     const picker = (window as any).showDirectoryPicker
     if (typeof picker === 'function') {
@@ -704,11 +647,11 @@ export function LabelsPage() {
     return true
   }
 
-  const handleExportPdf = async (materialIds: string[], mode: 'merged' | 'split', quantity: number) => {
+  const handleExportPdf = async (materialIds: string[], mode: 'merged' | 'split') => {
     if (!materialIds.length) return
     setExporting(true)
     try {
-      const { blob, filename } = await api.exportLabelsPdf(materialIds, mode, quantity)
+      const { blob, filename } = await api.exportLabelsPdf(materialIds, mode)
       const saved = await saveBlobToDirectory(blob, filename)
       if (saved) setSuccessNotice(`已导出标签：${filename}`)
     } catch (e: any) {
@@ -720,12 +663,12 @@ export function LabelsPage() {
 
   const handleExportSingle = () => {
     if (!selectedMat) return
-    handleExportPdf([selectedMat.material_id], 'merged', commitQuantity())
+    handleExportPdf([selectedMat.material_id], 'merged')
   }
 
   const handleExportBatch = () => {
     if (!batchSelection.length) return
-    handleExportPdf(batchSelection, batchMode, 1)
+    handleExportPdf(batchSelection, batchMode)
   }
 
   const toggleBatchSelection = (materialId: string) => {
@@ -740,18 +683,18 @@ export function LabelsPage() {
   return (
     <div className="page-wrap">
       <PageTitle
-        eyebrow="LABEL PRINTING"
-        title="标签打印"
-        sub="选择辅料即可预览标签；点击打印后按张数生成正式标签记录。当前 Demo 不发送真实打印任务。"
+        eyebrow="LABEL EXPORT"
+        title="标签导出"
+        sub="选择辅料即可预览标签，点击导出 PDF 按标签尺寸生成文件。"
       />
       <div className="label-layout">
         <section className="panel form-panel">
           <div className="panel-head">
             <div>
-              <h2>标签打印</h2>
-              <p>点击打印后生成正式标签记录，每张标签拥有独立编号</p>
+              <h2>标签导出</h2>
+              <p>选择辅料后导出 PDF，文件名使用辅料中文名</p>
             </div>
-            <Printer size={20} className="panel-head-icon" />
+            <Download size={20} className="panel-head-icon" />
           </div>
           {successNotice && <div className="info-note success" style={{ color: '#16a34a', borderColor: '#bbf7d0', background: '#f0fdf4' }}>{successNotice}</div>}
           <label>
@@ -771,36 +714,12 @@ export function LabelsPage() {
               emptyMessage="没有匹配的辅料"
             />
           </label>
-          <div className="quantity-field">
-            <span className="field-label">打印张数</span>
-            <div className="stepper">
-              <button type="button" aria-label="减少打印张数" onClick={() => adjustQuantity(-1)}>−</button>
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={5}
-                aria-label="打印张数"
-                value={quantityText}
-                onChange={(e) => updateQuantityText(e.target.value)}
-                onBlur={commitQuantity}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') e.currentTarget.blur()
-                }}
-              />
-              <button type="button" aria-label="增加打印张数" onClick={() => adjustQuantity(1)}>＋</button>
-            </div>
-          </div>
           <div className="info-note">
             <CircleAlert size={16} />
-            <span>选择辅料后右侧立即显示预览，不会写入标签记录；点击“生成记录”会生成正式标签记录，点击“导出 PDF”按标签尺寸导出文件。</span>
+            <span>选择辅料后右侧立即显示预览；点击“导出 PDF”按标签尺寸导出文件，文件名使用辅料中文名。</span>
           </div>
           <div className="settings-actions">
-            <button type="button" className="primary-button print-button" disabled={isSubmitting || !selectedMat} onClick={handlePrint}>
-              <Printer size={16} />
-              {isSubmitting ? '正在生成记录...' : '生成记录'}
-            </button>
-            <button type="button" className="outline-button" disabled={exporting || !selectedMat} onClick={handleExportSingle}>
+            <button type="button" className="primary-button print-button" disabled={exporting || !selectedMat} onClick={handleExportSingle}>
               <Download size={16} />
               {exporting ? '正在导出...' : '导出 PDF'}
             </button>
@@ -811,7 +730,7 @@ export function LabelsPage() {
           <div className="panel-head">
             <div>
               <h2>标签预览</h2>
-              <p>{previewLabel?.preview ? '选择辅料后的即时预览' : '正式标签已生成'} · {formatLabelSize(previewLabel?.labelSize || labelSize)}</p>
+              <p>选择辅料后的即时预览 · {formatLabelSize(previewLabel?.labelSize || labelSize)}</p>
             </div>
             <button type="button" className="preview-tag" disabled={!previewLabel} onClick={openPreview}>放大预览</button>
           </div>
@@ -825,7 +744,7 @@ export function LabelsPage() {
               </div>
             )}
             <strong className="preview-material">{previewLabel?.name || selectedMat?.name_zh || '等待选择辅料'}</strong>
-            <span className="preview-code">{previewLabel?.printedAt ? new Date(previewLabel.printedAt).toLocaleString('zh-CN', { hour12: false }) : '预览标签 · 点击打印后生成正式记录'}</span>
+            <span className="preview-code">{previewLabel?.printedAt ? new Date(previewLabel.printedAt).toLocaleString('zh-CN', { hour12: false }) : '预览标签'}</span>
           </div>
         </section>
       </div>
@@ -873,47 +792,12 @@ export function LabelsPage() {
         </div>
       </div>
 
-      <div className="section-label">
-        <span>最近生成批次</span>
-        <i />
-      </div>
-      <div className="panel full-panel">
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>生成批次</th>
-                <th>辅料</th>
-                <th>张数</th>
-                <th>生成人</th>
-                <th>生成时间</th>
-                <th>状态</th>
-              </tr>
-            </thead>
-            <tbody>
-              {batches.slice((batchPage - 1) * batchPageSize, batchPage * batchPageSize).length === 0 ? (
-                <tr><td colSpan={6} className="muted" style={{ textAlign: 'center' }}>暂无生成批次</td></tr>
-              ) : batches.slice((batchPage - 1) * batchPageSize, batchPage * batchPageSize).map((batch) => (
-                <tr key={batch.batch_id}>
-                  <td className="order-id">{batch.batch_id}</td>
-                  <td>{batch.material_name} · {batch.material_id}</td>
-                  <td>{batch.quantity} 张</td>
-                  <td>{batch.created_by_name || '未知用户'}</td>
-                  <td>{new Date(batch.printed_at).toLocaleString('zh-CN', { hour12: false })}</td>
-                  <td><span className="status status-running"><i />{batch.status === 'pending' ? '已生成' : batch.status}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      {batches.length > batchPageSize && <Pagination page={batchPage} pageSize={batchPageSize} total={batches.length} onPageChange={setBatchPage} />}
       {previewOpen && (
         <Modal title="标签放大预览" onClose={() => setPreviewOpen(false)}>
           <div className="label-preview large-label-preview" style={{ width: largeLabelPreviewMetrics.width, height: largeLabelPreviewMetrics.height }}>
             {largeQrSrc ? <img className="qr-preview large-qr" style={{ width: largeLabelPreviewMetrics.qrSize, height: largeLabelPreviewMetrics.qrSize }} src={largeQrSrc} alt="放大辅料二维码" /> : <div className="fake-qr label-placeholder" style={{ width: largeLabelPreviewMetrics.qrSize, height: largeLabelPreviewMetrics.qrSize }}><QrCode size={42} /><span>二维码生成中</span></div>}
             <strong className="preview-material">{previewLabel?.name || '等待选择辅料'}</strong>
-            <span className="preview-code">{previewLabel?.printedAt ? new Date(previewLabel.printedAt).toLocaleString('zh-CN', { hour12: false }) : '预览标签 · 点击打印后生成正式记录'}</span>
+            <span className="preview-code">{previewLabel?.printedAt ? new Date(previewLabel.printedAt).toLocaleString('zh-CN', { hour12: false }) : '预览标签'}</span>
           </div>
         </Modal>
       )}
@@ -1371,6 +1255,8 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
   const [restoreTarget, setRestoreTarget] = useState<any | null>(null)
   const [restoring, setRestoring] = useState(false)
   const [restoreMessage, setRestoreMessage] = useState<string | null>(null)
+  const [restorePage, setRestorePage] = useState(1)
+  const restorePageSize = 4
   const pageSize = 10
 
   const loadUsers = () => {
@@ -1587,6 +1473,7 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
 
   const pagedUsers = users.slice((accountPage - 1) * pageSize, accountPage * pageSize)
   const pagedBackups = backups.slice((backupPage - 1) * pageSize, backupPage * pageSize)
+  const pagedRestoreCandidates = restoreCandidates.slice((restorePage - 1) * restorePageSize, restorePage * restorePageSize)
   const integrityIssueCount = (status: EvidenceIntegrityItem['status']) => (
     integrityResult?.issues.filter((item) => item.status === status).length ?? 0
   )
@@ -1681,7 +1568,7 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
             <Setting title="备份保留年限" description="备份只包含最近 N 个月的工单数据，0 表示永久保留" value={formatRetentionYears(settings.backup_retention_years)} onClick={() => handleEditSetting('backup_retention_years', settings.backup_retention_years ?? '12', '备份保留年限（月，0 表示永久）')} />
             <Setting title="备份保留数量" description="超过数量时自动删除最旧的备份" value={`${settings.backup_keep_count ?? '60'} 个`} onClick={() => handleEditSetting('backup_keep_count', settings.backup_keep_count ?? '60', '备份保留数量（10-365）')} />
             <Setting title="备份路径" description="备份文件存放目录，必须是本地已存在的文件夹" value={settings.backup_path ?? '默认（数据目录/backups）'} onClick={() => handleEditSetting('backup_path', settings.backup_path ?? '', '备份路径（留空使用默认）')} />
-            <Setting title="标签尺寸" description="标签预览和后续打印使用的宽 × 高（毫米）" value={formatLabelSize(settings.label_size_mm)} onClick={() => handleEditSetting('label_size_mm', settings.label_size_mm ?? '60x40', '标签尺寸（宽x高，毫米）')} />
+            <Setting title="标签尺寸" description="标签预览和导出使用的宽 × 高（毫米）" value={formatLabelSize(settings.label_size_mm)} onClick={() => handleEditSetting('label_size_mm', settings.label_size_mm ?? '60x40', '标签尺寸（宽x高，毫米）')} />
             <Setting title="服务端口" description="局域网访问端口" value={settings.server_port ?? '8011'} onClick={() => handleEditSetting('server_port', settings.server_port ?? '8011', '服务端口')} />
           </div>
           <div className="settings-actions">
@@ -1693,49 +1580,6 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
             </button>
           </div>
           {restoreMessage && <div className="info-note" style={{ margin: '0 0 18px' }}>{restoreMessage}</div>}
-          <div className="section-label">
-            <span>数据恢复</span>
-            <i />
-          </div>
-          <div className="panel full-panel">
-            <div className="panel-head">
-              <div>
-                <h2>从备份恢复</h2>
-                <p>恢复前会自动备份当前数据；恢复完成后需手动重启后端服务</p>
-              </div>
-              <RotateCcw size={20} className="panel-head-icon" />
-            </div>
-            {restoreCandidates.length === 0 ? (
-              <p className="muted">备份目录中没有可恢复的备份</p>
-            ) : (
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>备份文件</th>
-                      <th>类型</th>
-                      <th>大小</th>
-                      <th>创建时间</th>
-                      <th>操作</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {restoreCandidates.map((item) => (
-                      <tr key={item.file_name}>
-                        <td className="order-id">{item.file_name}</td>
-                        <td>{item.trigger === 'scheduled' ? '自动备份' : item.trigger === 'pre_restore' ? '恢复前备份' : '手动备份'}</td>
-                        <td>{formatBytes(item.size_bytes)}</td>
-                        <td>{item.created_at ? new Date(item.created_at).toLocaleString('zh-CN', { hour12: false }) : '-'}</td>
-                        <td>
-                          <button type="button" className="outline-button" onClick={() => setRestoreTarget(item)}>恢复</button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
           {networkError && <div className="network-message error"><CircleAlert size={16} />{networkError}</div>}
           {networkInfo && (
             <div className="network-result">
@@ -1778,6 +1622,54 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
               )}
             </div>
           )}
+          <div className="section-label">
+            <span>数据恢复</span>
+            <i />
+          </div>
+          <div className="panel full-panel">
+            <div className="panel-head">
+              <div>
+                <h2>从备份恢复</h2>
+                <p>恢复前会自动备份当前数据；恢复完成后需手动重启后端服务</p>
+              </div>
+              <RotateCcw size={20} className="panel-head-icon" />
+            </div>
+            {restoreCandidates.length === 0 ? (
+              <p className="muted">备份目录中没有可恢复的备份</p>
+            ) : (
+              <>
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>备份文件</th>
+                        <th>类型</th>
+                        <th>大小</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pagedRestoreCandidates.map((item) => (
+                        <tr key={item.file_name}>
+                          <td className="order-id">{item.file_name}</td>
+                          <td>{item.trigger === 'scheduled' ? '自动备份' : item.trigger === 'pre_restore' ? '恢复前备份' : '手动备份'}</td>
+                          <td>{formatBytes(item.size_bytes)}</td>
+                          <td>{item.created_at ? new Date(item.created_at).toLocaleString('zh-CN', { hour12: false }) : '-'}</td>
+                          <td>
+                            <button type="button" className="outline-button" onClick={() => setRestoreTarget(item)}>恢复</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {restoreCandidates.length > restorePageSize && (
+                  <Pagination page={restorePage} pageSize={restorePageSize} total={restoreCandidates.length} onPageChange={setRestorePage} />
+                )}
+              </>
+            )}
+          </div>
           <div className="panel full-panel" style={{ marginTop: 24 }}>
             <div className="table-wrap">
               <table>
