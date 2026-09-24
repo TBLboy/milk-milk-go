@@ -175,3 +175,27 @@ def test_complete_backup_supports_service_style_data_path(tmp_path):
         manifest = json.loads(archive.read("manifest.json"))
         assert manifest["app_version"] == "test-version"
         assert manifest["trigger"] == "scheduled"
+
+
+def test_select_directory_returns_absolute_path(client, monkeypatch):
+    headers = admin_headers(client)
+    monkeypatch.setattr(
+        "tkinter.filedialog.askdirectory",
+        lambda **kwargs: "/tmp/opencode/backup-target",
+    )
+    response = client.post("/api/v1/operations/select-directory", headers=headers)
+    assert response.status_code == 200
+    assert response.json() == {"path": "/tmp/opencode/backup-target"}
+
+
+def test_select_directory_returns_null_when_cancelled(client, monkeypatch):
+    headers = admin_headers(client)
+    monkeypatch.setattr("tkinter.filedialog.askdirectory", lambda **kwargs: "")
+    response = client.post("/api/v1/operations/select-directory", headers=headers)
+    assert response.status_code == 200
+    assert response.json() == {"path": None}
+
+
+def test_select_directory_requires_admin(client):
+    response = client.post("/api/v1/operations/select-directory")
+    assert response.status_code == 401

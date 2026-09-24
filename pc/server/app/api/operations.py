@@ -248,3 +248,42 @@ def restore_backup(body: RestoreInput, admin: User = Depends(require_admin), db:
         "restored_at": result.restored_at.isoformat(),
         "restart_required": True,
     }
+
+
+@router.post("/select-directory")
+def select_directory(_: User = Depends(require_admin)) -> dict:
+    """弹出本机原生目录选择对话框，返回所选文件夹的绝对路径。
+
+    浏览器出于安全限制无法获取本地绝对路径，因此由后端进程弹出原生对话框。
+    用户取消时返回 {"path": None}。
+    """
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+    except ImportError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "DIALOG_UNAVAILABLE", "message": "当前环境不支持原生目录选择，请手动输入路径"},
+        ) from exc
+
+    root = None
+    try:
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        selected = filedialog.askdirectory(title="选择备份文件存放目录", mustexist=True)
+    except Exception as exc:  # noqa: BLE001 - 无图形环境等
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "DIALOG_UNAVAILABLE", "message": f"无法打开目录选择对话框：{exc}"},
+        ) from exc
+    finally:
+        if root is not None:
+            try:
+                root.destroy()
+            except Exception:  # noqa: BLE001
+                pass
+
+    if not selected:
+        return {"path": None}
+    return {"path": str(Path(selected).resolve())}
