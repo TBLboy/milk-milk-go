@@ -8,7 +8,7 @@ import tempfile
 import threading
 import zipfile
 from dataclasses import dataclass
-from datetime import datetime, time
+from datetime import datetime, time, timezone
 from pathlib import Path
 from typing import Mapping
 
@@ -144,7 +144,7 @@ def _filter_business_data(database_path: Path, retention_months: int, now: datet
     referenced so the caller can prune orphaned uploads.
     """
     cutoff = _retention_cutoff(retention_months, now)
-    cutoff_text = cutoff.astimezone().strftime("%Y-%m-%d %H:%M:%S")
+    cutoff_text = cutoff.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     connection = sqlite3.connect(str(database_path))
     try:
         connection.execute("PRAGMA foreign_keys = ON")
@@ -155,7 +155,12 @@ def _filter_business_data(database_path: Path, retention_months: int, now: datet
             ).fetchall()
         }
         if "work_orders" not in tables:
-            return {"expired_work_orders": 0, "expired_file_ids": set(), "cutoff": cutoff.isoformat()}
+            return {
+                "expired_work_orders": 0,
+                "expired_file_ids": set(),
+                "expired_stored_paths": set(),
+                "cutoff": cutoff.isoformat(),
+            }
         expired = [
             row[0]
             for row in connection.execute(
@@ -222,28 +227,44 @@ def _filter_business_data(database_path: Path, retention_months: int, now: datet
                 )
             if expired_file_ids:
                 file_placeholders = ",".join("?" for _ in expired_file_ids)
+                expired_stored_paths = {
+                    row[0]
+                    for row in connection.execute(
+                        f"SELECT stored_path FROM evidence_files WHERE file_id IN ({file_placeholders})",
+                        list(expired_file_ids),
+                    ).fetchall()
+                }
                 connection.execute(
                     f"DELETE FROM evidence_files WHERE file_id IN ({file_placeholders})",
                     list(expired_file_ids),
                 )
+            else:
+                expired_stored_paths = set()
         else:
             expired_file_ids = set()
+            expired_stored_paths = set()
         connection.commit()
         return {
             "expired_work_orders": len(expired),
             "expired_file_ids": expired_file_ids,
+            "expired_stored_paths": expired_stored_paths,
             "cutoff": cutoff.isoformat(),
         }
     finally:
         connection.close()
 
-def _prune_uploads(uploads_dir: Path, expired_file_ids: set[str]) -> int:
-    """Remove upload files whose evidence record was filtered out."""
-    if not uploads_dir.is_dir() or not expired_file_ids:
+def _prune_uploads(uploads_dir: Path, expired_stored_paths: set[str]) -> int:
+    """Remove upload files whose evidence record was filtered out.
+
+    ``stored_path`` values point at the live data directory, so only the file
+    name is used to locate the copy inside the staging uploads directory.
+    """
+    if not uploads_dir.is_dir() or not expired_stored_paths:
         return 0
+    expired_names = {Path(value).name for value in expired_stored_paths}
     removed = 0
     for source in sorted(path for path in uploads_dir.rglob("*") if path.is_file()):
-        if source.parent.name in expired_file_ids:
+        if source.name in expired_names:
             source.unlink(missing_ok=True)
             removed += 1
     return removed
@@ -335,7 +356,7 @@ def create_complete_backup(
                         database_path, retention_months, created_at
                     )
                     _prune_uploads(
-                        staging_dir / "uploads", filter_summary["expired_file_ids"]
+                        staging_dir / "uploads", filter_summary["expired_stored_paths"]
                     )
 
             token_secret = settings.data_dir / "token_secret"
@@ -376,8 +397,7 @@ def create_complete_backup(
                         }
                         if filter_summary is not None
                         else None
-                    ),
-                },
+                    ),                },
             )
 
             temporary_archive = backup_dir / f".{archive_name}.tmp"
