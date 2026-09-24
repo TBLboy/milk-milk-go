@@ -1244,6 +1244,8 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
   const [integrityResult, setIntegrityResult] = useState<EvidenceIntegrityResult | null>(null)
   const [integrityError, setIntegrityError] = useState<string | null>(null)
   const [integrityChecking, setIntegrityChecking] = useState(false)
+  const [integrityPage, setIntegrityPage] = useState(1)
+  const integrityPageSize = 10
   const [bugReports, setBugReports] = useState<BugReportRecord[]>([])
   const [bugReportMessage, setBugReportMessage] = useState<string | null>(null)
   const [bugReportError, setBugReportError] = useState<string | null>(null)
@@ -1341,6 +1343,7 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
     setIntegrityError(null)
     try {
       setIntegrityResult(await api.checkEvidenceIntegrity())
+      setIntegrityPage(1)
     } catch (e: any) {
       setIntegrityResult(null)
       setIntegrityError(`检查失败：${e.message}`)
@@ -1474,6 +1477,8 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
   const pagedUsers = users.slice((accountPage - 1) * pageSize, accountPage * pageSize)
   const pagedBackups = backups.slice((backupPage - 1) * pageSize, backupPage * pageSize)
   const pagedRestoreCandidates = restoreCandidates.slice((restorePage - 1) * restorePageSize, restorePage * restorePageSize)
+  const integrityIssues = integrityResult?.issues ?? []
+  const pagedIntegrityIssues = integrityIssues.slice((integrityPage - 1) * integrityPageSize, integrityPage * integrityPageSize)
   const integrityIssueCount = (status: EvidenceIntegrityItem['status']) => (
     integrityResult?.issues.filter((item) => item.status === status).length ?? 0
   )
@@ -1758,36 +1763,41 @@ export function SettingsPage({ accounts = false }: { accounts?: boolean }) {
                 {integrityResult.issue_count === 0 ? (
                   <div className="integrity-success"><Check size={17} />本次检查未发现证据完整性异常。</div>
                 ) : (
-                  <div className="table-wrap integrity-table">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>文件编号</th>
-                          <th>异常类型</th>
-                          <th>预期大小</th>
-                          <th>实际大小</th>
-                          <th>预期 SHA-256</th>
-                          <th>实际 SHA-256</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {integrityResult.issues.map((item) => (
-                          <tr key={item.file_id}>
-                            <td className="order-id">{item.file_id}</td>
-                            <td>
-                              <span className={`status ${item.status === 'unhashed' ? 'status-pending' : 'status-cancelled'}`}>
-                                <i />{evidenceIntegrityLabels[item.status]}
-                              </span>
-                            </td>
-                            <td>{formatFileSize(item.expected_size_bytes)}</td>
-                            <td>{formatFileSize(item.actual_size_bytes)}</td>
-                            <td><code className="integrity-hash">{item.expected_sha256 || '—'}</code></td>
-                            <td><code className="integrity-hash">{item.actual_sha256 || '—'}</code></td>
+                  <>
+                    <div className="table-wrap integrity-table">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>文件编号</th>
+                            <th>异常类型</th>
+                            <th>预期大小</th>
+                            <th>实际大小</th>
+                            <th>预期 SHA-256</th>
+                            <th>实际 SHA-256</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {pagedIntegrityIssues.map((item) => (
+                            <tr key={item.file_id}>
+                              <td className="order-id">{item.file_id}</td>
+                              <td>
+                                <span className={`status ${item.status === 'unhashed' ? 'status-pending' : 'status-cancelled'}`}>
+                                  <i />{evidenceIntegrityLabels[item.status]}
+                                </span>
+                              </td>
+                              <td>{formatFileSize(item.expected_size_bytes)}</td>
+                              <td>{formatFileSize(item.actual_size_bytes)}</td>
+                              <td><code className="integrity-hash">{item.expected_sha256 || '—'}</code></td>
+                              <td><code className="integrity-hash">{item.actual_sha256 || '—'}</code></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {integrityIssues.length > integrityPageSize && (
+                      <Pagination page={integrityPage} pageSize={integrityPageSize} total={integrityIssues.length} onPageChange={setIntegrityPage} />
+                    )}
+                  </>
                 )}
               </>
             ) : !integrityError ? (
