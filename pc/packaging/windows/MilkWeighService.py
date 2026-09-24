@@ -11,7 +11,7 @@ import win32serviceutil
 
 class MilkWeighBackendService(win32serviceutil.ServiceFramework):
     _svc_name_ = "MilkWeighBackend"
-    _svc_display_name_ = "牧衡辅料称重防错系统后台服务"
+    _svc_display_name_ = "乍甸乳业辅料防错追溯系统后台服务"
     _svc_description_ = "提供局域网 API、数据库和浏览器管理界面。"
 
     def __init__(self, args):

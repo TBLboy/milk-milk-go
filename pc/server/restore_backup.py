@@ -10,7 +10,7 @@ from app.services.restore import RestoreError, restore_complete_backup
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="从牧衡完整备份包恢复数据库、证据和运行配置。")
+    parser = argparse.ArgumentParser(description="从乍甸乳业完整备份包恢复数据库、证据和运行配置。")
     parser.add_argument("--backup", required=True, type=Path, help="完整备份 ZIP 文件路径")
     parser.add_argument("--expected-sha256", help="可选的备份包 SHA-256 值")
     parser.add_argument("--yes", action="store_true", help="跳过交互式确认，供受控恢复脚本调用")

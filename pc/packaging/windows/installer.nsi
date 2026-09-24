@@ -9,7 +9,7 @@ SetCompressorDictSize 32
   !define ROOT_DIR "."
 !endif
 !ifndef OUT_FILE
-  !define OUT_FILE "MilkWeigh-Setup.exe"
+  !define OUT_FILE "乍甸乳业辅料防错追溯系统-Windows-Setup.exe"
 !endif
 !ifndef APP_ICON
   !define APP_ICON "${ROOT_DIR}/app.ico"
@@ -20,7 +20,7 @@ SetCompressorDictSize 32
 
 !define PAYLOAD_DIR "${ROOT_DIR}/payload"
 !define CONFIG_DIR "${ROOT_DIR}/config"
-!define PRODUCT_NAME "牧衡辅料称重防错系统"
+!define PRODUCT_NAME "乍甸乳业辅料防错追溯系统"
 !define PRODUCT_KEY "MilkWeigh"
 !define SERVICE_SCRIPT "$INSTDIR\server\MilkWeighService.py"
 
@@ -33,7 +33,7 @@ InstallDirRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MilkW
 BrandingText "${PRODUCT_NAME}"
 VIProductVersion "${APP_VERSION}.0"
 VIAddVersionKey /LANG=2052 "ProductName" "${PRODUCT_NAME}"
-VIAddVersionKey /LANG=2052 "CompanyName" "牧衡"
+VIAddVersionKey /LANG=2052 "CompanyName" "乍甸乳业"
 VIAddVersionKey /LANG=2052 "FileDescription" "${PRODUCT_NAME} 安装程序"
 VIAddVersionKey /LANG=2052 "FileVersion" "${APP_VERSION}"
 VIAddVersionKey /LANG=2052 "ProductVersion" "${APP_VERSION}"
@@ -104,7 +104,7 @@ Section "Install"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MilkWeigh" "DisplayName" "${PRODUCT_NAME}"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MilkWeigh" "DisplayVersion" "${APP_VERSION}"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MilkWeigh" "Publisher" "牧衡"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MilkWeigh" "Publisher" "乍甸乳业"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MilkWeigh" "InstallLocation" "$INSTDIR"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MilkWeigh" "UninstallString" '"$INSTDIR\Uninstall.exe"'
   WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\MilkWeigh" "NoModify" 1

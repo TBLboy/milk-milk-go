@@ -48,7 +48,7 @@ def write_smtp_test_log(
 def build_test_message(settings) -> EmailMessage:
     message = EmailMessage()
     message["Subject"] = "[辅料称重防错系统] 安装邮件反馈自检"
-    message["From"] = formataddr(("牧衡辅料称重防错系统", settings.smtp_username))
+    message["From"] = formataddr(("乍甸乳业辅料防错追溯系统", settings.smtp_username))
     message["To"] = settings.bug_report_recipient
     message["Date"] = format_datetime(datetime.now().astimezone())
     message.set_content(

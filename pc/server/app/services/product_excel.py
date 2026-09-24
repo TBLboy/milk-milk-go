@@ -70,7 +70,7 @@ def build_product_recipe_template() -> BytesIO:
             "每吨成品需要的辅料重量，单位 kg。",
         ),
     ):
-        cell.comment = Comment(hint, "牧衡辅料称重防错系统")
+        cell.comment = Comment(hint, "乍甸乳业辅料防错追溯系统")
     sheet.column_dimensions["A"].width = 28
     sheet.column_dimensions["B"].width = 20
     sheet.column_dimensions["C"].width = 24

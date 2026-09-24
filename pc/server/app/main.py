@@ -38,7 +38,7 @@ async def lifespan(_app: FastAPI):
 
 
 settings = get_settings()
-app = FastAPI(title="牧衡辅料称重防错系统", version=settings.app_version, lifespan=lifespan)
+app = FastAPI(title="乍甸乳业辅料防错追溯系统", version=settings.app_version, lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
