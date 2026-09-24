@@ -11,7 +11,7 @@ SIGNING_PROPERTIES="$SIGNING_DIR/signing.properties"
 JAVA_HOME="${JAVA_HOME:-/home/tbl/android-studio/jbr}"
 ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
 APP_VERSION="1.0.14"
-APK_NAME="牧衡辅料称重防错系统-Android-${APP_VERSION}.apk"
+APK_NAME="乍甸乳业辅料防错追溯系统-Android-${APP_VERSION}.apk"
 
 if [[ ! -x "$JAVA_HOME/bin/java" ]]; then
   echo "未找到 JDK 17+：$JAVA_HOME" >&2

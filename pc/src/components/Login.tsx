@@ -49,7 +49,7 @@ export function Login({ onLogin }: { onLogin: (user: any) => void }) {
       <div className="login-brand">
         <div className="login-brand-mark login-logo"><img src="/logo.png" alt="公司 Logo" /></div>
         <div>
-          <strong>牧衡辅料称重防错系统</strong>
+          <strong>乍甸乳业辅料防错追溯系统</strong>
           <span>PC 管理端</span>
         </div>
       </div>

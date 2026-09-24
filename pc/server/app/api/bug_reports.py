@@ -80,7 +80,7 @@ def send_bug_report_email(
     source_label = "电脑端" if source == "pc" else "平板端"
     message = EmailMessage()
     message["Subject"] = f"[辅料称重防错系统] {source_label} BUG 提交"
-    message["From"] = formataddr(("牧衡辅料称重防错系统", settings.smtp_username))
+    message["From"] = formataddr(("乍甸乳业辅料防错追溯系统", settings.smtp_username))
     message["To"] = settings.bug_report_recipient
     message["Date"] = format_datetime(datetime.now().astimezone())
     message.set_content(
@@ -121,7 +121,7 @@ def send_smtp_test_email(admin: User) -> None:
     _require_email_config(settings)
     message = EmailMessage()
     message["Subject"] = "[辅料称重防错系统] SMTP 测试邮件"
-    message["From"] = formataddr(("牧衡辅料称重防错系统", settings.smtp_username))
+    message["From"] = formataddr(("乍甸乳业辅料防错追溯系统", settings.smtp_username))
     message["To"] = settings.bug_report_recipient
     message["Date"] = format_datetime(datetime.now().astimezone())
     message.set_content(

@@ -294,7 +294,7 @@ private val RequiredWeightRed = Color(0xFFD32F2F)
 private val Page = Color(0xFFF5F7F9)
 private const val UserAgreementVersion = "1.1"
 private val UserAgreementText = """
-    牧衡辅料称重防错系统用户协议
+    乍甸乳业辅料防错追溯系统用户协议
 
     版本：V$UserAgreementVersion
     生效日期：2026年9月13日
@@ -659,8 +659,8 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f).padding(end = layout.loginHeroEndPadding)) {
-                Text("牧衡", color = Green, fontSize = if (layout.isCompact) 28.sp else 34.sp, fontWeight = FontWeight.Bold)
-                Text("辅料称重防错系统", color = Ink, fontSize = if (layout.isCompact) 22.sp else 28.sp, fontWeight = FontWeight.Bold)
+                Text("乍甸乳业", color = Green, fontSize = if (layout.isCompact) 28.sp else 34.sp, fontWeight = FontWeight.Bold)
+                Text("辅料防错追溯系统", color = Ink, fontSize = if (layout.isCompact) 22.sp else 28.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(if (layout.isCompact) 8.dp else 16.dp))
                 Text("让每一次辅料称量都有依据、有记录、可追溯。", color = Muted, fontSize = if (layout.isCompact) 14.sp else 18.sp)
             }
@@ -1520,7 +1520,7 @@ private fun MainShell(
             TopAppBar(
                 title = {
                     Text(
-                        "牧衡辅料称重",
+                        "乍甸乳业辅料防错",
                         fontWeight = FontWeight.Bold,
                         fontSize = if (layout.isCompact) 18.sp else 20.sp,
                     )
