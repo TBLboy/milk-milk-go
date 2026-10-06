@@ -59,7 +59,24 @@ cd pc\server
 
 浏览器打开 <http://127.0.0.1:8011/> ，用 `admin` / `admin123` 登录。
 
-## 5. 前端开发模式（仅在改前端时需要）
+## 5. 前端（React + Vite，位于 `pc/`）
+
+构建产物 `pc/dist/` 已被 `.gitignore` 忽略，**新克隆的仓库里没有它**，需要先构建。
+
+### 5.1 让后端 8011 直接提供界面（日常使用 / 验收）
+
+```powershell
+cd pc
+npm install
+npm run build
+```
+
+`npm run build` 会生成 `pc/dist/`，后端启动时会自动托管该目录（见 `app/main.py` 的 `frontend_dir`）。
+
+构建后访问 <http://127.0.0.1:8011/> 即能看到界面。
+**若未构建**，根路径只会返回 JSON（`{"service": "...", "version": "..."}`），这不是故障。
+
+### 5.2 前端开发模式（改前端源码时用，带热更新）
 
 ```powershell
 cd pc
@@ -68,6 +85,8 @@ npm run dev
 ```
 
 访问 <http://127.0.0.1:5173/>（`/api` 已代理到 `127.0.0.1:8011`）。
+
+改动源码后若想在 8011 上看到效果，需要重新执行 `npm run build`。
 
 ## 6. 端口 8011 冲突处理
 
@@ -96,6 +115,7 @@ cd pc\server
 |---|---|
 | `python` 是 Python 2.7 | 系统默认 python 指向 conda base；**必须**用 `.venv\Scripts\python.exe` |
 | 端口被占用 (`Errno 10048`) | 正式版服务占着 8011，见第 6 节 |
+| 打开 8011 只看到 JSON，没有界面 | `pc/dist/` 不存在（被 gitignore）。执行 `cd pc; npm install; npm run build`，见第 5.1 节 |
 | 依赖要升级/更新 | 重新解析锁：`uv pip compile pc/server/requirements.txt --python-version 3.11 -o pc/server/requirements.lock`，再 `uv pip install --python .venv\Scripts\python.exe -r pc/server/requirements.lock` |
 | 移动/删除 `*.sqlite3` 报 `WinError 32 文件被占用` | Windows 不允许替换仍被打开的文件。未显式关闭的 SQLite 连接（`with sqlite3.connect(...)` 只提交事务、不关闭连接）会一直持有句柄；请改用 `with closing(sqlite3.connect(...))`。服务端在原地替换数据库文件（恢复备份）前必须先释放连接池，见 `app/db/session.py` 的 `release_database_handles()`。 |
 
