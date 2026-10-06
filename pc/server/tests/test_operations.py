@@ -1,6 +1,7 @@
 import hashlib
 import json
 import sqlite3
+from contextlib import closing
 from datetime import datetime
 from pathlib import Path
 from zipfile import ZipFile
@@ -154,7 +155,7 @@ def test_complete_backup_supports_service_style_data_path(tmp_path):
     data_dir = tmp_path / "Milk Weigh Service Data"
     data_dir.mkdir()
     database = data_dir / "milk_weigh.sqlite3"
-    with sqlite3.connect(database) as connection:
+    with closing(sqlite3.connect(database)) as connection:
         connection.execute("CREATE TABLE marker (value TEXT NOT NULL)")
         connection.execute("INSERT INTO marker VALUES ('ok')")
         connection.commit()
@@ -177,15 +178,17 @@ def test_complete_backup_supports_service_style_data_path(tmp_path):
         assert manifest["trigger"] == "scheduled"
 
 
-def test_select_directory_returns_absolute_path(client, monkeypatch):
+def test_select_directory_returns_absolute_path(client, monkeypatch, tmp_path):
     headers = admin_headers(client)
+    target = tmp_path / "backup-target"
+    target.mkdir()
     monkeypatch.setattr(
         "tkinter.filedialog.askdirectory",
-        lambda **kwargs: "/tmp/opencode/backup-target",
+        lambda **kwargs: str(target),
     )
     response = client.post("/api/v1/operations/select-directory", headers=headers)
     assert response.status_code == 200
-    assert response.json() == {"path": "/tmp/opencode/backup-target"}
+    assert response.json() == {"path": str(target.resolve())}
 
 
 def test_select_directory_returns_null_when_cancelled(client, monkeypatch):

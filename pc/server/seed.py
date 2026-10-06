@@ -232,6 +232,23 @@ def _source_asset(asset_root: Path, file_id: str) -> Path:
     return matches[0]
 
 
+def _default_asset_root() -> Path:
+    """演示素材来源目录（未设置 MILK_DEMO_ASSETS_DIR 时使用）。
+
+    安装包场景由 seed_install.py 显式设置环境变量；开发场景下仓库内不存在
+    demo_assets（它是安装包构建产物），素材实际位于数据目录的 uploads 下，
+    与 build-windows-installer.sh 的取源目录一致。
+    """
+    candidates = (
+        Path(__file__).resolve().parent / "demo_assets" / "uploads",
+        get_settings().data_dir / "uploads",
+    )
+    for candidate in candidates:
+        if candidate.is_dir():
+            return candidate
+    return candidates[-1]
+
+
 def _upsert_material_images(
     db,
     materials: dict[str, Material],
@@ -240,12 +257,8 @@ def _upsert_material_images(
     if not DEMO_MATERIAL_IMAGE_FILES:
         return 0
 
-    asset_root = Path(
-        os.environ.get(
-            "MILK_DEMO_ASSETS_DIR",
-            str(Path(__file__).resolve().parent / "demo_assets" / "uploads"),
-        )
-    )
+    configured = os.environ.get("MILK_DEMO_ASSETS_DIR")
+    asset_root = Path(configured) if configured else _default_asset_root()
     uploads_root = get_settings().data_dir / "uploads"
     changed = 0
 

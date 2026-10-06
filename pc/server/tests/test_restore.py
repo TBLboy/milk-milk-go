@@ -5,6 +5,7 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+from contextlib import closing
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -75,14 +76,15 @@ def create_source_backup(client) -> tuple[Path, str, str, str]:
 def create_current_target_state(data_dir: Path) -> None:
     data_dir.mkdir(parents=True)
     database = data_dir / "milk_weigh.sqlite3"
-    with sqlite3.connect(database) as connection:
+    # 必须显式关闭连接：Windows 下未释放的 SQLite 句柄会阻止恢复流程替换数据库文件。
+    with closing(sqlite3.connect(database)) as connection:
         connection.execute("CREATE TABLE system_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
         connection.execute("INSERT INTO system_settings VALUES ('marker', 'current-state')")
         connection.commit()
 
 
 def target_marker(data_dir: Path) -> str:
-    with sqlite3.connect(data_dir / "milk_weigh.sqlite3") as connection:
+    with closing(sqlite3.connect(data_dir / "milk_weigh.sqlite3")) as connection:
         return connection.execute("SELECT value FROM system_settings WHERE key = 'marker'").fetchone()[0]
 
 
@@ -113,7 +115,7 @@ def test_restore_into_clean_environment_and_open_history(client, tmp_path):
         assert manifest["trigger"] == "pre_restore"
 
     target_db = target_data / "milk_weigh.sqlite3"
-    with sqlite3.connect(target_db) as connection:
+    with closing(sqlite3.connect(target_db)) as connection:
         assert connection.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
         assert connection.execute(
             "SELECT COUNT(*) FROM work_orders WHERE order_no = ?", (order_no,)
@@ -288,7 +290,7 @@ def test_interrupted_restore_journal_restores_original_on_startup(tmp_path):
     rollback_dir = data_dir / ".restore-rollback-test"
     rollback_dir.mkdir()
     rollback_database = rollback_dir / "database"
-    with sqlite3.connect(rollback_database) as connection:
+    with closing(sqlite3.connect(rollback_database)) as connection:
         connection.execute("CREATE TABLE system_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
         connection.execute("INSERT INTO system_settings VALUES ('marker', 'original-state')")
         connection.commit()

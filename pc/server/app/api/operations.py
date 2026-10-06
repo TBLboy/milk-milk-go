@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.api.auth import require_admin
 from app.core.config import get_settings
 from app.db.models import AuditLog, BackupRecord, SystemSetting, User
-from app.db.session import get_db
+from app.db.session import get_db, release_database_handles
 from app.services.audit import sanitize_audit_detail, write_audit
 from app.services.backup import BackupError, create_complete_backup, resolve_backup_dir
 from app.services.restore import RestoreError, inspect_backup_archive, restore_complete_backup
@@ -213,12 +213,18 @@ def restore_backup(body: RestoreInput, admin: User = Depends(require_admin), db:
     archive_path = (backup_dir / body.file_name).resolve()
     if archive_path.parent != backup_dir.resolve() or not archive_path.is_file():
         raise HTTPException(status_code=404, detail={"code": "BACKUP_NOT_FOUND", "message": "备份文件不存在"})
+
+    # Windows 不允许替换仍被打开的文件：先归还请求 Session 与连接池持有的数据库句柄，
+    # 再原地替换数据库文件，避免恢复流程因 WinError 32 失败。
+    admin_id = admin.id
+    db.close()
+    release_database_handles()
     try:
         result = restore_complete_backup(archive_path, settings)
     except (RestoreError, BackupError) as exc:
         write_audit(
             db,
-            actor_id=admin.id,
+            actor_id=admin_id,
             action="backup.restore.failed",
             resource_type="backup",
             result="failure",
@@ -228,7 +234,7 @@ def restore_backup(body: RestoreInput, admin: User = Depends(require_admin), db:
         raise HTTPException(status_code=503, detail={"code": "RESTORE_FAILED", "message": f"恢复失败：{exc}"}) from exc
     write_audit(
         db,
-        actor_id=admin.id,
+        actor_id=admin_id,
         action="backup.restore.completed",
         resource_type="backup",
         detail={

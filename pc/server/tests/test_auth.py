@@ -330,13 +330,14 @@ def test_operator_cannot_change_own_employee_no(client):
 
 def test_user_schema_migration_drops_id_card_and_adds_unique_employee_no(tmp_path):
     import sqlite3
+    from contextlib import closing
 
     from sqlalchemy import create_engine
 
     from app.db.models import _migrate_user_account_columns
 
     database = tmp_path / "legacy-users.sqlite3"
-    with sqlite3.connect(database) as connection:
+    with closing(sqlite3.connect(database)) as connection:
         connection.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, id_card VARCHAR(64))")
         connection.execute("INSERT INTO users (id, id_card) VALUES (1, '110101199001011234')")
         connection.commit()

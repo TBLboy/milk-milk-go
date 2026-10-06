@@ -1,6 +1,7 @@
 """TASK-129: 备份按年限过滤业务数据并保留数量清理。"""
 import json
 import sqlite3
+from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zipfile import ZipFile
@@ -23,13 +24,13 @@ def create_product(client, headers):
 def _age_work_order(data_dir: Path, order_no: str, days: int) -> None:
     database = data_dir / "milk_weigh.sqlite3"
     stamp = (datetime.now().astimezone() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
-    with sqlite3.connect(database) as connection:
+    with closing(sqlite3.connect(database)) as connection:
         connection.execute("UPDATE work_orders SET created_at = ? WHERE order_no = ?", (stamp, order_no))
         connection.commit()
 
 
 def _work_order_count(database_path: Path) -> int:
-    with sqlite3.connect(database_path) as connection:
+    with closing(sqlite3.connect(database_path)) as connection:
         return connection.execute("SELECT COUNT(*) FROM work_orders").fetchone()[0]
 
 
@@ -66,7 +67,7 @@ def test_backup_filters_expired_work_orders_and_keeps_master_data(client, tmp_pa
         archive.extract("database/milk_weigh.sqlite3", tmp_path / "extracted")
 
     snapshot = tmp_path / "extracted" / "database" / "milk_weigh.sqlite3"
-    with sqlite3.connect(snapshot) as connection:
+    with closing(sqlite3.connect(snapshot)) as connection:
         order_nos = {row[0] for row in connection.execute("SELECT order_no FROM work_orders").fetchall()}
         assert fresh["order_no"] in order_nos
         assert stale["order_no"] not in order_nos
@@ -92,7 +93,7 @@ def test_backup_permanent_retention_keeps_all_work_orders(client, tmp_path):
         archive.extract("database/milk_weigh.sqlite3", tmp_path / "extracted")
 
     snapshot = tmp_path / "extracted" / "database" / "milk_weigh.sqlite3"
-    with sqlite3.connect(snapshot) as connection:
+    with closing(sqlite3.connect(snapshot)) as connection:
         order_nos = {row[0] for row in connection.execute("SELECT order_no FROM work_orders").fetchall()}
         assert stale["order_no"] in order_nos
 
@@ -181,7 +182,7 @@ def test_backup_prunes_expired_evidence_uploads(client, tmp_path):
         archive.extract("database/milk_weigh.sqlite3", tmp_path / "extracted")
 
     snapshot = tmp_path / "extracted" / "database" / "milk_weigh.sqlite3"
-    with sqlite3.connect(snapshot) as connection:
+    with closing(sqlite3.connect(snapshot)) as connection:
         assert connection.execute("SELECT COUNT(*) FROM evidence_files").fetchone()[0] == 0
         assert connection.execute("SELECT COUNT(*) FROM type_confirmations").fetchone()[0] == 0
 
@@ -199,7 +200,7 @@ def test_backup_keeps_fresh_evidence_uploads(client, tmp_path):
         archive.extract("database/milk_weigh.sqlite3", tmp_path / "extracted")
 
     snapshot = tmp_path / "extracted" / "database" / "milk_weigh.sqlite3"
-    with sqlite3.connect(snapshot) as connection:
+    with closing(sqlite3.connect(snapshot)) as connection:
         assert connection.execute("SELECT COUNT(*) FROM evidence_files").fetchone()[0] == 1
 
 
@@ -257,7 +258,7 @@ def test_retention_cutoff_uses_utc(client, tmp_path):
     now_utc = datetime.now(timezone.utc)
     inside_stamp = (now_utc - timedelta(days=360)).strftime("%Y-%m-%d %H:%M:%S")
     outside_stamp = (now_utc - timedelta(days=370)).strftime("%Y-%m-%d %H:%M:%S")
-    with sqlite3.connect(database) as connection:
+    with closing(sqlite3.connect(database)) as connection:
         connection.execute("UPDATE work_orders SET created_at = ? WHERE order_no = ?", (inside_stamp, inside["order_no"]))
         connection.execute("UPDATE work_orders SET created_at = ? WHERE order_no = ?", (outside_stamp, outside["order_no"]))
         connection.commit()
@@ -270,7 +271,7 @@ def test_retention_cutoff_uses_utc(client, tmp_path):
         archive.extract("database/milk_weigh.sqlite3", tmp_path / "extracted")
 
     snapshot = tmp_path / "extracted" / "database" / "milk_weigh.sqlite3"
-    with sqlite3.connect(snapshot) as connection:
+    with closing(sqlite3.connect(snapshot)) as connection:
         order_nos = {row[0] for row in connection.execute("SELECT order_no FROM work_orders").fetchall()}
         assert inside["order_no"] in order_nos
         assert outside["order_no"] not in order_nos

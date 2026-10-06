@@ -16,6 +16,7 @@ pc/data/backups/
 pc/server/.env
 
 # 依赖与构建产物，不应纳入版本控制
+/.venv/
 pc/node_modules/
 pc/dist/
 

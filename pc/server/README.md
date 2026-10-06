@@ -1,13 +1,24 @@
 # PC 后端服务
 
-```bash
-conda activate milk
-python -m pip install -r requirements.txt
-python -m pytest
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+开发环境搭建与复现步骤见仓库内 [`docs/dev-environment.md`](../../docs/dev-environment.md)。
+
+```powershell
+# 在仓库根目录创建环境（uv，无需 conda）
+uv venv --python 3.11 .venv
+uv pip install --python .venv\Scripts\python.exe -r pc\server\requirements.lock
+
+# 初始化演示数据
+cd pc\server
+..\..\.venv\Scripts\python.exe seed.py
+
+# 运行（端口固定 8011，与前端代理/Android/安装包一致）
+..\..\.venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8011 --reload
+
+# 测试
+..\..\.venv\Scripts\python.exe -m pytest
 ```
 
-默认数据目录为 `pc/server/data/`，可通过 `MILK_DATA_DIR` 指定。当前仅提供工程骨架、SQLite 初始化和 `GET /api/v1/health`。
+默认数据目录为 `pc/data/`（由 `app/core/config.py` 的 `PROJECT_ROOT` 决定），可通过环境变量 `MILK_DATA_DIR` 覆盖。
 
 ## BUG 反馈邮件
 
