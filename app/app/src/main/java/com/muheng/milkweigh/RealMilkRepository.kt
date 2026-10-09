@@ -15,6 +15,10 @@ class RealMilkRepository(
     initialToken: String = "",
 ) : MilkRepository {
     private var token = initialToken
+
+    /** 当业务请求返回 403 LICENSE_EXPIRED / LICENSE_LOCKED 时触发，用于立即刷新授权状态。 */
+    var onLicenseRestricted: (() -> Unit)? = null
+
     private fun currentBaseUrl(): String = SessionStore(context).serverUrl().trimEnd('/') + "/"
 
     override suspend fun login(username: String, password: String): AppUser {
@@ -106,6 +110,10 @@ class RealMilkRepository(
 
     override suspend fun loadFileBytes(fileId: String): ByteArray = withContext(Dispatchers.IO) {
         executeFileRequest("evidence/files/$fileId")
+    }
+
+    override suspend fun getLicenseStatus(): LicenseStatus {
+        return licenseStatusFromJson(jsonObjectRequest("license/status", "GET", null))
     }
 
     override suspend fun listWorkOrders(): List<WorkOrder> {
@@ -381,7 +389,10 @@ class RealMilkRepository(
             val code = connection.responseCode
             val stream = if (code in 200..299) connection.inputStream else connection.errorStream
             val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
-            if (code !in 200..299) throw Exception(errorMessage(text, connection.responseMessage))
+            if (code !in 200..299) {
+                notifyIfLicenseRestricted(code, text)
+                throw Exception(errorMessage(text, connection.responseMessage))
+            }
             return text
         } finally {
             connection.disconnect()
@@ -418,7 +429,10 @@ class RealMilkRepository(
                 val code = connection.responseCode
                 val stream = if (code in 200..299) connection.inputStream else connection.errorStream
                 val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
-                if (code !in 200..299) throw Exception(errorMessage(text, connection.responseMessage))
+                if (code !in 200..299) {
+                    notifyIfLicenseRestricted(code, text)
+                    throw Exception(errorMessage(text, connection.responseMessage))
+                }
                 JSONObject(text).getString("file_id")
             } finally {
                 connection.disconnect()
@@ -457,6 +471,35 @@ class RealMilkRepository(
                 ?: json.optString("message").takeIf { it.isNotBlank() }
                 ?: fallback
         }.getOrDefault(fallback)
+    }
+
+    private fun notifyIfLicenseRestricted(code: Int, body: String) {
+        if (code != 403) return
+        val restricted = runCatching {
+            val detail = JSONObject(body).optJSONObject("detail")
+            val detailCode = detail?.optString("code").orEmpty()
+            detailCode == "LICENSE_EXPIRED" || detailCode == "LICENSE_LOCKED"
+        }.getOrDefault(false)
+        if (restricted) {
+            runCatching { onLicenseRestricted?.invoke() }
+        }
+    }
+
+    private fun licenseStatusFromJson(json: JSONObject): LicenseStatus {
+        return LicenseStatus(
+            mode = json.optString("mode", "active"),
+            source = json.optString("source", "trial"),
+            licensee = json.optString("licensee").takeUnless { it.isBlank() || it == "null" },
+            expiresAt = json.optString("expires_at").takeUnless { it.isBlank() || it == "null" },
+            deadline = json.optString("deadline").takeUnless { it.isBlank() || it == "null" },
+            daysRemaining = json.optInt("days_remaining"),
+            graceDaysRemaining = json.optInt("grace_days_remaining"),
+            warn = json.optBoolean("warn"),
+            warnDays = json.optInt("warn_days", 30),
+            graceDays = json.optInt("grace_days", 15),
+            trialMonths = json.optInt("trial_months", 2),
+            clockRollbackDetected = json.optBoolean("clock_rollback_detected"),
+        )
     }
 
     private fun appUserFromJson(user: JSONObject, fallbackUsername: String, token: String): AppUser {

@@ -71,6 +71,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -89,6 +90,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.QrCodeScanner
@@ -1480,6 +1482,7 @@ private fun MainShell(
     var showChangePasswordDialog by remember { mutableStateOf(user.mustChangePassword) }
     var showBugReportDialog by remember { mutableStateOf(false) }
     var isRefreshing by remember { mutableStateOf(false) }
+    var license by remember { mutableStateOf<LicenseStatus?>(null) }
     val sidebarToggleInteraction = remember { MutableInteractionSource() }
     val sidebarTogglePressed by sidebarToggleInteraction.collectIsPressedAsState()
     val sidebarToggleBackground by animateColorAsState(
@@ -1529,6 +1532,24 @@ private fun MainShell(
             }
         }
     }
+    val writesEnabled = license?.writesEnabled ?: true
+    suspend fun refreshLicense() {
+        runCatching { repository.getLicenseStatus() }
+            .onSuccess { license = it }
+    }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        while (true) {
+            refreshLicense()
+            delay(60_000)
+        }
+    }
+    DisposableEffect(repository) {
+        val realRepository = repository as? RealMilkRepository
+        realRepository?.onLicenseRestricted = {
+            scope.launch { refreshLicense() }
+        }
+        onDispose { realRepository?.onLicenseRestricted = null }
+    }
     androidx.compose.runtime.LaunchedEffect(Unit) {
         runCatching { refreshData() }
     }
@@ -1537,6 +1558,10 @@ private fun MainShell(
     }
     androidx.compose.runtime.LaunchedEffect(currentUser.mustChangePassword) {
         if (currentUser.mustChangePassword) showChangePasswordDialog = true
+    }
+    if (license?.isLocked == true) {
+        LicenseLockedScreen(license = license, onLogout = onLogout)
+        return
     }
     Scaffold(topBar = {
         Column(modifier = Modifier.fillMaxWidth().background(Color.White)) {
@@ -1559,15 +1584,18 @@ private fun MainShell(
                     )
                 },
             )
+            LicenseNoticeBar(license = license)
             HorizontalDivider(thickness = 1.dp, color = Color(0xFFDDE4E8))
         }
     }, containerColor = Page, floatingActionButton = {
-        FloatingActionButton(
-            onClick = { showBugReportDialog = true },
-            containerColor = Green,
-            contentColor = Color.White,
-        ) {
-            Icon(Icons.Default.BugReport, contentDescription = "提交 BUG 反馈")
+        if (writesEnabled) {
+            FloatingActionButton(
+                onClick = { showBugReportDialog = true },
+                containerColor = Green,
+                contentColor = Color.White,
+            ) {
+                Icon(Icons.Default.BugReport, contentDescription = "提交 BUG 反馈")
+            }
         }
     }) { padding ->
         Row(modifier = Modifier.fillMaxSize().padding(padding)) {
@@ -1636,6 +1664,7 @@ private fun MainShell(
                     isRefreshing = isRefreshing,
                     onRefresh = refreshDataWithFeedback,
                     onCreate = { showCreateDialog = true },
+                    writesEnabled = writesEnabled,
                 ) { order ->
                     selectedOrderNo = order.orderNo
                     selected = "详情"
@@ -1650,8 +1679,9 @@ private fun MainShell(
                     onRefresh = refreshDataWithFeedback,
                     onBack = { selected = "工单" },
                     onUpdated = { updated -> orders = orders.map { if (it.orderNo == updated.orderNo) updated else it } },
+                    writesEnabled = writesEnabled,
                 )
-                "辅料与配方" -> AdminMasterDataScreen(repository)
+                "辅料与配方" -> AdminMasterDataScreen(repository, writesEnabled = writesEnabled)
                 else -> DashboardScreen(
                     orders = orders,
                     isRefreshing = isRefreshing,
@@ -1662,11 +1692,12 @@ private fun MainShell(
                         selectedOrderNo = order.orderNo
                         selected = "详情"
                     },
+                    writesEnabled = writesEnabled,
                 )
             }
         }
     }
-    if (showCreateDialog && products.isNotEmpty()) {
+    if (showCreateDialog && products.isNotEmpty() && writesEnabled) {
         CreateWorkOrderDialog(
             repository = repository,
             products = products,
@@ -1708,6 +1739,85 @@ private fun MainShell(
             repository = repository,
             onDismiss = { showBugReportDialog = false },
         )
+    }
+}
+
+@Composable
+private fun LicenseNoticeBar(license: LicenseStatus?) {
+    if (license == null) return
+    when {
+        license.isReadOnly -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFFFBE9E7))
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+            ) {
+                Text(
+                    "授权已到期，只读状态（宽限期剩余 ${license.graceDaysRemaining} 天），可查看与导出，不能提交称重/确认",
+                    color = Color(0xFFB3261E),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+        license.warn && license.writesEnabled -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFFFFF6E5))
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+            ) {
+                Text(
+                    "${if (license.source == "trial") "试用期" else "授权"}剩余 ${license.daysRemaining} 天（${licenseDeadlineDate(license)} 到期）",
+                    color = Color(0xFF8A5A00),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+    }
+}
+
+private fun licenseDeadlineDate(license: LicenseStatus): String {
+    val raw = license.deadline ?: license.expiresAt ?: return ""
+    return raw.take(10)
+}
+
+@Composable
+private fun LicenseLockedScreen(license: LicenseStatus?, onLogout: () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxSize().background(Page),
+        contentAlignment = Alignment.Center,
+    ) {
+        Card(
+            modifier = Modifier.widthIn(max = 460.dp).padding(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Icon(
+                    Icons.Default.Lock,
+                    contentDescription = null,
+                    tint = Color(0xFFB3261E),
+                    modifier = Modifier.size(52.dp),
+                )
+                Text("软件授权已到期", color = Ink, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    "生产功能已停止，请联系管理员在 PC 端输入解锁码。",
+                    color = Muted,
+                    fontSize = 15.sp,
+                    textAlign = TextAlign.Center,
+                )
+                license?.deadline?.takeIf { it.isNotBlank() }?.let { deadline ->
+                    Text("授权截止：${deadline.take(10)}", color = Muted, fontSize = 13.sp)
+                }
+                OutlinedButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) { Text("退出登录") }
+            }
+        }
     }
 }
 
@@ -1987,6 +2097,7 @@ private fun DashboardScreen(
     onCreate: () -> Unit,
     openOrders: () -> Unit,
     openOrder: (WorkOrder) -> Unit,
+    writesEnabled: Boolean = true,
 ) {
     val layout = rememberAppLayoutSpec()
     val recentOrders = orders.filter { it.status != WorkOrderStatus.CANCELLED && it.status != WorkOrderStatus.DELETED }
@@ -2024,6 +2135,7 @@ private fun DashboardScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(if (layout.isCompact) 8.dp else 10.dp)) {
                     Button(
                         onClick = onCreate,
+                        enabled = writesEnabled,
                         contentPadding = if (layout.isCompact) {
                             PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                         } else {
@@ -2186,6 +2298,7 @@ private fun OrderListScreen(
     isRefreshing: Boolean,
     onRefresh: () -> Unit,
     onCreate: () -> Unit,
+    writesEnabled: Boolean = true,
     openDetail: (WorkOrder) -> Unit,
 ) {
     val layout = rememberAppLayoutSpec()
@@ -2234,6 +2347,7 @@ private fun OrderListScreen(
                     }
                     Button(
                         onClick = onCreate,
+                        enabled = writesEnabled,
                         contentPadding = if (layout.isCompact) {
                             PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                         } else {
@@ -2402,6 +2516,7 @@ private fun OrderDetailScreen(
     onRefresh: () -> Unit,
     onBack: () -> Unit,
     onUpdated: (WorkOrder) -> Unit,
+    writesEnabled: Boolean = true,
 ) {
     val layout = rememberAppLayoutSpec()
     val scope = rememberCoroutineScope()
@@ -2480,6 +2595,7 @@ private fun OrderDetailScreen(
                         canApprove = canApprove,
                         canOperate = canOperate,
                         compact = layout.isCompact,
+                        writesEnabled = writesEnabled,
                         onAction = { actionStepNo = step.stepNo },
                     )
                 }
@@ -2506,7 +2622,7 @@ private fun OrderDetailScreen(
                                         .also { working = false }
                                 }
                             }
-                        }, enabled = !working) { Text("开始执行") }
+                        }, enabled = !working && writesEnabled) { Text("开始执行") }
                         order.status == WorkOrderStatus.IN_PROGRESS && order.completedSteps == order.totalSteps && canOperate -> Button(onClick = {
                             if (!working) {
                                 working = true
@@ -2518,7 +2634,7 @@ private fun OrderDetailScreen(
                                         .also { working = false }
                                 }
                             }
-                        }, enabled = !working) { Text("提交完成") }
+                        }, enabled = !working && writesEnabled) { Text("提交完成") }
                         order.status == WorkOrderStatus.APPROVED -> Text("等待当前执行人开始工单", color = Muted)
                         order.status == WorkOrderStatus.IN_PROGRESS -> Text(
                             if (canOperate) "请按顺序完成所有辅料步骤后再提交完成" else "仅当前执行人可操作本工单",
@@ -2527,10 +2643,10 @@ private fun OrderDetailScreen(
                     }
                     if (canRequest) {
                         if (!isAssignedOperator && !canApprove) {
-                            OutlinedButton(onClick = { requestAction = "接管" }) { Text("申请接管") }
+                            OutlinedButton(onClick = { requestAction = "接管" }, enabled = writesEnabled) { Text("申请接管") }
                         }
                         if (isAssignedOperator) {
-                            OutlinedButton(onClick = { requestAction = "撤销" }) { Text("申请撤销") }
+                            OutlinedButton(onClick = { requestAction = "撤销" }, enabled = writesEnabled) { Text("申请撤销") }
                         }
                     } else if (order.pendingRequest != null) {
                         Text("已提交申请，等待后台审批", color = Muted)
@@ -2581,6 +2697,7 @@ private fun StepCard(
     canApprove: Boolean,
     canOperate: Boolean,
     compact: Boolean = false,
+    writesEnabled: Boolean = true,
     onAction: () -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White)) {
@@ -2620,7 +2737,9 @@ private fun StepCard(
                 )
             }
             if (canOperate && orderStatus == WorkOrderStatus.IN_PROGRESS && step.stepNo == currentStepNo && step.status != StepStatus.COMPLETED) {
-                when (step.status) {
+                if (!writesEnabled) {
+                    Text("只读状态，暂不可操作", color = Muted, fontSize = if (compact) 12.sp else 13.sp)
+                } else when (step.status) {
                     StepStatus.PENDING -> Button(
                         onClick = onAction,
                         contentPadding = if (compact) PaddingValues(horizontal = 12.dp, vertical = 6.dp) else ButtonDefaults.ContentPadding,
@@ -3395,7 +3514,7 @@ private data class ImagePreviewTarget(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AdminMasterDataScreen(repository: MilkRepository) {
+private fun AdminMasterDataScreen(repository: MilkRepository, writesEnabled: Boolean = true) {
     var tab by remember { mutableStateOf("辅料") }
     var materials by remember { mutableStateOf<List<Material>>(emptyList()) }
     var recipes by remember { mutableStateOf<List<ProductRecipe>>(emptyList()) }
@@ -3448,7 +3567,7 @@ private fun AdminMasterDataScreen(repository: MilkRepository) {
                     }
                     Button(onClick = {
                         if (tab == "辅料") showMaterialDialog = true else showRecipeDialog = true
-                    }) {
+                    }, enabled = writesEnabled) {
                         Icon(Icons.Default.Add, null)
                         Spacer(Modifier.width(6.dp))
                         Text(if (tab == "辅料") "新增辅料" else "新增配方")
@@ -3501,7 +3620,7 @@ private fun AdminMasterDataScreen(repository: MilkRepository) {
                                     Spacer(Modifier.width(5.dp))
                                     Text("查看图片")
                                 }
-                                TextButton(onClick = { editingMaterial = material }) { Text("编辑") }
+                                TextButton(onClick = { editingMaterial = material }, enabled = writesEnabled) { Text("编辑") }
                             }
                         }
                     }
@@ -3528,7 +3647,7 @@ private fun AdminMasterDataScreen(repository: MilkRepository) {
                             }
                             Column(horizontalAlignment = Alignment.End) {
                                 TextButton(onClick = { historyRecipe = recipe }) { Text("历史") }
-                                TextButton(onClick = { editingRecipe = recipe }) { Text("编辑") }
+                                TextButton(onClick = { editingRecipe = recipe }, enabled = writesEnabled) { Text("编辑") }
                             }
                         }
                     }

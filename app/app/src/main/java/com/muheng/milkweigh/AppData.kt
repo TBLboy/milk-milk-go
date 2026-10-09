@@ -129,6 +129,25 @@ data class RecipeVersion(
     val items: List<RecipeVersionItem>,
 )
 
+data class LicenseStatus(
+    val mode: String = "active",
+    val source: String = "trial",
+    val licensee: String? = null,
+    val expiresAt: String? = null,
+    val deadline: String? = null,
+    val daysRemaining: Int = 0,
+    val graceDaysRemaining: Int = 0,
+    val warn: Boolean = false,
+    val warnDays: Int = 30,
+    val graceDays: Int = 15,
+    val trialMonths: Int = 2,
+    val clockRollbackDetected: Boolean = false,
+) {
+    val isLocked: Boolean get() = mode == "locked"
+    val isReadOnly: Boolean get() = mode == "read_only"
+    val writesEnabled: Boolean get() = mode == "active"
+}
+
 interface MilkRepository {
     suspend fun login(username: String, password: String): AppUser
     suspend fun register(username: String, displayName: String, employeeNo: String, password: String): RegistrationResult
@@ -140,6 +159,7 @@ interface MilkRepository {
     suspend fun updateProfile(displayName: String, phone: String, avatarFileId: String?): AppUser
     suspend fun changePassword(currentPassword: String, newPassword: String)
     suspend fun loadFileBytes(fileId: String): ByteArray
+    suspend fun getLicenseStatus(): LicenseStatus
     suspend fun listWorkOrders(): List<WorkOrder>
     suspend fun listProducts(): List<Product>
     suspend fun listMaterials(): List<Material>
@@ -568,6 +588,9 @@ class MockMilkRepository : MilkRepository {
     }
 
     override suspend fun loadFileBytes(fileId: String): ByteArray = ByteArray(0)
+
+    // 离线 / Demo 模式下视为已授权，避免拿不到接口导致界面卡死。
+    override suspend fun getLicenseStatus(): LicenseStatus = LicenseStatus(mode = "active")
 
     override suspend fun listWorkOrders(): List<WorkOrder> = orderStore.toList()
 

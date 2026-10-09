@@ -15,12 +15,14 @@ from app.api.labels import router as labels_router
 from app.api.operations import router as operations_router
 from app.api.approvals import router as approvals_router
 from app.api.settings import router as settings_router
+from app.api.license import router as license_router
 from app.api.bug_reports import (
     recover_interrupted_bug_report_retries,
     router as bug_reports_router,
 )
 from app.core.config import get_settings
 from app.db.models import initialize_database
+from app.license_runtime import install_license_guard
 from app.services.backup import backup_scheduler
 from app.services.restore import recover_interrupted_restore
 
@@ -57,7 +59,11 @@ app.include_router(labels_router, prefix=settings.api_prefix)
 app.include_router(operations_router, prefix=settings.api_prefix)
 app.include_router(approvals_router, prefix=settings.api_prefix)
 app.include_router(settings_router, prefix=settings.api_prefix)
+app.include_router(license_router, prefix=settings.api_prefix)
 app.include_router(bug_reports_router, prefix=settings.api_prefix)
+
+# 授权守卫最后挂载 → 位于中间件栈最外层：在路由（含 SPA catch-all）之前统一拦截。
+install_license_guard(app)
 
 
 @app.exception_handler(OperationalError)

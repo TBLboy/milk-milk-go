@@ -139,6 +139,14 @@ export const api = {
     localStorage.removeItem('milk_user')
   },
 
+  // 授权与试用期
+  async getLicenseStatus(): Promise<any> {
+    return request('/license/status')
+  },
+
+  async unlockLicense(code: string): Promise<any> {
+    return request('/license/unlock', { method: 'POST', body: JSON.stringify({ code }) })
+  },
   hasToken() {
     return Boolean(localStorage.getItem('milk_token'))
   },

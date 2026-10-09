@@ -52,6 +52,29 @@ done
 cp -a "$PC_DIR/dist" "$PAYLOAD_DIR/dist"
 mkdir -p "$PAYLOAD_DIR/server"
 cp -a "$PC_DIR/server/app" "$PAYLOAD_DIR/server/app"
+
+# 授权核心：只交付编译产物（DEC-062 / TASK-159），绝不交付 milk_license 的 .py 源码。
+# 编译产物由 Windows 构建机上的 pc/scripts/build-license-module.sh 生成。
+LICENSE_MODULE_DIR="$ROOT_DIR/.build/license-module/milk_license"
+if [[ ! -d "$LICENSE_MODULE_DIR" ]]; then
+  echo "缺少授权模块编译产物：$LICENSE_MODULE_DIR" >&2
+  echo "请先在 Windows 构建机执行 pc/scripts/build-license-module.sh，再打安装包。" >&2
+  exit 1
+fi
+for source_file in "$LICENSE_MODULE_DIR"/*.py; do
+  if [[ "$(basename "$source_file")" != "__init__.py" ]]; then
+    echo "授权模块目录含源码文件：$source_file —— 拒绝把可读源码打进安装包。" >&2
+    exit 1
+  fi
+done
+if ! compgen -G "$LICENSE_MODULE_DIR/*.pyd" > /dev/null; then
+  echo "授权模块目录没有 .pyd 编译产物：$LICENSE_MODULE_DIR" >&2
+  exit 1
+fi
+mkdir -p "$PAYLOAD_DIR/server/milk_license"
+cp "$LICENSE_MODULE_DIR/__init__.py" "$PAYLOAD_DIR/server/milk_license/__init__.py"
+cp "$LICENSE_MODULE_DIR"/*.pyd "$PAYLOAD_DIR/server/milk_license/"
+
 cp "$PC_DIR/server/seed.py" "$PAYLOAD_DIR/server/seed.py"
 cp "$PC_DIR/server/restore_backup.py" "$PAYLOAD_DIR/server/restore_backup.py"
 cp "$PC_DIR/packaging/windows/seed_install.py" "$PAYLOAD_DIR/server/seed_install.py"
