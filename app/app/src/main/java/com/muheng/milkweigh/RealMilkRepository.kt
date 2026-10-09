@@ -293,7 +293,7 @@ class RealMilkRepository(
         return getWorkOrder(orderNo)
     }
 
-    override suspend fun submitStepWeight(orderNo: String, stepNo: Int, weightKg: Double, evidenceUri: String): WeightSubmitResult {
+    override suspend fun submitStepWeight(orderNo: String, stepNo: Int, weightKg: Double, evidenceUris: List<String>): WeightSubmitResult {
         val validation = jsonObjectRequest(
             path = "evidence/work-orders/$orderNo/steps/$stepNo/weight/validate",
             method = "POST",
@@ -306,11 +306,14 @@ class RealMilkRepository(
                 order = getWorkOrder(orderNo),
             )
         }
-        val fileId = uploadImage(evidenceUri)
+        if (evidenceUris.isEmpty()) error("请至少拍摄 1 张证据照片")
+        if (evidenceUris.size > 3) error("最多拍摄 3 张证据照片")
+        val fileIds = JSONArray()
+        evidenceUris.forEach { uri -> fileIds.put(uploadImage(uri)) }
         val response = jsonObjectRequest(
             path = "evidence/work-orders/$orderNo/steps/$stepNo/weight",
             method = "POST",
-            body = JSONObject().put("weight_kg", weightKg).put("scale_photo_file_id", fileId),
+            body = JSONObject().put("weight_kg", weightKg).put("scale_photo_file_ids", fileIds),
         )
         val passed = response.optString("status") == "passed"
         val order = getWorkOrder(orderNo)

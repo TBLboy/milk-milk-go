@@ -19,6 +19,7 @@ from app.services.idempotency import execute_idempotent
 
 router = APIRouter(prefix="/evidence", tags=["evidence"])
 MAX_FILE_BYTES = 10 * 1024 * 1024
+MAX_SCALE_PHOTOS = 3
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 
@@ -43,7 +44,39 @@ class QRValidation(BaseModel):
 
 class WeightSubmission(BaseModel):
     weight_kg: float = Field(ge=0, le=1_000_000)
-    scale_photo_file_id: str = Field(min_length=1, max_length=64)
+    # 旧字段：单张证据照片。保留以兼容已发布客户端（DEC-057）。
+    scale_photo_file_id: str | None = Field(default=None, min_length=1, max_length=64)
+    # 新字段：证据照片集合（1~3 张，无序）。见 BL-WEIGH-PHOTO-001。
+    scale_photo_file_ids: list[str] | None = None
+
+
+def _resolve_photo_ids(body: WeightSubmission) -> list[str]:
+    """把旧单值字段与新集合字段归一为有序照片列表，并执行数量与重复校验。"""
+    single = body.scale_photo_file_id
+    ids = body.scale_photo_file_ids
+    if ids is None and single is None:
+        raise HTTPException(status_code=422, detail={"code": "SCALE_PHOTO_REQUIRED", "message": "请上传当前操作员拍摄的电子秤读数照片"})
+    if ids is None:
+        resolved = [single]
+    else:
+        resolved = list(ids)
+        if single is not None and resolved != [single]:
+            raise HTTPException(
+                status_code=409,
+                detail={"code": "SCALE_PHOTO_FIELDS_CONFLICT", "message": "单张与多张照片字段同时提交且不一致"},
+            )
+    if not resolved:
+        raise HTTPException(status_code=422, detail={"code": "SCALE_PHOTO_REQUIRED", "message": "请上传当前操作员拍摄的电子秤读数照片"})
+    if len(resolved) > MAX_SCALE_PHOTOS:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "SCALE_PHOTO_LIMIT_EXCEEDED", "message": f"单次称重最多 {MAX_SCALE_PHOTOS} 张证据照片"},
+        )
+    if any(not isinstance(item, str) or not item.strip() or len(item) > 64 for item in resolved):
+        raise HTTPException(status_code=422, detail={"code": "SCALE_PHOTO_INVALID", "message": "证据照片编号无效"})
+    if len(set(resolved)) != len(resolved):
+        raise HTTPException(status_code=422, detail={"code": "SCALE_PHOTO_DUPLICATED", "message": "证据照片不能重复提交"})
+    return resolved
 
 
 class WeightValidation(BaseModel):
@@ -519,10 +552,19 @@ def submit_weight(
         passed, weight_result = _evaluate_weight(step, body.weight_kg)
         if not passed:
             raise HTTPException(status_code=422, detail=weight_result)
-        evidence = db.scalar(select(EvidenceFile).where(EvidenceFile.file_id == body.scale_photo_file_id, EvidenceFile.uploaded_by == user.id))
-        if evidence is None:
-            raise HTTPException(status_code=422, detail={"code": "SCALE_PHOTO_REQUIRED", "message": "请上传当前操作员拍摄的电子秤读数照片"})
-        attempt = WeighingAttempt(work_order_step_id=step.id, weight_kg=body.weight_kg, weight_source="manual", scale_photo_file_id=body.scale_photo_file_id, passed=passed, created_by=user.id)
+        photo_ids = _resolve_photo_ids(body)
+        for file_id in photo_ids:
+            if db.scalar(select(EvidenceFile).where(EvidenceFile.file_id == file_id, EvidenceFile.uploaded_by == user.id)) is None:
+                raise HTTPException(status_code=422, detail={"code": "SCALE_PHOTO_REQUIRED", "message": "请上传当前操作员拍摄的电子秤读数照片"})
+        attempt = WeighingAttempt(
+            work_order_step_id=step.id,
+            weight_kg=body.weight_kg,
+            weight_source="manual",
+            scale_photo_file_id=photo_ids[0],
+            scale_photo_file_ids_json=json.dumps(photo_ids),
+            passed=passed,
+            created_by=user.id,
+        )
         db.add(attempt)
         db.flush()
         step_update = db.execute(
@@ -546,6 +588,7 @@ def submit_weight(
                 "required_weight_kg": step.required_weight_kg,
                 "tolerance_kg": step.tolerance_kg,
                 "submitted_weight_kg": body.weight_kg,
+                "scale_photo_count": len(photo_ids),
             },
         )
         return {
@@ -565,6 +608,7 @@ def submit_weight(
             "step_no": step_no,
             "weight_kg": body.weight_kg,
             "scale_photo_file_id": body.scale_photo_file_id,
+            "scale_photo_file_ids": body.scale_photo_file_ids,
         },
         operation=operation,
     )

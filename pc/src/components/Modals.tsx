@@ -421,13 +421,23 @@ function StepEvidence({ step }: { step: any }) {
           {conf.evidence_file_id && <EvidenceThumb fileId={conf.evidence_file_id} />}
         </div>
       ))}
-      {attempts.map((item: any) => (
-        <div className="step-evidence-item" key={`weight-${item.id}`}>
-          <span>称重 {item.weight_kg} kg · {item.passed ? '通过' : '超差'}</span>
-          <small>{item.weight_source === 'manual' ? '手动读数' : item.weight_source}</small>
-          <EvidenceThumb fileId={item.scale_photo_file_id} />
-        </div>
-      ))}
+      {attempts.map((item: any) => {
+        const photoIds: string[] =
+          Array.isArray(item.scale_photo_file_ids) && item.scale_photo_file_ids.length > 0
+            ? item.scale_photo_file_ids
+            : item.scale_photo_file_id
+              ? [item.scale_photo_file_id]
+              : []
+        return (
+          <div className="step-evidence-item" key={`weight-${item.id}`}>
+            <span>称重 {item.weight_kg} kg · {item.passed ? '通过' : '超差'}</span>
+            <small>{item.weight_source === 'manual' ? '手动读数' : item.weight_source}</small>
+            {photoIds.map((fileId) => (
+              <EvidenceThumb key={fileId} fileId={fileId} />
+            ))}
+          </div>
+        )
+      })}
     </div>
   )
 }

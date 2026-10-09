@@ -288,6 +288,7 @@ private fun cameraPermissionLauncher(onGranted: () -> Unit): () -> Unit {
     }
 }
 
+private const val MAX_WEIGHT_PHOTOS = 3
 private val Green = Color(0xFF1F9469)
 private val Ink = Color(0xFF17202B)
 private val Muted = Color(0xFF77858F)
@@ -467,6 +468,18 @@ private fun decodeEvidenceBitmap(file: File, maxDimension: Int = 2400): Bitmap {
         BitmapFactory.decodeStream(it, null, options)
     } ?: error("无法解析拍摄照片")
 }
+
+private fun decodeThumbnail(file: File, maxDimension: Int = 320): Bitmap? = runCatching {
+    if (!file.exists() || file.length() <= 0L) return@runCatching null
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    file.inputStream().use { BitmapFactory.decodeStream(it, null, bounds) }
+    var sampleSize = 1
+    while (max(bounds.outWidth, bounds.outHeight) / sampleSize > maxDimension) {
+        sampleSize *= 2
+    }
+    val options = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+    file.inputStream().use { BitmapFactory.decodeStream(it, null, options) }
+}.getOrNull()
 
 private fun normalizeEvidenceOrientation(file: File, bitmap: Bitmap): Bitmap {
     val orientation = runCatching {
@@ -3080,9 +3093,7 @@ private fun WeightDialog(
     onUpdated: (WorkOrder) -> Unit,
 ) {
     var weightText by remember { mutableStateOf("") }
-    var photoName by remember { mutableStateOf("") }
-    var photoUri by remember { mutableStateOf<String?>(null) }
-    var photoFile by remember { mutableStateOf<File?>(null) }
+    var photos by remember { mutableStateOf<List<ProcessedEvidence>>(emptyList()) }
     var cameraOutputPath by rememberSaveable { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var result by remember { mutableStateOf<String?>(null) }
@@ -3091,11 +3102,9 @@ private fun WeightDialog(
     val context = LocalContext.current
 
     fun clearPhotoEvidence() {
-        photoFile?.delete()
+        photos.forEach { it.photoFile.delete() }
         cameraOutputPath?.let(::File)?.delete()
-        photoUri = null
-        photoName = ""
-        photoFile = null
+        photos = emptyList()
         cameraOutputPath = null
     }
 
@@ -3109,20 +3118,15 @@ private fun WeightDialog(
         if (captured) {
             working = true
             error = null
-            photoFile?.delete()
-            photoUri = null
-            photoName = ""
             scope.launch {
                 runCatching {
                     processCapturedEvidence(
                         context = context,
                         sourceFile = outputFile,
-                        watermarkLines = evidenceWatermarkLines(order, step, operatorName, "电子秤读数"),
+                        watermarkLines = evidenceWatermarkLines(order, step, operatorName, "称重证据"),
                     )
                 }.onSuccess { processed ->
-                    photoUri = processed.photoUri
-                    photoName = "现场拍摄"
-                    photoFile = processed.photoFile
+                    photos = photos + processed
                 }.onFailure {
                     error = "照片处理失败：${it.message}"
                 }
@@ -3150,7 +3154,10 @@ private fun WeightDialog(
         onDismissRequest = { if (!working) onDismiss() },
         title = { Text("称重记录 · 步骤 ${step.stepNo}") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
                 Text("${step.materialName} · ${step.materialCode}", color = Ink, fontWeight = FontWeight.Bold)
                 RequiredWeightText(
                     requiredWeightKg = step.requiredWeightKg,
@@ -3173,19 +3180,56 @@ private fun WeightDialog(
                     enabled = !working,
                 )
                 OutlinedButton(
-                    onClick = {
-                        clearPhotoEvidence()
-                        launchEvidenceCamera()
-                    },
+                    onClick = { launchEvidenceCamera() },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !working,
+                    enabled = !working && photos.size < MAX_WEIGHT_PHOTOS,
                 ) {
                     Icon(Icons.Default.CameraAlt, null)
                     Spacer(Modifier.width(6.dp))
-                    Text(if (photoUri == null) "拍摄电子秤读数" else "重新拍摄")
+                    Text(
+                        when {
+                            photos.size >= MAX_WEIGHT_PHOTOS -> "已拍满 $MAX_WEIGHT_PHOTOS 张"
+                            photos.isEmpty() -> "拍摄证据照片（电子秤读数 / 包装）"
+                            else -> "继续拍摄（${photos.size}/$MAX_WEIGHT_PHOTOS）"
+                        }
+                    )
+                }
+                if (photos.isNotEmpty()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        photos.forEachIndexed { index, photo ->
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                val thumbnail = remember(photo.photoUri) { decodeThumbnail(photo.photoFile) }
+                                if (thumbnail != null) {
+                                    Image(
+                                        bitmap = thumbnail.asImageBitmap(),
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(64.dp)
+                                            .clip(RoundedCornerShape(6.dp)),
+                                    )
+                                } else {
+                                    Box(modifier = Modifier.size(64.dp), contentAlignment = Alignment.Center) {
+                                        Text("照片 ${index + 1}", fontSize = 11.sp, color = Muted)
+                                    }
+                                }
+                                TextButton(
+                                    onClick = {
+                                        if (!working) {
+                                            photos = photos.filterIndexed { itemIndex, _ -> itemIndex != index }
+                                        }
+                                    },
+                                    enabled = !working,
+                                ) {
+                                    Icon(Icons.Default.Delete, null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(2.dp))
+                                    Text("删除", fontSize = 12.sp)
+                                }
+                            }
+                        }
+                    }
                 }
                 if (working) Text("正在处理照片...", color = Muted)
-                Text(photoName, color = Muted, fontSize = 13.sp, maxLines = 1)
+                Text("已拍 ${photos.size}/$MAX_WEIGHT_PHOTOS 张，至少 1 张", color = Muted, fontSize = 13.sp)
                 result?.let { Text(it, color = if (result?.startsWith("称重通过") == true) Green else Color(0xFFC7473C), fontSize = 14.sp) }
                 error?.let { Text(it, color = Color(0xFFC7473C), fontSize = 14.sp) }
             }
@@ -3198,11 +3242,22 @@ private fun WeightDialog(
                         error = "请输入正确的电子秤读数"
                         return@Button
                     }
+                    if (photos.isEmpty()) {
+                        error = "请至少拍摄 1 张证据照片"
+                        return@Button
+                    }
                     working = true
                     error = null
                     result = null
                     scope.launch {
-                        runCatching { repository.submitStepWeight(order.orderNo, step.stepNo, weight, photoUri ?: "") }
+                        runCatching {
+                            repository.submitStepWeight(
+                                order.orderNo,
+                                step.stepNo,
+                                weight,
+                                photos.map { it.photoUri },
+                            )
+                        }
                             .onSuccess { submitResult ->
                                 result = submitResult.message
                                 clearPhotoEvidence()
@@ -3215,7 +3270,7 @@ private fun WeightDialog(
                             .also { working = false }
                     }
                 }
-            }, enabled = !working && photoUri != null && weightText.isNotBlank()) { Text("提交称重") }
+            }, enabled = !working && photos.isNotEmpty() && weightText.isNotBlank()) { Text("提交称重") }
         },
         dismissButton = { TextButton(onClick = { if (!working) onDismiss() }) { Text("取消") } },
     )

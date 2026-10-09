@@ -1,4 +1,5 @@
 import hashlib
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -222,11 +223,27 @@ class WeighingAttempt(Base):
     work_order_step_id: Mapped[int] = mapped_column(ForeignKey("work_order_steps.id"), nullable=False, index=True)
     weight_kg: Mapped[float] = mapped_column(Float, nullable=False)
     weight_source: Mapped[str] = mapped_column(String(32), nullable=False, default="manual")
+    # 第一张证据照片。保留单值列以兼容既有读模型与旧客户端（DEC-057）。
     scale_photo_file_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    # 全部证据照片（有序 JSON 字符串数组，1~3 张）。见 BL-WEIGH-PHOTO-001。
+    scale_photo_file_ids_json: Mapped[str] = mapped_column(String(2000), nullable=False, default="[]")
     passed: Mapped[bool] = mapped_column(Boolean, nullable=False)
     created_by: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
     step: Mapped[WorkOrderStep] = relationship(back_populates="weighing_attempts")
+
+    def scale_photo_ids(self) -> list[str]:
+        """返回该次称重的证据照片列表；空集合时回退到单值列（兼容迁移前数据）。"""
+        try:
+            ids = json.loads(self.scale_photo_file_ids_json or "[]")
+        except (TypeError, ValueError):
+            ids = []
+        if not isinstance(ids, list):
+            ids = []
+        clean = [item for item in ids if isinstance(item, str) and item]
+        if not clean and self.scale_photo_file_id:
+            clean = [self.scale_photo_file_id]
+        return clean
 
 
 class PrintBatch(Base):
@@ -324,6 +341,7 @@ def initialize_database() -> None:
     _migrate_user_account_columns(engine)
     _migrate_evidence_file_columns(engine)
     _migrate_type_confirmation_columns(engine)
+    _migrate_weighing_attempt_columns(engine)
     _migrate_backup_record_columns(engine)
     _migrate_work_order_request_pending_index(engine)
     _migrate_audit_log_columns(engine)
@@ -346,6 +364,33 @@ def initialize_database() -> None:
         for key, value in defaults.items():
             if db.query(SystemSetting).filter(SystemSetting.key == key).count() == 0:
                 db.add(SystemSetting(key=key, value=value))
+
+
+def _migrate_weighing_attempt_columns(engine) -> None:
+    """新增称重证据照片集合列，并把既有单张照片回填为集合（幂等）。"""
+    with engine.begin() as connection:
+        rows = connection.exec_driver_sql("PRAGMA table_info(weighing_attempts)").fetchall()
+        columns = {row[1] for row in rows}
+        if "scale_photo_file_ids_json" not in columns:
+            connection.exec_driver_sql(
+                "ALTER TABLE weighing_attempts ADD COLUMN scale_photo_file_ids_json VARCHAR(2000) NOT NULL DEFAULT '[]'"
+            )
+        backfill = connection.exec_driver_sql(
+            "SELECT id, scale_photo_file_id, scale_photo_file_ids_json FROM weighing_attempts"
+        ).fetchall()
+        for attempt_id, single, ids_json in backfill:
+            try:
+                current = json.loads(ids_json) if ids_json else []
+            except (TypeError, ValueError):
+                current = []
+            if not isinstance(current, list):
+                current = []
+            current = [item for item in current if isinstance(item, str) and item]
+            if not current and single:
+                connection.exec_driver_sql(
+                    "UPDATE weighing_attempts SET scale_photo_file_ids_json = ? WHERE id = ?",
+                    (json.dumps([single]), attempt_id),
+                )
 
 
 def _migrate_user_account_columns(engine) -> None:

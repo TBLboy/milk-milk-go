@@ -193,6 +193,18 @@ def _filter_business_data(database_path: Path, retention_months: int, now: datet
                         step_ids,
                     ).fetchall()
                 }
+                for (ids_json,) in connection.execute(
+                    f"SELECT scale_photo_file_ids_json FROM weighing_attempts WHERE work_order_step_id IN ({step_placeholders})",
+                    step_ids,
+                ).fetchall():
+                    try:
+                        extra_ids = json.loads(ids_json) if ids_json else []
+                    except (TypeError, ValueError):
+                        extra_ids = []
+                    if isinstance(extra_ids, list):
+                        expired_file_ids |= {
+                            item for item in extra_ids if isinstance(item, str) and item
+                        }
                 connection.execute(
                     f"DELETE FROM type_confirmations WHERE work_order_step_id IN ({step_placeholders})",
                     step_ids,

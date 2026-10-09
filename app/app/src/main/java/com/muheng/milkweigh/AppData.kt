@@ -153,7 +153,7 @@ interface MilkRepository {
     suspend fun confirmStepQr(orderNo: String, stepNo: Int, labelId: String, materialId: String, evidenceUri: String): WorkOrder
     suspend fun requestStepPhotoApproval(orderNo: String, stepNo: Int, reason: String, evidenceUri: String): WorkOrder
     suspend fun approveStepPhotoApproval(orderNo: String, stepNo: Int): WorkOrder
-    suspend fun submitStepWeight(orderNo: String, stepNo: Int, weightKg: Double, evidenceUri: String): WeightSubmitResult
+    suspend fun submitStepWeight(orderNo: String, stepNo: Int, weightKg: Double, evidenceUris: List<String>): WeightSubmitResult
     suspend fun requestTakeover(orderNo: String, reason: String): WorkOrder
     suspend fun requestCancel(orderNo: String, reason: String): WorkOrder
     suspend fun completeWorkOrder(orderNo: String): WorkOrder
@@ -753,7 +753,7 @@ class MockMilkRepository : MilkRepository {
         return updated
     }
 
-    override suspend fun submitStepWeight(orderNo: String, stepNo: Int, weightKg: Double, evidenceUri: String): WeightSubmitResult {
+    override suspend fun submitStepWeight(orderNo: String, stepNo: Int, weightKg: Double, evidenceUris: List<String>): WeightSubmitResult {
         val index = orderStore.indexOfFirst { it.orderNo == orderNo }
         if (index < 0) error("工单不存在")
         val order = orderStore[index]
@@ -769,7 +769,8 @@ class MockMilkRepository : MilkRepository {
                 order = order,
             )
         }
-        if (evidenceUri.isBlank()) error("请拍摄电子秤读数照片")
+        if (evidenceUris.isEmpty()) error("请拍摄证据照片")
+        if (evidenceUris.size > 3) error("最多拍摄 3 张证据照片")
         val steps = order.steps.map { if (it.stepNo == stepNo) it.copy(status = StepStatus.COMPLETED) else it }
         val updated = order.copy(
             steps = steps,

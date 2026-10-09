@@ -243,23 +243,37 @@ def _validate_database(database_path: Path, uploads_dir: Path, target_data_dir: 
                 if expected_hash and _sha256_file(source) != expected_hash:
                     raise RestoreError(f"证据文件哈希不一致：{file_id}")
 
+            json_reference_columns = {
+                ("bug_reports", "image_file_ids_json"),
+                ("weighing_attempts", "scale_photo_file_ids_json"),
+            }
             reference_queries = [
                 ("users", "avatar_file_id"),
                 ("material_images", "file_id"),
                 ("product_images", "file_id"),
                 ("type_confirmations", "evidence_file_id"),
                 ("weighing_attempts", "scale_photo_file_id"),
+                ("weighing_attempts", "scale_photo_file_ids_json"),
                 ("bug_reports", "image_file_ids_json"),
             ]
             for table, column in reference_queries:
                 if table not in tables:
                     continue
+                # 旧备份可能缺少新列（如照片集合），缺少时跳过而不是报错。
+                existing_columns = {
+                    row[1] for row in connection.execute(f"PRAGMA table_info({table})").fetchall()
+                }
+                if column not in existing_columns:
+                    continue
                 for (value,) in connection.execute(f'SELECT {column} FROM {table} WHERE {column} IS NOT NULL'):
-                    if table == "bug_reports":
+                    if (table, column) in json_reference_columns:
+                        label = "BUG 反馈图片" if table == "bug_reports" else "称重证据照片"
                         try:
                             refs = json.loads(value)
                         except (TypeError, json.JSONDecodeError) as exc:
-                            raise RestoreError("BUG 反馈图片引用格式无效") from exc
+                            raise RestoreError(f"{label}引用格式无效") from exc
+                        if not isinstance(refs, list):
+                            raise RestoreError(f"{label}引用格式无效")
                     else:
                         refs = [value]
                     for file_id in refs:

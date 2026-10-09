@@ -57,6 +57,7 @@ def order_view(order: WorkOrder, users: dict[int, User] | None = None) -> dict:
                 "weight_kg": item.weight_kg,
                 "weight_source": item.weight_source,
                 "scale_photo_file_id": item.scale_photo_file_id,
+                "scale_photo_file_ids": item.scale_photo_ids(),
                 "passed": item.passed,
                 "created_at": item.created_at.isoformat() if item.created_at else None,
             } for item in step.weighing_attempts],
@@ -352,6 +353,12 @@ def complete_work_order(
             )
         if any(step.status != "completed" for step in order.steps):
             raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_STEPS_INCOMPLETE", "message": "所有辅料步骤完成前不能提交工单"})
+        for step in order.steps:
+            if not step.weighing_attempts or any(not attempt.scale_photo_ids() for attempt in step.weighing_attempts):
+                raise HTTPException(
+                    status_code=409,
+                    detail={"code": "WORK_ORDER_EVIDENCE_INCOMPLETE", "message": "存在称重步骤缺少证据照片，不能提交工单"},
+                )
         result = db.execute(
             update(WorkOrder)
             .where(WorkOrder.id == order.id, WorkOrder.status == "in_progress")
