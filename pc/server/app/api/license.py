@@ -36,6 +36,7 @@ def _status_payload(service) -> dict:
         "days_remaining": result.days_remaining,
         "grace_days_remaining": result.grace_days_remaining,
         "warn": result.warn,
+        "warn_node": result.warn_node,
         "warn_days": state.WARN_DAYS,
         "warn_nodes": list(state.WARN_NODES),
         "grace_days": state.GRACE_DAYS,

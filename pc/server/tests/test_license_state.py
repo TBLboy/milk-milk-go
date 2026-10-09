@@ -358,6 +358,47 @@ def test_service_flags_forward_jump_and_recovers_via_unlock():
     assert store.read_merged()["max_seen_time"] == T0 + timedelta(days=5)
 
 
+# ── 到期提醒节点（BL-LICENSE-012：30/15/7/3/1 必须可审计） ─────
+
+
+@pytest.mark.parametrize(
+    "days,expected",
+    [(40, None), (31, None), (30, 30), (25, 30), (16, 30), (15, 15), (12, 15), (8, 15), (7, 7), (5, 7), (4, 7), (3, 3), (2, 3), (1, 1), (0, 1)],
+)
+def test_warn_node_thresholds(days, expected):
+    assert state.current_warn_node(days) == expected
+
+
+def test_status_reports_warn_node_only_while_active():
+    active = status_at(T0 + timedelta(days=50), {"trial_start": T0, "max_seen_time": T0})
+    assert active.mode == state.MODE_ACTIVE
+    assert active.warn_node == 15
+
+    locked = status_at(T0 + timedelta(days=100), {"trial_start": T0, "max_seen_time": T0})
+    assert locked.mode == state.MODE_LOCKED
+    assert locked.warn_node is None
+
+
+def test_service_warn_node_transition_emits_once_per_node():
+    """提醒节点必须可审计，且同一节点不重复写入（进程内跃迁去重）。"""
+    from milk_license.service import LicenseService
+
+    store = LicenseStore([MemoryBackend("mem")])
+    clock = {"now": T0}
+    service = LicenseService(store=store, public_key=PUBLIC, now_fn=lambda: clock["now"], cache_ttl=0)
+
+    assert service.status(force=True).warn_node is None  # 距到期 2 个月，未进入提醒窗口
+    assert service.warn_node_transition() is None
+
+    clock["now"] = T0 + timedelta(days=50)  # 剩余 9 天 → 节点 15
+    assert service.warn_node_transition() == 15
+    assert service.warn_node_transition() is None
+
+    clock["now"] = T0 + timedelta(days=55)  # 剩余 4 天 → 节点 7
+    assert service.warn_node_transition() == 7
+    assert service.warn_node_transition() is None
+
+
 def test_service_still_blocks_rollback_after_normal_running():
     """正常运行时回拨仍被拦截：不得因为 F4 的修复而削弱防回拨。"""
     from milk_license.service import LicenseService

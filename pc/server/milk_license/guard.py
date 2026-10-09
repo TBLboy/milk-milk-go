@@ -87,8 +87,19 @@ class LicenseGuard:
                         "license.clock_anomaly",
                         {"mode": mode, "effective_now": status.effective_now, "path": path},
                     )
+                warn_node = self.service.warn_node_transition()
+                if warn_node is not None:
+                    self.audit(
+                        "license.warn",
+                        {
+                            "mode": mode,
+                            "node_days": warn_node,
+                            "days_remaining": status.days_remaining,
+                            "path": path,
+                        },
+                    )
         except Exception:  # noqa: BLE001
-            logger.exception("时钟异常审计写入失败")
+            logger.exception("授权审计写入失败")
 
         error = policy.check(path, method, mode)
         if error is None:

@@ -22,8 +22,10 @@ TRIAL_MONTHS = 2
 WARN_DAYS = 30
 GRACE_DAYS = 15
 WARN_NODES = (30, 15, 7, 3, 1)
-# 单次前向跳变上限：超过即判定为时钟异常，不把异常未来时间吸收为「已见最大时间」
-# （否则主板电池失效等导致的时间跳变会造成永久锁定，ALIGN-015/F4）
+# 单次前向跳变上限：超过即判定为时钟异常（标记 clock_anomaly_detected + 写审计
+# license.clock_anomaly）。注意：异常时间**仍会被吸收**为「已见最大时间」，
+# 不按上限截断 —— 若只按上限推进，已锁定的客户把时钟调回上限之后即可重新
+# 变成 active，等于绕过整个授权机制（ALIGN-015/F4、DEC-067）。
 MAX_FORWARD_JUMP_DAYS = 7
 
 MODE_ACTIVE = "active"
@@ -51,6 +53,7 @@ class LicenseStatus:
     days_remaining: int
     grace_days_remaining: int
     warn: bool
+    warn_node: int | None
     clock_rollback_detected: bool
     clock_anomaly_detected: bool
     effective_now: str
@@ -63,6 +66,17 @@ class LicenseStatus:
 def _days_between(later: datetime, earlier: datetime) -> int:
     """向下取整的天数差；同日内为 0。"""
     return max(0, (later - earlier).days)
+
+
+def current_warn_node(days_remaining: int, warn_nodes: tuple[int, ...] = WARN_NODES) -> int | None:
+    """当前所在的到期提醒节点（BL-LICENSE-012 要求可审计的 30/15/7/3/1）。
+
+    返回满足 ``days_remaining <= node`` 的**最小**节点；尚未进入提醒窗口返回 None。
+    """
+    for node in sorted(warn_nodes):
+        if days_remaining <= node:
+            return node
+    return None
 
 
 def evaluate(
@@ -142,6 +156,7 @@ def evaluate(
         days_remaining=days_remaining,
         grace_days_remaining=grace_remaining,
         warn=mode == MODE_ACTIVE and days_remaining <= warn_days,
+        warn_node=current_warn_node(days_remaining) if mode == MODE_ACTIVE else None,
         clock_rollback_detected=rollback,
         clock_anomaly_detected=anomaly,
         effective_now=effective_now.isoformat().replace("+00:00", "Z"),

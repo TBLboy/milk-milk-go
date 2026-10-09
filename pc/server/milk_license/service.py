@@ -37,6 +37,7 @@ class LicenseService:
         self._last_mode: str | None = None
         self._last_rollback = False
         self._last_anomaly = False
+        self._last_warn_node: int | None = None
 
     # ── 内部 ──────────────────────────────────────────────────
 
@@ -123,6 +124,19 @@ class LicenseService:
             if not detected:
                 self._last_anomaly = False
         return False
+
+    def warn_node_transition(self) -> int | None:
+        """返回刚跨入的到期提醒节点（30/15/7/3/1），仅在节点变化时返回（BL-LICENSE-012）。
+
+        语义说明：按进程内跃迁去重；进程重启后若仍处于提醒窗口，会再记录一次该节点
+        （审计日志因此可能包含重复节点，但不会漏记）。
+        """
+        node = self.status().warn_node
+        with self._lock:
+            if node != self._last_warn_node:
+                self._last_warn_node = node
+                return node
+        return None
 
     def unlock(self, code: str) -> state.LicenseStatus:
         """校验解锁码并写入授权；验签失败抛 codec.LicenseError。"""

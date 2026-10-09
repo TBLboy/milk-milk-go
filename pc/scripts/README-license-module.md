@@ -1,4 +1,4 @@
-# milk_license 原生模块构建与安装器集成（TASK-159 / DEC-062）
+﻿# milk_license 原生模块构建与安装器集成（TASK-159 / DEC-062）
 
 本目录的 `build-license-module.sh` 把 `pc/server/milk_license` 的每个子模块用
 **Nuitka** 编译成 Windows 原生扩展（`.pyd`），使交付物不再包含可读的授权校验
@@ -39,7 +39,7 @@ bash pc/scripts/build-license-module.sh
    只留 `__init__.py` + `.pyd`，然后执行
    `python -c "from milk_license import codec, state, policy, service, guard, keys, store; print('ok')"`
    与 `pytest tests/test_license_ed25519.py tests/test_license_state.py`
-   （应为 **54 passed**）。
+   （应**全部通过**（N passed，无 failed/error））。
 
 ### 产物（默认位置 `<repo>/.build/license-module/milk_license/`）
 

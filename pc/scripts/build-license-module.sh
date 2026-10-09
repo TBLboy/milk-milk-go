@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 # build-license-module.sh —— 将 pc/server/milk_license 编译为原生扩展（Windows .pyd）
 #
 # 目的（TASK-159 / DEC-062）：
@@ -25,7 +25,7 @@
 #   MILK_PYTHON                    指定 Python 解释器（默认 <repo>/.venv/Scripts/python.exe）
 #   MILK_UV                        指定 uv 可执行文件（默认从 PATH 查找 uv）
 #   MILK_LICENSE_BUILD_WORKDIR     指定纯 ASCII 编译工作目录
-#   MILK_LICENSE_SKIP_VERIFY=1     跳过构建后的自检（import + 54 例测试）
+#   MILK_LICENSE_SKIP_VERIFY=1     跳过构建后的自检（import + 全部授权测试）
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -154,7 +154,7 @@ MANIFEST="$OUT_DIR/MANIFEST.txt"
 echo "==> 清单: $MANIFEST"
 cat "$MANIFEST"
 
-# ── 自检：移除源码后 import + 54 例测试必须通过 ────────────────
+# ── 自检：移除源码后 import + 全部授权测试必须通过 ────────────────
 if [[ "${MILK_LICENSE_SKIP_VERIFY:-0}" == "1" ]]; then
   echo "==> MILK_LICENSE_SKIP_VERIFY=1，跳过自检"
   exit 0
@@ -182,8 +182,8 @@ ls -la "$VERIFY_DIR/milk_license"
 echo "--- import 自检 ---"
 (cd "$VERIFY_DIR" && "$PYTHON" -c "from milk_license import codec, state, policy, service, guard, keys, store; print('ok')")
 
-echo "--- pytest 自检（应 54 passed）---"
-# 不加 -q：pyproject 已配置 addopts=-q，单次 -q 会保留 "54 passed" 汇总行。
+echo "--- pytest 自检（应全部通过）---"
+# 不加 -q：pyproject 已配置 addopts=-q，单次 -q 会保留 "N passed" 汇总行。
 (cd "$VERIFY_DIR" && "$PYTHON" -m pytest tests/test_license_ed25519.py tests/test_license_state.py)
 
 echo "==> 完成：产物位于 $OUT_DIR/milk_license"
