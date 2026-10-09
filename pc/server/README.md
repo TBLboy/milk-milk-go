@@ -20,6 +20,20 @@ cd pc\server
 
 默认数据目录为 `pc/data/`（由 `app/core/config.py` 的 `PROJECT_ROOT` 决定），可通过环境变量 `MILK_DATA_DIR` 覆盖。
 
+## 数据库连接池
+
+同步端点在 anyio 线程池（默认 40 线程）中执行。SQLAlchemy 对 SQLite 的默认连接池为
+`pool_size=5` + `max_overflow=10`（共 15 个连接），并发超过该值时请求会在连接池排队，
+持续过载会在 `pool_timeout`（30s）后抛 `sqlalchemy.exc.TimeoutError` 并返回 500。
+
+默认已调整为与线程池匹配的容量，可用环境变量覆盖：
+
+```env
+MILK_DB_POOL_SIZE=20
+MILK_DB_MAX_OVERFLOW=20
+MILK_DB_POOL_TIMEOUT=30
+```
+
 ## BUG 反馈邮件
 
 BUG 反馈固定发送到 `1218740205@qq.com`。发件账号需要在 `pc/server/.env` 中配置，授权码不会提交到 Git：
