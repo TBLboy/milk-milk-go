@@ -1,8 +1,10 @@
+import secrets
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import case, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.auth import current_user, require_admin
@@ -93,6 +95,16 @@ def _load_order(db: Session, order_no: str) -> WorkOrder | None:
     return db.scalar(_load_step_evidence(select(WorkOrder)).where(WorkOrder.order_no == order_no))
 
 
+def generate_order_no(now: datetime) -> str:
+    """生成工单编号：时间戳 + 毫秒 + 随机后缀。
+
+    ``order_no`` 有唯一约束。若只用时间戳（秒+毫秒），同一毫秒内的并发创建会
+    生成相同编号，导致 UNIQUE 约束失败。随机后缀与标签/证据文件的做法一致，
+    使并发创建不再撞号。
+    """
+    return f"WO-{now.strftime('%Y%m%d%H%M%S')}-{now.microsecond // 1000:03d}-{secrets.token_hex(3)}"
+
+
 @router.post("", status_code=status.HTTP_201_CREATED)
 def create_work_order(body: WorkOrderInput, user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
     product = db.scalar(select(Product).options(selectinload(Product.recipe).selectinload(Recipe.items).selectinload(RecipeItem.material)).where(Product.id == body.product_id, Product.enabled.is_(True)))
@@ -102,13 +114,18 @@ def create_work_order(body: WorkOrderInput, user: User = Depends(current_user), 
     if operator_id != user.id and db.scalar(select(User).where(User.id == operator_id, User.role == "operator", User.is_active.is_(True))) is None:
         raise HTTPException(status_code=422, detail={"code": "OPERATOR_NOT_FOUND", "message": "指定操作员不存在或不可用"})
     now = datetime.now(timezone.utc)
-    order = WorkOrder(order_no=f"WO-{now.strftime('%Y%m%d%H%M%S')}-{now.microsecond // 1000:03d}", product_name_snapshot=product.name, target_weight_kg=body.target_weight_kg, status="approved" if user.role == "admin" else "pending_approval", operator_id=operator_id if user.role == "admin" else None, created_by=user.id)
+    order = WorkOrder(order_no=generate_order_no(now), product_name_snapshot=product.name, target_weight_kg=body.target_weight_kg, status="approved" if user.role == "admin" else "pending_approval", operator_id=operator_id if user.role == "admin" else None, created_by=user.id)
     tons = body.target_weight_kg / 1000
     tolerance_percent = _setting_float(db, "default_tolerance_percent", 1.0)
     min_absolute_kg = _setting_float(db, "min_absolute_tolerance_grams", 5.0) / 1000
     order.steps = [WorkOrderStep(step_no=index + 1, material_id_snapshot=item.material.material_id, material_code_snapshot=item.material.material_code, material_name_snapshot=item.material.name_zh, required_weight_kg=round(item.quantity_per_ton_kg * tons, 6), tolerance_kg=max(round(item.quantity_per_ton_kg * tons * tolerance_percent / 100, 6), min_absolute_kg)) for index, item in enumerate(product.recipe.items)]
     db.add(order)
-    db.flush()
+    try:
+        db.flush()
+    except IntegrityError as exc:
+        # 随机后缀已使撞号概率极低；此处兜底，避免泄漏为 500。
+        db.rollback()
+        raise HTTPException(status_code=409, detail={"code": "WORK_ORDER_NO_CONFLICT", "message": "工单编号生成冲突，请重试"}) from exc
     write_audit(
         db,
         actor_id=user.id,

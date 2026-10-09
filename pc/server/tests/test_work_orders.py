@@ -171,3 +171,46 @@ def test_cancelled_orders_are_sorted_last(client):
     statuses = [item["status"] for item in listed]
     assert statuses == ["approved", "cancelled"]
     assert listed[0]["order_no"] == active["order_no"]
+
+
+def test_order_numbers_are_unique_for_identical_timestamp():
+    """回归：同毫秒生成工单号必须互不相同（曾因只用时间戳+毫秒而产生 UNIQUE 冲突）。"""
+    from datetime import datetime, timezone
+
+    from app.api.work_orders import generate_order_no
+
+    now = datetime(2026, 10, 9, 8, 15, 6, 214000, tzinfo=timezone.utc)
+    numbers = {generate_order_no(now) for _ in range(2000)}
+
+    assert len(numbers) == 2000
+    assert all(number.startswith("WO-20261009081506-214-") for number in numbers)
+    assert all(len(number) <= 40 for number in numbers)
+
+
+def test_concurrent_order_creation_produces_unique_order_numbers(client):
+    """回归：并发建单不再撞号（此前同毫秒并发会 IntegrityError → 500）。"""
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    headers = admin_headers(client)
+    product_id = create_product(client, headers)
+    workers = 16
+    barrier = threading.Barrier(workers)
+
+    def create(_index: int):
+        barrier.wait()
+        return client.post(
+            "/api/v1/work-orders",
+            headers=headers,
+            json={"product_id": product_id, "target_weight_kg": 1000},
+        )
+
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        responses = list(executor.map(create, range(workers)))
+
+    failures = [(r.status_code, r.text[:200]) for r in responses if r.status_code != 201]
+    assert not failures, f"并发建单出现失败：{failures}"
+
+    order_numbers = [response.json()["order_no"] for response in responses]
+    assert len(set(order_numbers)) == workers
+    assert all(len(number) <= 40 for number in order_numbers)
