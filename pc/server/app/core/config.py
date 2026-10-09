@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     smtp_use_ssl: bool = True
     smtp_username: str | None = None
     smtp_password: str | None = None
+    # 数据库连接池容量。同步端点在 anyio 线程池（默认 40）中执行，连接池过小会成为
+    # 并发瓶颈（请求排队、延迟升高）。默认让 pool_size + max_overflow 与线程池匹配。
+    db_pool_size: int = 20
+    db_max_overflow: int = 20
+    db_pool_timeout: int = 30
 
     model_config = SettingsConfigDict(env_prefix="MILK_", env_file=".env", extra="ignore")
 
