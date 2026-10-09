@@ -20,7 +20,7 @@ def admin_headers(client):
     return {"Authorization": f"Bearer {token}"}
 
 
-def create_source_backup(client) -> tuple[Path, str, str, str]:
+def create_source_backup(client) -> tuple[Path, str, str, list[str]]:
     headers = admin_headers(client)
     material = client.post(
         "/api/v1/master-data/materials",
@@ -55,22 +55,26 @@ def create_source_backup(client) -> tuple[Path, str, str, str]:
     )
     assert qr.status_code == 200
 
-    scale_file = client.post(
-        "/api/v1/evidence/files",
-        headers=headers,
-        files={"file": ("scale.jpg", b"restore-scale-evidence", "image/jpeg")},
-    ).json()["file_id"]
+    scale_files = []
+    for index in range(3):
+        scale_files.append(
+            client.post(
+                "/api/v1/evidence/files",
+                headers=headers,
+                files={"file": (f"scale{index}.jpg", f"restore-scale-evidence-{index}".encode(), "image/jpeg")},
+            ).json()["file_id"]
+        )
     weight = client.post(
         f"/api/v1/evidence/work-orders/{order['order_no']}/steps/1/weight",
         headers=headers,
-        json={"weight_kg": 10, "scale_photo_file_id": scale_file},
+        json={"weight_kg": 10, "scale_photo_file_ids": scale_files},
     )
     assert weight.status_code == 200
 
     backup_response = client.post("/api/v1/operations/backups", headers=headers)
     assert backup_response.status_code == 200
     backup = client.get("/api/v1/operations/backups", headers=headers).json()[0]
-    return Path(backup["file_path"]), order["order_no"], qr_file, scale_file
+    return Path(backup["file_path"]), order["order_no"], qr_file, scale_files
 
 
 def create_current_target_state(data_dir: Path) -> None:
@@ -89,7 +93,7 @@ def target_marker(data_dir: Path) -> str:
 
 
 def test_restore_into_clean_environment_and_open_history(client, tmp_path):
-    archive, order_no, qr_file, scale_file = create_source_backup(client)
+    archive, order_no, qr_file, scale_files = create_source_backup(client)
     target_data = tmp_path / "Clean Restore Data"
     create_current_target_state(target_data)
 
@@ -124,19 +128,28 @@ def test_restore_into_clean_environment_and_open_history(client, tmp_path):
             "SELECT COUNT(*) FROM type_confirmations WHERE evidence_file_id = ?", (qr_file,)
         ).fetchone()[0] == 1
         assert connection.execute(
-            "SELECT COUNT(*) FROM weighing_attempts WHERE scale_photo_file_id = ?", (scale_file,)
+            "SELECT COUNT(*) FROM weighing_attempts WHERE scale_photo_file_id = ?", (scale_files[0],)
         ).fetchone()[0] == 1
+        restored_ids = json.loads(
+            connection.execute(
+                "SELECT scale_photo_file_ids_json FROM weighing_attempts WHERE scale_photo_file_id = ?",
+                (scale_files[0],),
+            ).fetchone()[0]
+        )
+        assert restored_ids == scale_files
         restored_audit = connection.execute(
             "SELECT action, result FROM audit_logs WHERE action = 'system.restored' ORDER BY id DESC LIMIT 1"
         ).fetchone()
         assert restored_audit == ("system.restored", "success")
+        placeholders = ", ".join("?" for _ in [qr_file, *scale_files])
         stored_paths = [
             row[0]
             for row in connection.execute(
-                "SELECT stored_path FROM evidence_files WHERE file_id IN (?, ?)", (qr_file, scale_file)
+                f"SELECT stored_path FROM evidence_files WHERE file_id IN ({placeholders})",
+                [qr_file, *scale_files],
             )
         ]
-    assert len(stored_paths) == 2
+    assert len(stored_paths) == 4
     assert all(Path(path).is_file() for path in stored_paths)
     assert all(Path(path).is_relative_to(target_data / "uploads") for path in stored_paths)
 
@@ -145,7 +158,8 @@ import sys
 from fastapi.testclient import TestClient
 from app.main import app
 
-order_no, qr_file, scale_file = sys.argv[1:4]
+order_no, qr_file = sys.argv[1:3]
+scale_files = sys.argv[3:]
 with TestClient(app) as client:
     login = client.post("/api/v1/auth/login", json={"username": "admin", "password": "admin123"})
     assert login.status_code == 200, login.text
@@ -154,14 +168,17 @@ with TestClient(app) as client:
     assert order.status_code == 200, order.text
     body = order.json()
     assert body["steps"][0]["confirmations"][0]["evidence_file_id"] == qr_file
-    assert body["steps"][0]["weighing_attempts"][0]["scale_photo_file_id"] == scale_file
+    attempt = body["steps"][0]["weighing_attempts"][0]
+    assert attempt["scale_photo_file_ids"] == scale_files, attempt
+    assert attempt["scale_photo_file_id"] == scale_files[0]
     assert client.get("/api/v1/evidence/files/" + qr_file, headers=headers).content == b"restore-qr-evidence"
-    assert client.get("/api/v1/evidence/files/" + scale_file, headers=headers).content == b"restore-scale-evidence"
+    for index, scale_file in enumerate(scale_files):
+        assert client.get("/api/v1/evidence/files/" + scale_file, headers=headers).content == f"restore-scale-evidence-{index}".encode()
 print("RESTORE_APP_OK")
 """
     environment = restore_environment
     completed = subprocess.run(
-        [sys.executable, "-c", script, order_no, qr_file, scale_file],
+        [sys.executable, "-c", script, order_no, qr_file, *scale_files],
         cwd=SERVER_DIR,
         env=environment,
         capture_output=True,
@@ -325,7 +342,7 @@ def test_interrupted_restore_journal_restores_original_on_startup(tmp_path):
 
 def test_restore_candidates_lists_backups(client):
     headers = admin_headers(client)
-    archive, order_no, qr_file, scale_file = create_source_backup(client)
+    archive, _, _, _ = create_source_backup(client)
 
     response = client.get("/api/v1/operations/restore/candidates", headers=headers)
     assert response.status_code == 200
@@ -359,7 +376,7 @@ def test_restore_api_rejects_path_traversal(client):
 
 def test_restore_api_restores_backup(client, tmp_path):
     headers = admin_headers(client)
-    archive, order_no, qr_file, scale_file = create_source_backup(client)
+    archive, _, _, _ = create_source_backup(client)
 
     response = client.post(
         "/api/v1/operations/restore",
@@ -380,7 +397,7 @@ def test_restore_api_restores_backup(client, tmp_path):
 
 def test_restore_api_records_audit_in_restored_database(client, tmp_path):
     headers = admin_headers(client)
-    archive, order_no, qr_file, scale_file = create_source_backup(client)
+    archive, _, _, _ = create_source_backup(client)
 
     response = client.post(
         "/api/v1/operations/restore",
