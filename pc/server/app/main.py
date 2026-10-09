@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import IntegrityError, OperationalError
 
 from app.api.health import router as health_router
 from app.api.auth import router as auth_router
@@ -71,6 +71,20 @@ async def database_operational_error(_request: Request, exc: OperationalError) -
     return JSONResponse(
         status_code=503,
         content={"detail": {"code": "DATABASE_UNAVAILABLE", "message": "数据库暂时不可用"}},
+    )
+
+
+@app.exception_handler(IntegrityError)
+async def database_integrity_error(_request: Request, _exc: IntegrityError) -> JSONResponse:
+    """兜底：未被端点显式处理的唯一约束/完整性冲突统一返回 409，而不是 500。
+
+    并发创建同名/同编号资源时，端点的「先查询后写入」预检存在 TOCTOU 窗口，
+    唯一约束会在写入时才失败。各端点仍可自行捕获并返回更精确的错误码，
+    此处只兜住其余情况，避免并发冲突泄漏为 500。
+    """
+    return JSONResponse(
+        status_code=409,
+        content={"detail": {"code": "DATA_CONFLICT", "message": "数据冲突，请刷新后重试"}},
     )
 
 

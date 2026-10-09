@@ -171,14 +171,30 @@ def list_materials(_: User = Depends(require_admin), db: Session = Depends(get_d
     return [material_view(item) for item in materials]
 
 
+def _next_material_id(db: Session) -> str:
+    return f"MAT-{db.query(Material).count() + 1:05d}"
+
+
 @router.post("/materials", status_code=status.HTTP_201_CREATED)
 def create_material(body: MaterialInput, user: User = Depends(require_admin), db: Session = Depends(get_db)) -> dict:
     if db.scalar(select(Material).where(Material.material_code == body.material_code)):
         raise HTTPException(status_code=409, detail={"code": "MATERIAL_CODE_EXISTS", "message": "辅料代号已存在"})
-    material = Material(material_id=f"MAT-{db.query(Material).count() + 1:05d}", material_code=body.material_code, name_zh=body.name_zh, name_en=body.name_en, shelf_life_months=body.shelf_life_months)
-    material.images = [MaterialImage(file_id=file_id, sort_order=index) for index, file_id in enumerate(body.image_file_ids)]
-    db.add(material)
-    db.flush()
+    # material_id 为「当前数量 + 1」的连续编号，并发创建会算出相同编号（唯一约束冲突）。
+    # 冲突时回滚并重新取号重试，避免并发创建失败。
+    material: Material | None = None
+    for attempt in range(5):
+        material = Material(material_id=_next_material_id(db), material_code=body.material_code, name_zh=body.name_zh, name_en=body.name_en, shelf_life_months=body.shelf_life_months)
+        material.images = [MaterialImage(file_id=file_id, sort_order=index) for index, file_id in enumerate(body.image_file_ids)]
+        db.add(material)
+        try:
+            db.flush()
+            break
+        except IntegrityError as exc:
+            db.rollback()
+            if db.scalar(select(Material).where(Material.material_code == body.material_code)) is not None:
+                raise HTTPException(status_code=409, detail={"code": "MATERIAL_CODE_EXISTS", "message": "辅料代号已存在"}) from exc
+            if attempt == 4:
+                raise HTTPException(status_code=409, detail={"code": "MATERIAL_ID_CONFLICT", "message": "辅料编号生成冲突，请重试"}) from exc
     write_audit(
         db,
         actor_id=user.id,

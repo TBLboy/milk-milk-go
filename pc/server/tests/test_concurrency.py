@@ -68,6 +68,19 @@ def _run_concurrently(worker, count):
         return list(executor.map(wrapped, range(count)))
 
 
+def _run_concurrently_until_one_wins(worker, count, attempts=3):
+    """并发执行；仅当整批无一成功（偶发数据库繁忙）时重跑，避免测试偶发失败。
+
+    只有当没有任何请求成功时才会重跑，因此不会改变「只推进一次」的语义。
+    """
+    responses = _run_concurrently(worker, count)
+    for _ in range(attempts - 1):
+        if any(response.status_code == 200 for response in responses):
+            return responses
+        responses = _run_concurrently(worker, count)
+    return responses
+
+
 def test_many_concurrent_qr_submissions_advance_step_once(client):
     """8 路并发提交同一步骤的二维码确认：仅 1 次推进，其余冲突，且只有 1 条确认记录。"""
     headers = admin_headers(client)
@@ -84,7 +97,7 @@ def test_many_concurrent_qr_submissions_advance_step_once(client):
             json=payload,
         )
 
-    responses = _run_concurrently(submit, 8)
+    responses = _run_concurrently_until_one_wins(submit, 8)
 
     assert sum(response.status_code == 200 for response in responses) == 1
     assert all(response.status_code in {200, 409, 503} for response in responses)
@@ -119,7 +132,7 @@ def test_many_concurrent_weight_submissions_create_one_attempt(client):
             json={"weight_kg": 10, "scale_photo_file_id": scale_photo_file_id},
         )
 
-    responses = _run_concurrently(submit, 8)
+    responses = _run_concurrently_until_one_wins(submit, 8)
 
     assert sum(response.status_code == 200 for response in responses) == 1
     assert all(response.status_code in {200, 409, 503} for response in responses)
@@ -146,3 +159,38 @@ def test_concurrent_evidence_uploads_store_distinct_files(client):
     assert not failures, f"并发上传出现失败：{failures}"
     file_ids = [response.json()["file_id"] for response in responses]
     assert len(set(file_ids)) == len(file_ids)
+
+
+def test_concurrent_material_creation_never_returns_500(client):
+    """并发创建辅料：不得出现 500，成功者 material_id 唯一。
+
+    material_id 为「当前数量 + 1」的连续编号，强并发下仍可能撞号；
+    端点在冲突时重试取号，重试用尽或其它完整性冲突必须返回结构化的 409，
+    绝不能泄漏为 500（回归 reviewer 发现的计数式编号并发缺陷）。
+    """
+    headers = admin_headers(client)
+
+    def create(index):
+        return client.post(
+            "/api/v1/master-data/materials",
+            headers=headers,
+            json={"material_code": f"MC{index:03d}", "name_zh": f"并发辅料{index}", "shelf_life_months": 24},
+        )
+
+    responses = _run_concurrently(create, 12)
+
+    server_errors = [(r.status_code, r.text[:200]) for r in responses if r.status_code >= 500]
+    assert not server_errors, f"并发创建辅料出现 5xx：{server_errors}"
+    assert all(r.status_code in {201, 409} for r in responses), [r.status_code for r in responses]
+
+    for response in responses:
+        if response.status_code == 409:
+            assert response.json()["detail"]["code"] in {
+                "MATERIAL_CODE_EXISTS",
+                "MATERIAL_ID_CONFLICT",
+                "DATA_CONFLICT",
+            }
+
+    material_ids = [r.json()["material_id"] for r in responses if r.status_code == 201]
+    assert material_ids, "并发创建辅料至少应有一个成功"
+    assert len(set(material_ids)) == len(material_ids)

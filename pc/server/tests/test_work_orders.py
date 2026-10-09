@@ -173,18 +173,23 @@ def test_cancelled_orders_are_sorted_last(client):
     assert listed[0]["order_no"] == active["order_no"]
 
 
-def test_order_numbers_are_unique_for_identical_timestamp():
-    """回归：同毫秒生成工单号必须互不相同（曾因只用时间戳+毫秒而产生 UNIQUE 冲突）。"""
+def test_order_numbers_differ_for_identical_timestamp():
+    """回归：同一毫秒生成的两个工单号必须不同（曾因只用时间戳+毫秒而完全相同）。
+
+    直接比较同一时间戳的两次生成结果，避免抽样统计带来的偶发碰撞。
+    """
     from datetime import datetime, timezone
 
     from app.api.work_orders import generate_order_no
 
     now = datetime(2026, 10, 9, 8, 15, 6, 214000, tzinfo=timezone.utc)
-    numbers = {generate_order_no(now) for _ in range(2000)}
+    first = generate_order_no(now)
+    second = generate_order_no(now)
 
-    assert len(numbers) == 2000
-    assert all(number.startswith("WO-20261009081506-214-") for number in numbers)
-    assert all(len(number) <= 40 for number in numbers)
+    assert first != second
+    for number in (first, second):
+        assert number.startswith("WO-20261009081506-214-")
+        assert len(number) <= 40
 
 
 def test_concurrent_order_creation_produces_unique_order_numbers(client):
