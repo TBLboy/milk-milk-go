@@ -56,21 +56,34 @@ def test_windows_installer_runs_bounded_smtp_self_test_after_service_start():
     ) in build_script
 
 
-def test_windows_installer_packages_demo_master_data_assets():
+def test_windows_installer_ships_no_demo_or_test_data():
+    """交付包必须保持干净：不打包演示素材，也不在安装时灌入演示数据。
+
+    演示种子（pc/server/seed.py 与 pc/packaging/windows/seed_install.py）只作为
+    开发期工具保留在仓库中；安装包与安装流程都不得引用它们。
+    """
     pc_root = Path(__file__).resolve().parents[2]
     build_script = (pc_root / "scripts" / "build-windows-installer.sh").read_text(
         encoding="utf-8"
     )
-    seed_installer = (
-        pc_root / "packaging" / "windows" / "seed_install.py"
-    ).read_text(encoding="utf-8")
-
-    assert 'DEMO_MATERIAL_IMAGE_IDS=(' in build_script
-    assert 'payload/server/demo_assets/uploads' in build_script.replace(
-        "$PAYLOAD_DIR/", "payload/"
+    installer = (pc_root / "packaging" / "windows" / "installer.nsi").read_text(
+        encoding="utf-8"
     )
-    assert 'MILK_DEMO_ASSETS_DIR' in seed_installer
-    assert build_script.count('"FILE-') == 10
+
+    # 只检查可执行内容，忽略注释（注释里会说明这些工具为何不再打包）
+    script_code = "\n".join(
+        line
+        for line in build_script.splitlines()
+        if not line.lstrip().startswith("#")
+    )
+
+    assert "DEMO_MATERIAL_IMAGE_IDS" not in script_code
+    assert "demo_assets" not in script_code
+    assert '"FILE-' not in script_code
+    assert "seed" not in script_code
+
+    assert "seed" not in installer
+    assert "demo" not in installer
 
 
 def test_windows_installer_offers_backup_path_page():

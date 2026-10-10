@@ -16,7 +16,9 @@ android {
         versionName = "1.0.17"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "BASE_URL", "\"http://192.168.1.100:8011/api/v1/\"")
+        // 交付版留空：强制客户首次启动时在登录页右上角 ⚙ 自行填写服务器地址，
+        // 避免把开发占位 IP 带进客户环境。
+        buildConfigField("String", "BASE_URL", "\"\"")
     }
 
     buildFeatures {

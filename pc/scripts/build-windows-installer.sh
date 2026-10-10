@@ -33,18 +33,10 @@ PYTHON_EMBED_URLS=(
 APP_VERSION="1.0.6"
 OUTPUT_STAGE="$BUILD_ROOT/MilkWeigh-Windows-Setup.exe"
 OUTPUT_RELEASE="$RELEASE_DIR/乍甸乳业辅料防错追溯系统-Windows-${APP_VERSION}-Setup.exe"
-DEMO_MATERIAL_IMAGE_IDS=(
-  "FILE-7f014209079f8bb72d1ffcc7"
-  "FILE-de3e92b165b028854881aed2"
-  "FILE-5e607996c8a06ceaca9ef951"
-  "FILE-ca585337246d195956b87179"
-  "FILE-92b5154561699d6f8e645d83"
-  "FILE-734589df56298ab824901c0a"
-  "FILE-45eeeef499a05d0f6927b4cc"
-  "FILE-3a172e22eb7ab931e58104f0"
-  "FILE-3b2fcd46ca0324c9fe2cd2cc"
-  "FILE-1b859f40464b081cec1d9836"
-)
+# 交付包不注入任何演示/测试数据：客户拿到的是干净数据库，只有 DB 初始化创建的
+# admin 初始账号（见 app/db/models.py 的 initialize_database）。
+# pc/server/seed.py 与 pc/packaging/windows/seed_install.py 仅作为开发期演示工具
+# 保留在仓库中，不再打包、也不再由安装器调用。
 
 mkdir -p "$BUILD_ROOT" "$PAYLOAD_DIR" "$CONFIG_STAGE" "$RELEASE_DIR"
 rm -rf "$PAYLOAD_DIR" "$CONFIG_STAGE" "$TOOLS_DIR"
@@ -91,24 +83,10 @@ mkdir -p "$PAYLOAD_DIR/server/milk_license"
 cp "$LICENSE_MODULE_DIR/__init__.py" "$PAYLOAD_DIR/server/milk_license/__init__.py"
 cp "$LICENSE_MODULE_DIR"/*.pyd "$PAYLOAD_DIR/server/milk_license/"
 
-cp "$PC_DIR/server/seed.py" "$PAYLOAD_DIR/server/seed.py"
 cp "$PC_DIR/server/restore_backup.py" "$PAYLOAD_DIR/server/restore_backup.py"
-cp "$PC_DIR/packaging/windows/seed_install.py" "$PAYLOAD_DIR/server/seed_install.py"
 cp "$PC_DIR/packaging/windows/MilkWeighService.py" "$PAYLOAD_DIR/server/MilkWeighService.py"
 cp "$PC_DIR/packaging/windows/smtp_test.py" "$PAYLOAD_DIR/server/smtp_test.py"
 cp "$PC_DIR/packaging/windows/restore_backup.ps1" "$PAYLOAD_DIR/server/restore_backup.ps1"
-mkdir -p "$PAYLOAD_DIR/server/demo_assets/uploads"
-for file_id in "${DEMO_MATERIAL_IMAGE_IDS[@]}"; do
-  source_dir="$PC_DIR/data/uploads/${file_id:0:8}"
-  mapfile -t matches < <(find "$source_dir" -maxdepth 1 -type f -name "${file_id}.*" -print)
-  if [[ "${#matches[@]}" -ne 1 ]]; then
-    echo "演示辅料图片缺失或重复：${file_id}" >&2
-    exit 1
-  fi
-  target_dir="$PAYLOAD_DIR/server/demo_assets/uploads/${file_id:0:8}"
-  mkdir -p "$target_dir"
-  cp "${matches[0]}" "$target_dir/"
-done
 find "$PAYLOAD_DIR/server" -type d -name "__pycache__" -prune -exec rm -rf {} +
 find "$PAYLOAD_DIR/server" -type f -name "*.pyc" -delete
 

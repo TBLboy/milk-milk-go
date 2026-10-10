@@ -151,7 +151,6 @@ Section "Install"
   ${EndIf}
 
   nsExec::ExecToLog 'icacls "$COMMONPROGRAMDATA\MilkWeigh" /inheritance:r /grant:r SYSTEM:(OI)(CI)F Administrators:(OI)(CI)F'
-  nsExec::ExecToLog '"$INSTDIR\python\python.exe" "$INSTDIR\server\seed_install.py"'
 
   ExecWait '"$INSTDIR\python\python.exe" "${SERVICE_SCRIPT}" install' $0
   nsExec::ExecToLog 'sc config MilkWeighBackend start= auto'

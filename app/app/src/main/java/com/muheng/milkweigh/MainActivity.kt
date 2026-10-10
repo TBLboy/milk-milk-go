@@ -700,6 +700,13 @@ private fun LoginScreen(repository: MilkRepository, sessionStore: SessionStore, 
                             Icon(Icons.Default.Settings, contentDescription = "服务器设置", tint = Muted)
                         }
                     }
+                    if (sessionStore.serverUrl().isBlank()) {
+                        Text(
+                            "首次使用：请先点击右上角 ⚙ 设置服务器地址",
+                            color = Muted,
+                            fontSize = if (layout.isCompact) 12.sp else 13.sp,
+                        )
+                    }
                     key(registerMode) {
                         Box {
                             OutlinedTextField(
