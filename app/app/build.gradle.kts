@@ -12,8 +12,8 @@ android {
         applicationId = "com.muheng.milkweigh"
         minSdk = 24
         targetSdk = 35
-        versionCode = 17
-        versionName = "1.0.16"
+        versionCode = 18
+        versionName = "1.0.17"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "BASE_URL", "\"http://192.168.1.100:8011/api/v1/\"")
