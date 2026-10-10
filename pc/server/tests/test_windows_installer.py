@@ -17,8 +17,8 @@ def test_windows_installer_preserves_existing_configuration():
     config_block = installer[config_block_start:config_block_end]
 
     overwrite_off = config_block.index("SetOverwrite off")
-    env_copy = config_block.index('File /nonfatal "${CONFIG_DIR}/.env"')
-    config_copy = config_block.index('File /r "${CONFIG_DIR}/*.*"')
+    env_copy = config_block.index('File /nonfatal "${CONFIG_ENV}"')
+    config_copy = config_block.index('File /r "${CONFIG_GLOB}"')
     overwrite_on = config_block.index(
         "SetOverwrite on",
         config_copy,
@@ -84,3 +84,42 @@ def test_windows_installer_offers_backup_path_page():
     assert 'backup_path.conf' in installer
     assert '!include "nsDialogs.nsh"' in installer
     assert '!include "LogicLib.nsh"' in installer
+
+
+def test_windows_installer_selects_path_separator_per_platform():
+    """The Windows build of makensis rejects "/" separators in File directives.
+
+    installer.nsi therefore defines the payload/config paths and their globs once
+    per platform and the section consumes only those defines.
+    """
+    pc_root = Path(__file__).resolve().parents[2]
+    installer = (pc_root / "packaging" / "windows" / "installer.nsi").read_text(
+        encoding="utf-8"
+    )
+    build_script = (pc_root / "scripts" / "build-windows-installer.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert "!ifdef WIN" in installer
+    for define in (
+        "PAYLOAD_DIR",
+        "CONFIG_DIR",
+        "PAYLOAD_GLOB",
+        "CONFIG_GLOB",
+        "CONFIG_ENV",
+    ):
+        assert installer.count("!define %s " % define) == 2, define
+
+    assert '!define PAYLOAD_GLOB "${PAYLOAD_DIR}\\*.*"' in installer
+    assert '!define PAYLOAD_GLOB "${PAYLOAD_DIR}/*.*"' in installer
+
+    assert 'File /r "${PAYLOAD_GLOB}"' in installer
+    assert 'File /nonfatal "${CONFIG_ENV}"' in installer
+    assert 'File /r "${CONFIG_GLOB}"' in installer
+
+    # installer.nsi is UTF-8 without a BOM, so the charset must be stated
+    # explicitly; on Windows the paths must be Windows-style and -DWIN must be
+    # passed so the backslash branch above is compiled in.
+    assert "-INPUTCHARSET UTF8" in build_script
+    assert 'MAKENSIS_PLATFORM="-DWIN"' in build_script
+    assert "cygpath -w" in build_script

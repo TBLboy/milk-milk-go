@@ -10,18 +10,37 @@ SetCompressorDictSize 32
 !ifndef ROOT_DIR
   !define ROOT_DIR "."
 !endif
+
+; The Windows build of makensis does not accept "/" as a path separator inside
+; File directives (the Linux build does). The separator is therefore selected at
+; compile time: pass -DWIN when compiling on Windows.
+!ifdef WIN
+  !define PAYLOAD_DIR "${ROOT_DIR}\payload"
+  !define CONFIG_DIR "${ROOT_DIR}\config"
+  !define PAYLOAD_GLOB "${PAYLOAD_DIR}\*.*"
+  !define CONFIG_GLOB "${CONFIG_DIR}\*.*"
+  !define CONFIG_ENV "${CONFIG_DIR}\.env"
+!else
+  !define PAYLOAD_DIR "${ROOT_DIR}/payload"
+  !define CONFIG_DIR "${ROOT_DIR}/config"
+  !define PAYLOAD_GLOB "${PAYLOAD_DIR}/*.*"
+  !define CONFIG_GLOB "${CONFIG_DIR}/*.*"
+  !define CONFIG_ENV "${CONFIG_DIR}/.env"
+!endif
+
 !ifndef OUT_FILE
   !define OUT_FILE "乍甸乳业辅料防错追溯系统-Windows-Setup.exe"
 !endif
 !ifndef APP_ICON
+!ifdef WIN
+  !define APP_ICON "${ROOT_DIR}\app.ico"
+!else
   !define APP_ICON "${ROOT_DIR}/app.ico"
+!endif
 !endif
 !ifndef APP_VERSION
   !define APP_VERSION "1.0.6"
 !endif
-
-!define PAYLOAD_DIR "${ROOT_DIR}/payload"
-!define CONFIG_DIR "${ROOT_DIR}/config"
 !define PRODUCT_NAME "乍甸乳业辅料防错追溯系统"
 !define PRODUCT_KEY "MilkWeigh"
 !define SERVICE_SCRIPT "$INSTDIR\server\MilkWeighService.py"
@@ -113,13 +132,13 @@ Section "Install"
   Call StopExistingService
 
   SetOutPath "$INSTDIR"
-  File /r "${PAYLOAD_DIR}/*.*"
+  File /r "${PAYLOAD_GLOB}"
   File "${APP_ICON}"
 
   SetOutPath "$COMMONPROGRAMDATA\MilkWeigh\config"
   SetOverwrite off
-  File /nonfatal "${CONFIG_DIR}/.env"
-  File /r "${CONFIG_DIR}/*.*"
+  File /nonfatal "${CONFIG_ENV}"
+  File /r "${CONFIG_GLOB}"
   SetOverwrite on
   CreateDirectory "$COMMONPROGRAMDATA\MilkWeigh\data"
   CreateDirectory "$COMMONPROGRAMDATA\MilkWeigh\logs"

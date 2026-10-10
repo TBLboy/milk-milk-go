@@ -8,6 +8,22 @@ PAYLOAD_DIR="$BUILD_ROOT/payload"
 CONFIG_STAGE="$BUILD_ROOT/config"
 TOOLS_DIR="$BUILD_ROOT/tools"
 RELEASE_DIR="$ROOT_DIR/发布版本"
+
+# Host platform: the Windows build differs from the Linux/WSL one in three ways
+# (path separators inside installer.nsi, the NSIS script charset, and which Python
+# performs the cross-platform wheel download).
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*) IS_WINDOWS=1 ;;
+  *)                    IS_WINDOWS=0 ;;
+esac
+
+if [[ "$IS_WINDOWS" -eq 1 && -z "${MILK_PYTHON:-}" ]]; then
+  echo "On Windows, set MILK_PYTHON to a Python 3.11 interpreter that has pip, e.g." >&2
+  echo "  MILK_PYTHON=\"$ROOT_DIR/.venv/Scripts/python.exe\"" >&2
+  echo "(a uv-created venv has no pip by default; bootstrap it with -m ensurepip --upgrade)" >&2
+  exit 1
+fi
+
 PYTHON_BIN="${MILK_PYTHON:-$HOME/miniforge3/envs/milk/bin/python}"
 PYTHON_EMBED_URLS=(
   "https://mirrors.aliyun.com/python-release/windows/python-3.11.9-embed-amd64.zip"
@@ -111,6 +127,12 @@ fi
 unzip -q "$BUILD_ROOT/python-embed.zip" -d "$PAYLOAD_DIR/python"
 cp "$PC_DIR/packaging/windows/python311._pth" "$PAYLOAD_DIR/python/python311._pth"
 
+if ! "$PYTHON_BIN" -m pip --version >/dev/null 2>&1; then
+  echo "pip is not available in $PYTHON_BIN" >&2
+  echo "bootstrap it with: \"$PYTHON_BIN\" -m ensurepip --upgrade" >&2
+  exit 1
+fi
+
 "$PYTHON_BIN" -m pip install \
   --target "$PAYLOAD_DIR/python/Lib/site-packages" \
   --platform win_amd64 \
@@ -134,8 +156,30 @@ chmod 600 "$CONFIG_STAGE/.env"
 
 cp "$PC_DIR/packaging/windows/app.ico" "$BUILD_ROOT/app.ico"
 
+# makensis is a native binary: on Windows it needs Windows-style paths, the -DWIN
+# switch (installer.nsi then uses "\" separators, which the Windows build of
+# makensis requires), and -INPUTCHARSET UTF8 because installer.nsi is UTF-8 without
+# a BOM and the Windows build defaults to the ANSI code page.
+if [[ "$IS_WINDOWS" -eq 1 ]]; then
+  MAKENSIS_ROOT="$(cygpath -w "$BUILD_ROOT")"
+  MAKENSIS_OUT="$(cygpath -w "$OUTPUT_STAGE")"
+  MAKENSIS_ICON="$(cygpath -w "$BUILD_ROOT/app.ico")"
+  MAKENSIS_SCRIPT="$(cygpath -w "$PC_DIR/packaging/windows/installer.nsi")"
+  MAKENSIS_PLATFORM="-DWIN"
+else
+  MAKENSIS_ROOT="$BUILD_ROOT"
+  MAKENSIS_OUT="$OUTPUT_STAGE"
+  MAKENSIS_ICON="$BUILD_ROOT/app.ico"
+  MAKENSIS_SCRIPT="$PC_DIR/packaging/windows/installer.nsi"
+  MAKENSIS_PLATFORM=""
+fi
+
 MAKENSIS_BIN="$(command -v makensis || true)"
 if [[ -z "$MAKENSIS_BIN" ]]; then
+  if [[ "$IS_WINDOWS" -eq 1 ]]; then
+    echo "makensis not found on PATH. Install NSIS for Windows and add its Bin directory to PATH." >&2
+    exit 1
+  fi
   (
     cd "$TOOLS_DIR"
     apt-get download nsis nsis-common
@@ -148,12 +192,15 @@ if [[ -z "$MAKENSIS_BIN" ]]; then
   export NSISDIR="$NSIS_ROOT/usr/share/nsis"
 fi
 
+# shellcheck disable=SC2086  # MAKENSIS_PLATFORM is intentionally word-split (may be empty)
 "$MAKENSIS_BIN" \
-  -DROOT_DIR="$BUILD_ROOT" \
-  -DOUT_FILE="$OUTPUT_STAGE" \
-  -DAPP_ICON="$BUILD_ROOT/app.ico" \
+  -INPUTCHARSET UTF8 \
+  $MAKENSIS_PLATFORM \
+  -DROOT_DIR="$MAKENSIS_ROOT" \
+  -DOUT_FILE="$MAKENSIS_OUT" \
+  -DAPP_ICON="$MAKENSIS_ICON" \
   -DAPP_VERSION="$APP_VERSION" \
-  "$PC_DIR/packaging/windows/installer.nsi"
+  "$MAKENSIS_SCRIPT"
 
 cp "$OUTPUT_STAGE" "$OUTPUT_RELEASE"
 chmod 755 "$OUTPUT_RELEASE"
