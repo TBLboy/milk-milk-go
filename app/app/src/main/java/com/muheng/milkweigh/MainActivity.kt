@@ -581,10 +581,10 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MilkWeighApp(customRepository: MilkRepository? = null) {
+fun MilkWeighApp() {
     val context = LocalContext.current
     val sessionStore = remember { SessionStore(context.applicationContext) }
-    val repository = remember { customRepository ?: RealMilkRepository(context.applicationContext, sessionStore.load()?.token.orEmpty()) }
+    val repository = remember { RealMilkRepository(context.applicationContext, sessionStore.load()?.token.orEmpty()) }
     var user by remember { mutableStateOf(sessionStore.load()) }
     androidx.compose.runtime.LaunchedEffect(user?.token) {
         if (user != null && user?.id == 0) {
