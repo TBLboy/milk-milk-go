@@ -30,7 +30,7 @@ PYTHON_EMBED_URLS=(
   "https://mirrors.huaweicloud.com/python/3.11.9/python-3.11.9-embed-amd64.zip"
   "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip"
 )
-APP_VERSION="1.0.6"
+APP_VERSION="1.0.7"
 OUTPUT_STAGE="$BUILD_ROOT/MilkWeigh-Windows-Setup.exe"
 OUTPUT_RELEASE="$RELEASE_DIR/乍甸乳业辅料防错追溯系统-Windows-${APP_VERSION}-Setup.exe"
 # 交付包不注入任何演示/测试数据：客户拿到的是干净数据库，只有 DB 初始化创建的
@@ -86,6 +86,7 @@ cp "$LICENSE_MODULE_DIR"/*.pyd "$PAYLOAD_DIR/server/milk_license/"
 cp "$PC_DIR/server/restore_backup.py" "$PAYLOAD_DIR/server/restore_backup.py"
 cp "$PC_DIR/packaging/windows/MilkWeighService.py" "$PAYLOAD_DIR/server/MilkWeighService.py"
 cp "$PC_DIR/packaging/windows/smtp_test.py" "$PAYLOAD_DIR/server/smtp_test.py"
+cp "$PC_DIR/packaging/windows/backend_probe.py" "$PAYLOAD_DIR/server/backend_probe.py"
 cp "$PC_DIR/packaging/windows/restore_backup.ps1" "$PAYLOAD_DIR/server/restore_backup.ps1"
 find "$PAYLOAD_DIR/server" -type d -name "__pycache__" -prune -exec rm -rf {} +
 find "$PAYLOAD_DIR/server" -type f -name "*.pyc" -delete

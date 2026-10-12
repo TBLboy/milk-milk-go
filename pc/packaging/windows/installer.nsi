@@ -39,7 +39,7 @@ SetCompressorDictSize 32
 !endif
 !endif
 !ifndef APP_VERSION
-  !define APP_VERSION "1.0.6"
+  !define APP_VERSION "1.0.7"
 !endif
 !define PRODUCT_NAME "乍甸乳业辅料防错追溯系统"
 !define PRODUCT_KEY "MilkWeigh"
@@ -159,6 +159,14 @@ Section "Install"
 
   nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="MilkWeigh Backend"'
   nsExec::ExecToLog 'netsh advfirewall firewall add rule name="MilkWeigh Backend" dir=in action=allow protocol=TCP localport=8011'
+
+  ; 后端自检：确认 8011 真的在响应。历史问题——安装器只自检 SMTP，不验证后端，
+  ; 于是"缺依赖导致后端起不来"的交付包装完毫无提示，客户只看到打不开（见 DEC-070）。
+  nsExec::ExecToLog /TIMEOUT=60000 '"$INSTDIR\python\python.exe" "$INSTDIR\server\backend_probe.py"'
+  Pop $0
+  StrCmp $0 "0" backend_probe_ok
+  MessageBox MB_ICONSTOP|MB_OK "后台服务自检未通过，管理界面可能无法打开。$\r$\n$\r$\n请先确认浏览器能否访问 http://127.0.0.1:8011/ ；若仍打不开，请将 C:\ProgramData\MilkWeigh\logs\backend-service.log 提供给技术支持。$\r$\n$\r$\n安装已完成，无需重新安装。" /SD IDOK
+  backend_probe_ok:
 
   nsExec::ExecToLog /TIMEOUT=15000 '"$INSTDIR\python\python.exe" "$INSTDIR\server\smtp_test.py"'
   Pop $0

@@ -6,3 +6,11 @@ python-multipart==0.0.32
 openpyxl==3.1.5
 psutil==7.2.2
 pywin32==311
+# Runtime imports used by the app at import time. Missing any of them keeps
+# uvicorn from starting, which shows up as "install finished but 8011 is not
+# reachable" (see DEC-070).
+# Keep this file ASCII-only: pip decodes requirement files with the locale
+# encoding (GBK on Chinese Windows), so non-ASCII comments break the build.
+qrcode==8.2
+reportlab==4.5.1
+pillow==11.3.0

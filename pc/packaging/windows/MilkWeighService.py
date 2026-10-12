@@ -38,7 +38,13 @@ class MilkWeighBackendService(win32serviceutil.ServiceFramework):
             program_data / "MilkWeigh" / "logs",
         )
 
-    def _start_backend(self):
+    # 后端异常退出后的自愈：最多重试 RESTART_LIMIT 次，间隔逐次拉长。
+    # 原实现是直接 break，服务以"干净停止"（退出码 0）结束 —— 既不触发 sc failure 的
+    # 自动重启，也不给任何人提示，于是表现为"装完打不开"却毫无动静（见 DEC-070）。
+    RESTART_LIMIT = 3
+    RESTART_BACKOFF_SECONDS = 5
+
+    def _start_backend(self, log_stream=None):
         install_root, config_dir, data_dir, log_dir = self._paths()
         config_dir.mkdir(parents=True, exist_ok=True)
         data_dir.mkdir(parents=True, exist_ok=True)
@@ -49,7 +55,8 @@ class MilkWeighBackendService(win32serviceutil.ServiceFramework):
         env["PYTHONPATH"] = str(install_root / "server")
         python_exe = install_root / "python" / "python.exe"
         server_dir = install_root / "server"
-        log_stream = open(log_dir / "backend-service.log", "ab", buffering=0)
+        if log_stream is None:
+            log_stream = open(log_dir / "backend-service.log", "ab", buffering=0)
         creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
         self.process = subprocess.Popen(
             [
@@ -74,15 +81,36 @@ class MilkWeighBackendService(win32serviceutil.ServiceFramework):
 
     def _run_backend(self):
         log_stream = self._start_backend()
+        failures = 0
         try:
             while True:
                 if win32event.WaitForSingleObject(self.stop_event, 2000) == win32event.WAIT_OBJECT_0:
-                    break
+                    return
                 if self.process is not None and self.process.poll() is not None:
+                    exit_code = self.process.returncode
                     servicemanager.LogErrorMsg(
-                        f"MilkWeigh backend exited unexpectedly with code {self.process.returncode}"
+                        f"MilkWeigh backend exited unexpectedly with code {exit_code}"
                     )
-                    break
+                    failures += 1
+                    if failures > self.RESTART_LIMIT:
+                        # 抛异常使 SCM 收到非零退出码，从而触发 sc failure 的自动重启
+                        # （win32serviceutil.SvcRun 的注释明确说明该行为）。
+                        raise RuntimeError(
+                            f"MilkWeigh backend failed {failures} times "
+                            f"(last exit code {exit_code}); "
+                            "see backend-service.log for the traceback"
+                        )
+                    wait_seconds = self.RESTART_BACKOFF_SECONDS * failures
+                    servicemanager.LogInfoMsg(
+                        f"Restarting MilkWeigh backend in {wait_seconds}s "
+                        f"(attempt {failures}/{self.RESTART_LIMIT})"
+                    )
+                    if (
+                        win32event.WaitForSingleObject(self.stop_event, wait_seconds * 1000)
+                        == win32event.WAIT_OBJECT_0
+                    ):
+                        return
+                    log_stream = self._start_backend(log_stream)
         finally:
             self._stop_backend()
             log_stream.close()
