@@ -586,6 +586,12 @@ fun MilkWeighApp() {
     val sessionStore = remember { SessionStore(context.applicationContext) }
     val repository = remember { RealMilkRepository(context.applicationContext, sessionStore.load()?.token.orEmpty()) }
     var user by remember { mutableStateOf(sessionStore.load()) }
+    val requestCameraPermission = cameraPermissionLauncher(onGranted = {})
+    LaunchedEffect(Unit) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            requestCameraPermission()
+        }
+    }
     androidx.compose.runtime.LaunchedEffect(user?.token) {
         if (user != null && user?.id == 0) {
             runCatching { repository.refreshUser() }
