@@ -2850,7 +2850,12 @@ private fun TypeConfirmationDialog(
         onDismissRequest = { if (!working && !scannerOpen) onDismiss() },
         title = { Text("类型确认 · 步骤 ${step.stepNo}") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 300.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
                 Text("当前步骤要求：${step.materialName} · ${step.materialCode} · ${step.materialId}", color = Ink, fontWeight = FontWeight.Bold)
                 RequiredWeightText(
                     requiredWeightKg = step.requiredWeightKg,
@@ -2862,7 +2867,9 @@ private fun TypeConfirmationDialog(
                     Text("对准二维码后系统会自动识别并确认，无需手动拍照。", color = Muted, fontSize = 14.sp)
                     OutlinedButton(
                         onClick = openScanner,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp),
                         enabled = !working,
                     ) {
                         Icon(Icons.Default.CameraAlt, null)

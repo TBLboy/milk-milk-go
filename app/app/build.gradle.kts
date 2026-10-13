@@ -12,8 +12,8 @@ android {
         applicationId = "com.muheng.milkweigh"
         minSdk = 24
         targetSdk = 35
-        versionCode = 20
-        versionName = "1.0.19"
+        versionCode = 21
+        versionName = "1.0.20"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // 交付版留空：强制客户首次启动时在登录页右上角 ⚙ 自行填写服务器地址，
